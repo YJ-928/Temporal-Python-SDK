@@ -1,0 +1,31 @@
+[project]
+name = "temporal-python-sdk"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.13.5",
+    "aiosignal>=1.4.0",
+    "attrs>=26.1.0",
+    "blinker>=1.9.0",
+    "click>=8.3.1",
+    "flask>=3.1.3",
+    "frozenlist>=1.8.0",
+    "idna>=3.11",
+    "iniconfig>=2.3.0",
+    "itsdangerous>=2.2.0",
+    "jinja2>=3.1.6",
+    "markupsafe>=3.0.3",
+    "multidict>=6.7.1",
+    "packaging>=26.0",
+    "pluggy>=1.6.0",
+    "protobuf>=6.33.6",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "temporalio>=1.24.0",
+    "types-protobuf>=6.32.1.20260221",
+    "typing-extensions>=4.15.0",
+    "werkzeug>=3.1.7",
+    "yarl>=1.23.0",
+]

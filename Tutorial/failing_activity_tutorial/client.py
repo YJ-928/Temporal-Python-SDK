@@ -1,24 +1,21 @@
 import asyncio
-from temporalio.worker import Worker
+import uuid
+
 from temporalio.client import Client
 
 from workflow import RandomFailWorkflow
-from activity import random_fail_task
 
 
 async def main():
     client = await Client.connect("localhost:7233")
 
-    worker = Worker(
-        client,
+    response = await client.execute_workflow(
+        RandomFailWorkflow.task,
+        id=f"failing-workflow-demo-{uuid.uuid4()}",
         task_queue="random-fail-task-queue",
-        workflows=[RandomFailWorkflow],
-        activities=[random_fail_task],
     )
 
-    print("Worker Started")
-
-    await worker.run()
+    print(f"Workflow Result: {response}")
 
 
 if __name__ == "__main__":
