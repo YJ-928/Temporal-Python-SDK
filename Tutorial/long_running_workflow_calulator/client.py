@@ -11,7 +11,7 @@ async def main() -> None:
     client = await Client.connect("localhost:7233")
 
     result = await client.execute_workflow(
-        LongRunningWorkflow,
+        LongRunningWorkflow.calculate,
         id="long-running-workflow",
         task_queue=TASK_QUEUE
     )

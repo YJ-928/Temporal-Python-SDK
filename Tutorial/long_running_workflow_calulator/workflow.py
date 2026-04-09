@@ -40,5 +40,5 @@ class LongRunningWorkflow:
                 )
                 workflow.logger.info(f"Result: {result}")
 
-        print("Signal recieved, stopping workflow...")
+        workflow.logger.info("Signal received, stopping workflow...")
         return "LONG RUNNING WORKFLOW COMPLETED !!"
