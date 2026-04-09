@@ -1,5 +1,7 @@
 Signal, Query, Update
 Wait conditions, long running workflow
-+ Child workflows, Continue_as_new
-
-zigflow
+Child workflows, Continue_as_new
++ How does temporal handle multiple requests (async based) - as temporal workflows are blocking type as they wait for activity execution to complete.
++ How to create docker containers and execute them using temporal
++ How to run CLI based scripts in temporal workflow, in isolation 
++ zigflow
