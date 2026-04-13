@@ -11,3 +11,5 @@ Child workflows, Continue_as_new
 - also added max retry policy for 10 times, so if desried result is coming in less than max attempts break the loop 
     or if max attempts reach break loop and then fail workflow.
 
+- Signal Parallel processing in a single running workflow
+- example:- Single workflow should be able to process multiple files parallely
