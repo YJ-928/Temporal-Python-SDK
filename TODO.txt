@@ -5,3 +5,9 @@ Child workflows, Continue_as_new
 + How to create docker containers and execute them using temporal
 + How to run CLI based scripts in temporal workflow, in isolation 
 + zigflow
+
+- Temporal Activity Loop
+- 2 activites interdependent, output of activity one as input to activity two until desired result comes the loop repeats
+- also added max retry policy for 10 times, so if desried result is coming in less than max attempts break the loop 
+    or if max attempts reach break loop and then fail workflow.
+
