@@ -1,61 +1,66 @@
 version: "3.5"
+
 services:
   mysql:
     container_name: temporal-mysql
+    image: mysql:8
     environment:
       - MYSQL_ROOT_PASSWORD=root
-    image: mysql:${MYSQL_VERSION}
     networks:
       - temporal-network
     ports:
       - 3306:3306
     volumes:
-      - /var/lib/mysql
+      - mysql-data:/var/lib/mysql
+
   temporal:
     container_name: temporal
     depends_on:
       - mysql
+    image: temporalio/auto-setup:${TEMPORAL_VERSION}
     environment:
       - DB=mysql8
       - DB_PORT=3306
       - MYSQL_USER=root
       - MYSQL_PWD=root
       - MYSQL_SEEDS=mysql
-      - DYNAMIC_CONFIG_FILE_PATH=dynamicconfig/development-sql.yaml
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
-    image: temporalio/auto-setup:${TEMPORAL_VERSION}
     networks:
       - temporal-network
     ports:
       - 7233:7233
-    volumes:
-      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+
   temporal-admin-tools:
     container_name: temporal-admin-tools
     depends_on:
       - temporal
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION}
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
-    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION}
     networks:
       - temporal-network
     stdin_open: true
     tty: true
+
   temporal-ui:
     container_name: temporal-ui
     depends_on:
       - temporal
+    image: temporalio/ui:${TEMPORAL_UI_VERSION}
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
-    image: temporalio/ui:${TEMPORAL_UI_VERSION}
     networks:
       - temporal-network
     ports:
       - 8080:8080
+
 networks:
   temporal-network:
     driver: bridge
     name: temporal-network
+
+volumes:
+  mysql-data:
