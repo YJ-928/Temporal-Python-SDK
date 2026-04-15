@@ -55,9 +55,9 @@
 
 ### Key Notes
 
-- **The cached result is the core mechanism** — Temporal reads stored results during replay; it never makes the same call twice. This is what makes the loop durable.
-- **`continue_as_new` is required in production infinite loops** — Not a nice-to-have. Design for it from the start.
-- **Signals are the correct way to stop a loop** — Avoid `while True:` without a signal-controlled stop flag.
+- **Cached result = durable loop** — Temporal reads stored Activity results during replay; it never re-runs them.
+- **`continue_as_new` is mandatory for infinite loops** — Event history limit is ~50k events. Design for chunking from the start.
+- **Signals are the correct way to stop a loop** — Never use `while True:` without a signal-controlled stop flag.
 
 ---
 
@@ -72,15 +72,14 @@
 - **Failure is recorded, not lost** — When an Activity fails, Temporal writes `ActivityTaskFailed` to the event history, then schedules a new attempt after the back-off interval.
 - **Attempt tracking** — Each retry increments `activity.info().attempt`. The Activity code can read this to adjust behaviour on later attempts.
 - **Invisible to the Workflow** — The Workflow sees only the final success. All intermediate failures are hidden.
-  - *Simply put: the Workflow waits patiently; it doesn't know or care how many retries happened.*
 - **Exponential back-off by default** — Default: `backoff_coefficient=2.0`, capped at 100× initial interval, unlimited attempts unless you set `maximum_attempts`.
 - **`non_retryable=True` stops retries immediately** — Raising `ApplicationError(..., non_retryable=True)` signals a business logic error. Temporal stops retrying and fails the Activity.
 
 ### Key Notes
 
-- **Always set `maximum_attempts` for external service calls** — Unbounded retries can hammer a downstream API during an outage.
-- **Only the Activity retries — the Workflow stays paused** — No part of the Workflow re-runs during Activity retries. It simply waits for the result.
-- **`non_retryable=True` is the most important flag to get right** — Omitting it on validation errors burns retries needlessly and makes debugging painful.
+- **Always set `maximum_attempts`** — Unbounded retries hammer APIs during outages.
+- **Only the Activity retries — the Workflow stays paused** — Nothing in the Workflow re-runs. It waits for the result.
+- **`non_retryable=True` is the most important flag** — Missing it on validation errors burns retries and obscures debugging.
 
 ---
 
@@ -90,21 +89,22 @@
 
 > **In one line:** Every workflow step is written to an immutable log — inspectable in the Web UI, via CLI, or programmatically at any time.
 
+> **Key Idea:** Event history = built-in audit log. Web UI = your debugger. External tools (Prometheus, Datadog) = your metrics layer.
+
 ### How Temporal Handles It
 
 - **Event history is the built-in audit trail** — Every `ActivityTaskScheduled`, `ActivityTaskCompleted`, `TimerFired`, `SignalReceived`, and more is recorded with full timestamps and payloads.
 - **Temporal Web UI (`:8233`)** — Visualises the full event history graphically; shows current state, inputs, outputs, and failures at a glance. Your first stop for any investigation.
 - **CLI inspection** — `temporal workflow show --workflow-id <id>` dumps the complete event log. Useful for scripting or deep debugging outside the UI.
-- **Replay-safe structured logging** — `workflow.logger` and `activity.logger` suppress duplicate log entries during replay automatically.
-  - *Why this matters: plain `print()` or `logging` would fire on every replay, flooding your log system.*
-- **Heartbeats as sub-activity checkpoints** — Long-running Activities call `activity.heartbeat(progress)` mid-execution. If the Worker crashes, the next attempt can resume from the last checkpoint rather than restarting from zero.
+- **Replay-safe structured logging** — `workflow.logger` and `activity.logger` suppress duplicate log entries during replay. Never use `print()` or standard `logging` directly inside a Workflow.
+- **Heartbeats as sub-activity checkpoints** — Long-running Activities call `activity.heartbeat(progress)` mid-execution. On crash, the next attempt resumes from the last checkpoint, not from zero.
 - **External metrics via SDK** — Temporal exports Prometheus-compatible metrics (task queue depth, workflow latency, error rates). Connect to Datadog, Grafana, or PagerDuty separately.
 
 ### Key Notes
 
-- **Always use `workflow.logger` inside Workflows — never `print()`** — Replay-safety is not negotiable.
-- **Heartbeats are your sub-activity audit trail** — For any Activity running more than a few seconds, heartbeat regularly to capture progress.
-- **The Web UI is your first debugging tool** — Before writing diagnostic code, check the event history in the UI. The answer is almost always already there.
+- **`workflow.logger` only — never `print()`** — Replay-safety is not negotiable inside Workflow code.
+- **Heartbeat every few seconds on long Activities** — It's your progress checkpoint and your crash-recovery point.
+- **Start debugging in the Web UI** — The event history almost always shows the failure before you need any diagnostic code.
 
 ---
 
@@ -193,7 +193,6 @@
   - *Simply put: never route on data you read directly in the Workflow. Route on what an Activity returned.*
 - **Signals inject routing decisions at runtime** — An operator or external system can send a Signal to change the direction of a live, running workflow.
 - **Child Workflows route entire sub-processes** — Spawn a child on a different Task Queue or Worker pool for isolation, separate retry scope, or dedicated resources.
-- **All routing is automatically durable** — The routing decision is part of the event history; on replay, the same branch is always taken.
 
 ### Key Notes
 
@@ -236,7 +235,7 @@
 
 - **Workflow → Activity → external system** — The Workflow never touches the network directly. It calls `workflow.execute_activity(...)` and waits for the result.
 - **Activity runs on a Worker** — The Worker has full access to the network, DB drivers, HTTP clients, file system, etc. All real I/O happens here.
-- **Success is recorded permanently** — Temporal writes the Activity result to the event history on completion. On replay, this result is returned directly — the external system is never called again.
+- **Success is recorded once** — Temporal writes the Activity result to history on completion. On replay, it is returned directly; the external system is never called again.
 - **Failures retry automatically** — If the external call fails (timeout, 5xx error), Temporal retries per the `RetryPolicy`. The Workflow only sees the eventual success.
 - **Class-based Activities for shared connections** — Inject a shared HTTP session or DB connection pool into an Activity class. The Worker reuses the connection across all Activity invocations.
 
@@ -280,8 +279,7 @@
 ### How Temporal Handles It
 
 - **State = Python instance variables** — Whatever you store in `self._count`, `self._phase`, `self._items`, etc., is your workflow's persistent state.
-- **Automatic reconstruction** — On Worker restart, Temporal replays the full event history. `__init__` runs first, then every recorded event is applied in order, restoring all `self.*` fields to their exact pre-crash values.
-  - *Simply put: no database, no Redis, no manual serialisation — Temporal rebuilds state from history.*
+- **Automatic reconstruction** — On Worker restart, Temporal replays the event history: `__init__` runs first, then every recorded event is applied in order, restoring all `self.*` fields to their exact pre-crash values.
 - **Signals mutate state from outside** — `@workflow.signal` methods are the primary way to change state on a running workflow from external code.
 - **Queries read state safely** — `@workflow.query` methods return snapshots without modifying anything. Safe to call at any time from any external code.
 
@@ -302,8 +300,7 @@
 ### How Temporal Handles It
 
 - **Sandboxed event loop** — Temporal runs Workflow code in a controlled environment that intercepts and blocks non-deterministic operations before they hazard replay.
-- **Activity results injected, not re-run** — During replay, when the code reaches `execute_activity`, Temporal injects the previously recorded result. The Activity code never executes again.
-  - *Simply put: the Activity code is skipped; only its stored result is replayed.*
+- **Activity results injected, not re-run** — During replay, Temporal injects the recorded result at each `execute_activity` call. The Activity code never executes again.
 - **`asyncio.sleep()` becomes a durable timer** — It is recorded as `TimerStarted`/`TimerFired` in the event history. During replay it is skipped instantly — no real waiting.
 - **`workflow.now()` for safe time reads** — Returns the timestamp from the event history, not the system clock. Always use this inside Workflows instead of `datetime.now()`.
 - **Non-determinism causes `WorkflowTaskFailed`** — If a code change alters the event sequence for an already-running workflow, Temporal raises a non-determinism error during replay.
@@ -351,9 +348,11 @@
 
 > **In one line:** You can safely change running Workflows without breaking them — `workflow.patched()` lets old and new code paths coexist during deployment.
 
+> **Key Idea:** Changing live Workflow code without `patched()` breaks all in-flight executions. The patch flag lets old and new paths coexist in the same codebase during a rolling deploy.
+
 ### How Temporal Handles It
 
-- **The core problem** — Changing Workflow code while executions are in-flight causes replay errors, because the new code produces a different event sequence than what history recorded.
+- **The core problem** — Changing Workflow code while executions are in-flight causes replay errors: the new code produces a different event sequence than what history recorded.
 - **`workflow.patched("patch-id")`** — Returns `True` for new executions (post-deploy) and `False` for old ones replaying history. Use this to branch between old and new behaviour in the same codebase simultaneously.
 - **`workflow.deprecate_patch("patch-id")`** — Once all pre-patch executions have completed, switch to this call to mark the old path as deprecated and signal intent to remove it.
 - **Safe deployment sequence:**
@@ -364,9 +363,9 @@
 
 ### Key Notes
 
-- **This is the most common production mistake in Temporal** — Deploying a sequence change without `patched()` causes `WorkflowTaskFailed` non-determinism errors on all in-flight executions.
-- **Patching is for sequence changes only** — Adding, removing, or reordering Activities, timers, and signals requires patching. Changing the internal logic inside an Activity function does not.
-- **Never rename an Activity function referenced in in-flight history** — That also counts as a non-determinism change and will break replaying executions.
+- **#1 production mistake** — Deploying a sequence change without `patched()` causes `WorkflowTaskFailed` on all in-flight executions.
+- **Patching is for sequence changes only** — Adding, removing, or reordering Activities/timers/signals requires it. Changing Activity internals does not.
+- **Never rename an Activity function used in in-flight history** — That counts as a non-determinism change and breaks replaying executions.
 
 ---
 
@@ -375,6 +374,8 @@
 **Status:** Supported (All Four)
 
 > **In one line:** Temporal workflows automatically survive failures, record every step, reconstruct their state, and accept external control — all built in, zero extra infrastructure.
+
+> **Key Idea:** One system gives you four guarantees simultaneously — crash recovery, an audit log, state reconstruction, and runtime control. No other single tool covers all four.
 
 ### How Temporal Handles It
 
@@ -385,16 +386,11 @@
 | **Reconstruction** | Deterministic replay restores exact state | No manual recovery logic — Temporal rebuilds all workflow state from history alone |
 | **Controllability** | Signals, Queries, Updates, `cancel()`, `terminate()` | External code can read, influence, or stop any workflow at any time |
 
-- **Resilience** — Worker crashes, network partitions, and cluster restarts resolve transparently. The next available Worker picks up the workflow by replaying history. No data is lost.
-- **Traceability** — The Web UI shows a timeline of every event with timestamps and payloads. The CLI exports it for scripting. Nothing is ever lost or overwritten.
-- **Reconstruction** — Deterministic replay means Temporal never needs a snapshot or checkpoint file. History alone is sufficient to rebuild exact state at any point in time.
-- **Controllability** — Queries are read-only and synchronous. Updates are synchronous with a response. Signals are asynchronous state mutations. `cancel()` is graceful, `terminate()` is immediate.
-
 ### Key Notes
 
-- **Queries never block the workflow** — They return immediately and are safe to call from monitoring dashboards, status APIs, or any external code.
-- **Cancellation is cooperative; termination is not** — Always prefer `cancel()` so the workflow can run cleanup. Use `terminate()` only when the workflow is completely unresponsive.
-- **These four properties together are what separate Temporal from a job queue** — A job queue gives you scheduling. Temporal gives you resilience + traceability + reconstruction + control as a single, integrated guarantee.
+- **Queries never block the workflow** — Safe to call from any monitoring dashboard or status API at any time.
+- **`cancel()` is graceful; `terminate()` is hard-kill** — Always prefer `cancel()`. Only use `terminate()` when the workflow is completely unresponsive.
+- **These four together separate Temporal from a job queue** — A job queue gives you scheduling. Temporal gives resilience + traceability + reconstruction + control in one.
 
 ---
 
@@ -413,9 +409,9 @@
 
 ### Key Notes
 
-- **Temporal is not Spark or Flink** — It excels where each item may need retries, human approval, or external API calls. It does not do high-throughput numeric computation over millions of rows.
-- **`continue_as_new` is required for very large batches** — The ~50k event history limit is a hard ceiling. Design batch workflows with chunking from the start.
-- **Each batch item gets independent retry** — Unlike a traditional batch job where one failure may abort everything, Temporal retries each item independently within its own Activity scope.
+- **Not Spark or Flink** — Temporal excels at per-item retry, approvals, and API calls. Not at high-throughput numeric computation over millions of rows.
+- **`continue_as_new` is required for large batches** — ~50k event limit is a hard ceiling. Design for chunking from day one.
+- **Each item retries independently** — One failure doesn't abort the batch; Temporal retries just that item.
 
 ---
 
@@ -435,9 +431,9 @@
 
 ### Key Notes
 
-- **Temporal optimises for reliability, not raw speed** — For sub-100ms SLAs at high throughput, put a cache or low-latency service in front and use Temporal only for the durable orchestration layer.
-- **Local Activities are not a general-purpose speed-up** — Only use them for in-process operations: read-only cache checks, fast transforms, lightweight validations. Do not use them for calls to external services.
-- **Updates are the best real-time interface Temporal offers** — They provide a request-response contract with the running workflow without any polling overhead.
+- **Reliability over raw speed** — For sub-100ms at high throughput, put a cache in front. Use Temporal for the durable orchestration layer behind it.
+- **Local Activities are not a general-purpose speed-up** — Use only for in-process operations (cache reads, transforms). Never for external service calls.
+- **Updates = best real-time interface** — Synchronous request-response with the workflow, no polling required.
 
 ---
 
