@@ -1,0 +1,13 @@
+document:
+  dsl: 1.0.0
+  taskQueue: zigflow
+  workflowType: hello-world
+  version: 1.0.0
+
+do:
+  - greet:
+      set:
+        message: Hello from Zigflow; Running Greeting Workflow
+      output:
+        as:
+          data: ${ . }
