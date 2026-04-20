@@ -51,6 +51,15 @@
   - [Exercise 3 — Debug Activity](#exercise-3--debugging-an-activity-failure-exercisesdebug-activity)
 - [Course Coverage (102)](#102-course-coverage)
 
+### Zigflow (Declarative YAML Workflows on Temporal)
+- [What is Zigflow?](#what-is-zigflow)
+- [Zigflow vs Python SDK](#zigflow-vs-python-sdk)
+- [Zigflow DSL Structure](#zigflow-dsl-structure)
+- [Task Types](#task-types)
+- [Running a Zigflow Workflow](#running-a-zigflow-workflow)
+- [Repo Examples](#repo-examples)
+- [Cheatsheet Files](#cheatsheet-files)
+
 ---
 
 ## What is Temporal?
@@ -741,4 +750,412 @@ The Web UI Event History is your primary debugging tool. For any Workflow Execut
 | 7 | Time-skipping in tests, mock activities |
 | 8 | Debugging with Web UI Event History |
 | 9 | Sticky execution, Worker caching |
+
+---
+---
+
+# Zigflow — Declarative Workflow Engine on Temporal
+
+> Zigflow lets you define Temporal workflows in **YAML** instead of Python code. Built on the [CNCF Serverless Workflow DSL v1.0.0](https://github.com/serverlessworkflow/specification). No Python required for the workflow orchestration layer — just describe what to do, and Zigflow compiles it into a Temporal Workflow.
+
+---
+
+## Index (Zigflow)
+
+- [What is Zigflow?](#what-is-zigflow)
+- [Zigflow vs Python SDK](#zigflow-vs-python-sdk)
+- [Architecture](#zigflow-architecture)
+- [Local Setup](#zigflow-local-setup)
+- [Zigflow DSL Structure](#zigflow-dsl-structure)
+- [Task Types](#task-types)
+- [Runtime Expressions](#runtime-expressions)
+- [Running a Zigflow Workflow](#running-a-zigflow-workflow)
+- [Zigflow CLI Cheatsheet](#zigflow-cli-cheatsheet-1)
+- [Repo Examples](#repo-examples)
+- [Key Rules](#zigflow-key-rules)
+- [Repo Structure (Zigflow)](#repo-structure-zigflow)
+- [Cheatsheet Files](#cheatsheet-files)
+
+---
+
+## What is Zigflow?
+
+**Zigflow is a declarative workflow engine** that sits on top of Temporal. Instead of writing Python classes, you describe the workflow in a YAML file.
+
+```
+YAML → Validation → Compilation → Temporal Workflow → Execution
+```
+
+| Component | Role |
+|---|---|
+| YAML file | Single source of truth for workflow behavior |
+| Zigflow Worker | Compiles YAML → Temporal workflow; polls the Task Queue |
+| Temporal Server | Orchestrates scheduling, retries, history, timers |
+| Temporal CLI | Triggers workflow execution and sends signals |
+
+> **Key rule:** Zigflow does NOT self-trigger workflows. After `zigflow run -f workflow.yaml` starts the worker, you trigger execution with `temporal workflow start`.
+
+---
+
+## Zigflow vs Python SDK
+
+| Use Zigflow YAML when… | Use Python SDK when… |
+|---|---|
+| Workflow is mostly orchestration (call → wait → call) | Workflow has complex business logic in Python |
+| Team prefers declarative config | You need type-safe dataclasses and IDE completion |
+| Rapid prototyping of integration flows | You need fine-grained control over retry/heartbeat |
+| Non-Python teams need to read/write workflows | Activities use Python libraries heavily |
+
+---
+
+## Zigflow Architecture
+
+```
+Your YAML File  →  Zigflow Worker  →  Temporal Cluster  →  Temporal Worker (Activities)
+```
+
+- **Zigflow Worker** — reads your YAML, compiles it, and polls the Temporal Task Queue. Each `call` task becomes a Temporal Activity.
+- **Temporal Cluster** — same dev server you already use. No extra infra needed.
+- **Temporal CLI** — used to trigger, signal, query, and inspect Zigflow-driven workflows exactly the same way as Python-SDK workflows.
+
+---
+
+## Zigflow Local Setup
+
+### Prerequisites
+- Temporal CLI + dev server already running (`temporal server start-dev`)
+- `zigflow` CLI installed
+
+### Install Zigflow CLI
+
+```bash
+# Homebrew (macOS / Linux)
+brew install zigflow
+
+# Or via npm
+npm install -g @zigflow/cli
+
+# Verify
+zigflow version
+```
+
+### Activate repo virtual env
+
+```bash
+source .venv/bin/activate
+```
+
+---
+
+## Zigflow DSL Structure
+
+Every Zigflow YAML file has two required top-level keys:
+
+```yaml
+document:
+  dsl: "1.0.0"           # always "1.0.0"
+  taskQueue: my-queue    # must match the Zigflow worker's task queue (case-sensitive)
+  workflowType: my-wf    # must match the Temporal workflow type (case-sensitive)
+  version: "1.0.0"       # your workflow's semantic version
+  metadata:              # optional — sets default timeouts for all tasks
+    activityOptions:
+      startToCloseTimeout:
+        minutes: 5
+
+do:                      # ordered list of named tasks
+  - taskName:
+      <task-definition>
+  - anotherTask:
+      <task-definition>
+```
+
+### document Field Reference
+
+| Field | Required | Notes |
+|---|---|---|
+| `dsl` | yes | Always `"1.0.0"` |
+| `taskQueue` | yes | Temporal Task Queue — case-sensitive, must match `zigflow run` config |
+| `workflowType` | yes | Temporal Workflow Type registered by Zigflow worker |
+| `version` | yes | Semantic version of the workflow definition |
+| `metadata.activityOptions` | no | Default timeouts for all `call`/`run` tasks |
+
+---
+
+## Task Types
+
+| Task | What it does |
+|---|---|
+| `set` | Assign variables in workflow data |
+| `call` | Invoke HTTP / OpenAPI / gRPC / AsyncAPI endpoint |
+| `do` | Run subtasks sequentially as a group |
+| `fork` | Run branches in parallel (`compete: false` = all, `compete: true` = race) |
+| `for` | Loop over a collection |
+| `listen` | Wait for an external event / Temporal signal |
+| `raise` | Throw an error to fault the workflow |
+| `run` | Execute container / shell / script / sub-workflow |
+| `switch` | Conditional branching |
+| `try` | Error handling with optional retry |
+| `wait` | Pause for a duration (durable timer — survives Worker crash) |
+
+### Task Execution Model
+
+| Task type | Runs as | Deterministic? |
+|---|---|---|
+| `set`, `switch` | Temporal Workflow code | Must be deterministic |
+| `call`, `run` | Temporal Activity | Can do I/O; retried on failure |
+| `wait` | Temporal Timer | Durable — survives Worker crash |
+| `listen` | Temporal Signal handler | Durable — survives Worker crash |
+| `fork` | Workflow code + parallel Activities | Branches run concurrently |
+
+### Common Patterns
+
+```yaml
+# HTTP call
+- fetchUser:
+    call: http
+    with:
+      method: get
+      endpoint: https://api.example.com/users/1
+    output:
+      as:
+        user: ${ . }
+
+# Parallel — all branches run, output = array
+- gatherAll:
+    fork:
+      compete: false
+      branches:
+        - fetchA:
+            call: http
+            with: { method: get, endpoint: https://api.example.com/a }
+        - fetchB:
+            call: http
+            with: { method: get, endpoint: https://api.example.com/b }
+
+# Race — first branch wins
+- fastest:
+    fork:
+      compete: true
+      branches:
+        - primary:
+            call: http
+            with: { method: get, endpoint: https://primary.example.com/data }
+        - fallback:
+            call: http
+            with: { method: get, endpoint: https://fallback.example.com/data }
+
+# Wait for human approval (Temporal signal)
+- waitApproval:
+    listen:
+      to:
+        one:
+          with:
+            id: approve        # matches: temporal workflow signal --name approve
+            type: signal
+
+# Durable timer
+- pause:
+    wait:
+      minutes: 10
+
+# Error handling with retry
+- safeCall:
+    try:
+      - fetch:
+          call: http
+          with:
+            method: get
+            endpoint: https://unstable.example.com/data
+    catch:
+      retry:
+        delay: { seconds: 2 }
+        backoff: { exponential: {} }
+        limit:
+          attempt:
+            count: 3
+      do:
+        - fallback:
+            set:
+              result: default_value
+```
+
+---
+
+## Runtime Expressions
+
+Expressions use **jq syntax** wrapped in `${ }`.
+
+```yaml
+${ $input.userId }          # workflow input
+${ $data.fetchUser.name }   # previous task output (by task name)
+${ $context.userId }        # accumulated context state
+${ $env.API_KEY }           # environment variable
+${ uuid }                   # replay-safe UUID
+${ timestamp }              # replay-safe timestamp
+${ .users | map(.name) }    # jq filter
+```
+
+### Built-in Variables
+
+| Variable | Contains |
+|---|---|
+| `$input` | Raw input passed when the workflow was started |
+| `$context` | Accumulated workflow state (from `export.as`) |
+| `$data` | Output from the previous task |
+| `$env` | Environment variables |
+
+### output.as vs export.as
+
+```yaml
+- fetchUser:
+    call: http
+    with:
+      method: get
+      endpoint: https://api.example.com/users/1
+    output:
+      as:
+        user: ${ . }                            # shapes what flows to the NEXT task only
+    export:
+      as: "${ $context + {fetchedUser: .} }"    # persists into $context for ALL later tasks
+```
+
+> **Rule:** Always use `${ $context + {key: value} }` in `export.as` — never `${ . }` alone, or you'll overwrite existing context.
+
+---
+
+## Running a Zigflow Workflow
+
+```bash
+# Step 1 — validate your YAML
+zigflow validate workflow.yaml
+
+# Step 2 — start the Zigflow worker (Terminal 1, keep running)
+zigflow run -f workflow.yaml
+
+# Step 3 — trigger the workflow (Terminal 2)
+temporal workflow start \
+  --type <workflowType> \
+  --task-queue <taskQueue> \
+  --workflow-id my-run-01 \
+  --input '{}'
+
+# Step 4 — send a signal (if workflow uses listen)
+temporal workflow signal \
+  --workflow-id my-run-01 \
+  --name approve \
+  --input '{"approved": true}'
+
+# Step 5 — inspect the result
+temporal workflow show --workflow-id my-run-01
+```
+
+### Zigflow YAML → Temporal CLI Mapping
+
+| Zigflow YAML | Temporal CLI flag |
+|---|---|
+| `workflowType` | `--type` |
+| `taskQueue` | `--task-queue` |
+| `listen.to.one.with.id` | `signal --name` |
+| workflow start `input` | `--input` |
+
+---
+
+## Zigflow CLI Cheatsheet
+
+```bash
+zigflow validate workflow.yaml          # validate against DSL schema
+zigflow run -f workflow.yaml            # start worker
+zigflow run -f workflow.yaml \
+  --log-level debug                     # verbose output
+zigflow run -f workflow.yaml \
+  --temporal-address localhost:7233     # custom server address
+zigflow run -f workflow.yaml \
+  --temporal-namespace my-namespace     # custom namespace
+zigflow schema                          # print full DSL JSON schema
+zigflow graph -f workflow.yaml          # visualise workflow as graph
+zigflow version                         # show CLI version
+```
+
+---
+
+## Repo Examples
+
+All runnable examples are in `Zigflow/Examples/`:
+
+| File | Task Queue | Workflow Type | Demonstrates |
+|---|---|---|---|
+| `hello_world.yaml` | `zigflow` | `hello-world` | Minimal `set` + variable output |
+| `http_call.yaml` | `zigflow-http` | `fetch-user` | `call: http` with `output.as` |
+| `signal_driven_workflow.yaml` | `zigflow-signals` | `signal` | `listen` task + `wait` timer |
+| `parallel_task.yaml` | `zigflow-parallel-tasks` | `competing-tasks` | `fork` with `compete: true` (race) |
+| `error_handling.yaml` | `zigflow-error-handle` | `try-catch` | `try`/`catch` with fallback `set` |
+
+### Running the Examples
+
+```bash
+cd Zigflow/Examples
+
+# Hello World
+zigflow run -f hello_world.yaml
+temporal workflow start --type hello-world --task-queue zigflow --workflow-id hw-01 --input '{}'
+
+# HTTP Call
+zigflow run -f http_call.yaml
+temporal workflow start --type fetch-user --task-queue zigflow-http --workflow-id http-01 --input '{}'
+
+# Signal-Driven
+zigflow run -f signal_driven_workflow.yaml
+temporal workflow start --type signal --task-queue zigflow-signals --workflow-id sig-01 --input '{}'
+temporal workflow signal --workflow-id sig-01 --name approve --input '{"approved": true}'
+
+# Parallel / Race
+zigflow run -f parallel_task.yaml
+temporal workflow start --type competing-tasks --task-queue zigflow-parallel-tasks --workflow-id par-01 --input '{}'
+
+# Error Handling
+zigflow run -f error_handling.yaml
+temporal workflow start --type try-catch --task-queue zigflow-error-handle --workflow-id err-01 --input '{}'
+```
+
+---
+
+## Zigflow Key Rules
+
+1. **Task Queue and Workflow Type are case-sensitive** — `zigflow-HTTP` ≠ `zigflow-http`
+2. **`set` must be deterministic** — never use `$env.RANDOM` or wall-clock time; use `${ uuid }` and `${ timestamp }`
+3. **Every task needs a name** — the task name is the key under `do`; missing it causes a YAML parse error
+4. **Zigflow doesn't self-trigger** — always trigger with `temporal workflow start` after the worker is running
+5. **Signal name must match `listen.to.one.with.id`** exactly — `temporal workflow signal --name approve` must match `id: approve` in YAML
+6. **`fork compete: false` returns an array** — both branch results are wrapped in an array; don't expect a single value
+7. **`export.as` must merge, not replace** — use `${ $context + {key: .} }`, not `${ . }`, or you'll lose all previous context
+8. **Validate before running** — always run `zigflow validate workflow.yaml` first; it catches schema errors before Temporal sees them
+9. **`metadata.activityOptions` sets defaults for all tasks** — override per-task with a task-level `metadata.timeout`
+10. **Activity code changes are safe to hot-deploy** — Workflow (YAML) changes that alter execution order can cause non-determinism for in-flight executions
+
+---
+
+## Repo Structure (Zigflow)
+
+```
+Zigflow/
+  Examples/
+    hello_world.yaml                 # minimal set + output pattern
+    http_call.yaml                   # HTTP call with output.as
+    signal_driven_workflow.yaml      # listen task + wait timer
+    parallel_task.yaml               # fork with compete: true (race)
+    error_handling.yaml              # try/catch with fallback
+  Tutorials/                         # placeholder for tutorial YAML files
+```
+
+---
+
+## Cheatsheet Files
+
+Three standalone quick-reference files at the repo root:
+
+| File | Contents |
+|---|---|
+| [`Zigflow_DSL_Cheatsheet.md`](Zigflow_DSL_Cheatsheet.md) | All 11 task types, fork/listen/for/switch patterns, expressions, output/export |
+| [`Zigflow_CLI_Cheatsheet.md`](Zigflow_CLI_Cheatsheet.md) | All `zigflow` commands, flags, dev flow, failure debugging flow |
+| [`Temporal_CLI_Cheatsheet.md`](Temporal_CLI_Cheatsheet.md) | All `temporal` commands — server, workflow, signal, query, update, task queue |
 
