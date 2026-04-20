@@ -1,5 +1,6 @@
 {
     "python.defaultInterpreterPath": ".venv/bin/python3",
+
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#65c89b",
         "activityBar.background": "#65c89b",
@@ -19,5 +20,33 @@
         "titleBar.inactiveBackground": "#42b88399",
         "titleBar.inactiveForeground": "#15202b99"
     },
-    "peacock.color": "#42b883"
+
+    "peacock.color": "#42b883",
+
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
+    "editor.formatOnPaste": true,
+
+    "[yaml]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+
+    "yaml.validate": true,
+    "yaml.format.enable": true,
+    "yaml.hover": true,
+    "yaml.completion": true,
+
+    "prettier.useTabs": false,
+
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+
+    "yaml.schemas": {
+        "https://zigflow.dev/schema.json": [
+            "Zigflow/**/*.yaml",
+            "Zigflow/**/*.yml"
+        ]
+    }
 }
