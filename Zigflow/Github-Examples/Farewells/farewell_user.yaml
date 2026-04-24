@@ -1,0 +1,13 @@
+document:
+  dsl: 1.0.0
+  taskQueue: zigflow-user-farewell
+  version: 0.0.1
+  workflowType: user-farewell
+
+do:
+  - farewell:
+      set:
+        message: ${"Bye " + $input.name}
+      output:
+        as:
+          data: ${ . }

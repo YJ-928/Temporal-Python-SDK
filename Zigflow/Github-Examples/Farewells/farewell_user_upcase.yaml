@@ -1,0 +1,13 @@
+document:
+  dsl: 1.0.0
+  taskQueue: zigflow-user-farewell-uppercase
+  version: 0.0.1
+  workflowType: user-farewell-uppercase
+
+do:
+  - farewell_user_uppercase:
+      set:
+        message: ${"Bye " + (($input.name // "upper guest") | ascii_upcase)}
+      output:
+        as:
+          data: ${ . }
