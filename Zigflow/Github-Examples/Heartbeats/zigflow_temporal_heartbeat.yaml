@@ -1,0 +1,20 @@
+document:
+  dsl: 1.0.0
+  taskQueue: zigflow-heartbeat
+  version: 0.0.1
+  workflowType: heartbeats-zigflow
+
+do:
+  - heartbeatActivity:
+      metadata:
+        heartbeat:
+          seconds: 5
+        activityOptions:
+          heartbeatTimeout:
+            seconds: 10
+
+      run:
+        shell:
+          command: sleep
+          arguments:
+            - "30"
