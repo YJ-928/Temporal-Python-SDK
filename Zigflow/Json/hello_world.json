@@ -1,0 +1,25 @@
+{
+  "document":
+  {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow-json-hello",
+    "version": "0.0.1",
+    "workflowType": "hello-world"
+  },
+  "do":
+  [
+    {
+      "greet":
+      {
+        "set":
+        {
+          "message":"Hello for Zigflow Json workflows"
+        },
+        "output":
+        {
+          "as": "${ { data : .} }"
+        }
+      }
+    }
+  ]
+}
