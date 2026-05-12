@@ -1,0 +1,22 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow-greet-default",
+    "version": "0.0.1",
+    "workflowType": "greet-user-default"
+  },
+  "do": [
+    {
+      "greetUser": {
+        "set": {
+          "message": "${ \"Hello \" + ($input.name // \"Guest\") }"
+        },
+        "output": {
+          "as": {
+            "data": "${ . }"
+          }
+        }
+      }
+    }
+  ]
+}

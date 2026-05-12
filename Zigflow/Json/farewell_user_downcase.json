@@ -1,0 +1,22 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow-user-lowercase",
+    "version": "0.0.1",
+    "workflowType": "user-farewell-downcase"
+  },
+  "do": [
+    {
+      "farewell-user-lower": {
+        "set": {
+          "message": "${\"Bye \" + (($input.name // \"LOWER GUEST\") | ascii_downcase)}"
+        },
+        "output": {
+          "as": {
+            "data": "${ . }"
+          }
+        }
+      }
+    }
+  ]
+}

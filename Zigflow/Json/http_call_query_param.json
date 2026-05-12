@@ -1,0 +1,24 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow-dynamic-endpoint-query",
+    "version": "0.0.1",
+    "workflowType": "endpoint-query-input"
+  },
+  "do": [
+    {
+      "fetch-data": {
+        "call": "http",
+        "with": {
+          "method": "get",
+          "endpoint": "${ \"https://jsonplaceholder.typicode.com/todos/\" + ($input.id | tostring) }"
+        },
+        "output": {
+          "as": {
+            "data": "${ . }"
+          }
+        }
+      }
+    }
+  ]
+}

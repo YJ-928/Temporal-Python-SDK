@@ -1,0 +1,22 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow-user-default-farewell",
+    "version": "0.0.1",
+    "workflowType": "farewell-user-default"
+  },
+  "do": [
+    {
+      "farewell-default": {
+        "set": {
+          "message": "${\"Bye \" + ($input.name // \"Default-Guest\")}"
+        },
+        "output": {
+          "as": {
+            "data": "${ . }"
+          }
+        }
+      }
+    }
+  ]
+}

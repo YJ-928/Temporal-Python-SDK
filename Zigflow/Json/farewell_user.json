@@ -1,15 +1,15 @@
 {
   "document": {
     "dsl": "1.0.0",
-    "taskQueue": "zigflow",
-    "workflowType": "hello-world",
-    "version": "1.0.0"
+    "taskQueue": "zigflow-user-farewell",
+    "version": "0.0.1",
+    "workflowType": "user-farewell"
   },
   "do": [
     {
-      "greet": {
+      "farewell": {
         "set": {
-          "message": "Hello from Zigflow; Running Greeting Workflow"
+          "message": "${\"Bye \" + $input.name}"
         },
         "output": {
           "as": {
