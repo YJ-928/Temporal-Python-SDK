@@ -1,0 +1,99 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow-parallel",
+    "workflowType": "parallel-tasks",
+    "version": "1.0.0",
+    "metadata": {
+      "description": "Demonstrates parallel branch execution using the fork task (compete: false — all branches complete)",
+      "activityOptions": {
+        "startToCloseTimeout": {
+          "minutes": 10
+        }
+      }
+    }
+  },
+  "do": [
+    {
+      "initialize": {
+        "set": {
+          "requestId": "${ uuid }",
+          "startedAt": "${ timestamp }",
+          "tasks": "${ $input.tasks // [\"task-a\", \"task-b\", \"task-c\"] }",
+          "status": "running"
+        }
+      }
+    },
+    {
+      "persistContext": {
+        "export": {
+          "as": "${ $context + {requestId: .requestId, startedAt: .startedAt} }"
+        }
+      }
+    },
+    {
+      "executeParallel": {
+        "fork": {
+          "compete": false,
+          "branches": [
+            {
+              "branchA": {
+                "do": [
+                  {
+                    "processA": {
+                      "set": {
+                        "result": "Branch A completed",
+                        "branch": "a",
+                        "completedAt": "${ timestamp }"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "branchB": {
+                "do": [
+                  {
+                    "processB": {
+                      "set": {
+                        "result": "Branch B completed",
+                        "branch": "b",
+                        "completedAt": "${ timestamp }"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "branchC": {
+                "do": [
+                  {
+                    "processC": {
+                      "set": {
+                        "result": "Branch C completed",
+                        "branch": "c",
+                        "completedAt": "${ timestamp }"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "summarize": {
+        "set": {
+          "summary": "All parallel branches completed",
+          "requestId": "${ $context.requestId }",
+          "finishedAt": "${ timestamp }",
+          "status": "completed"
+        }
+      }
+    }
+  ]
+}

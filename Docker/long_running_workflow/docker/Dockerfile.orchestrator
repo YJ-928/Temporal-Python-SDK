@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.orchestrator — FastAPI Execution Orchestrator + Temporal Worker
+#
+# This image runs two processes (started separately in docker-compose):
+#   1. FastAPI server  : uvicorn app.main:app
+#   2. Temporal worker : python -m app.temporal.worker
+#
+# Both processes share the same image and code; they are differentiated only
+# by the CMD directive in docker-compose.yml.
+#
+# The FastAPI process needs access to the Docker socket (/var/run/docker.sock)
+# to create ephemeral runner containers (Docker-outside-of-Docker pattern).
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.12-slim
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ── Python dependencies ───────────────────────────────────────────────────────
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ── Application code ──────────────────────────────────────────────────────────
+COPY orchestrator/app ./app
+
+# Workflow definitions (also mounted at runtime; COPY ensures they exist at build)
+COPY workflows ./workflows
+
+# ── Runtime defaults ──────────────────────────────────────────────────────────
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    TEMPORAL_HOST=temporal:7233 \
+    TEMPORAL_NAMESPACE=default \
+    TASK_QUEUE=orchestrator-queue \
+    ORCHESTRATOR_API_URL=http://orchestrator:8000 \
+    WORKFLOWS_DIR=/app/workflows/json \
+    RUNNER_IMAGE=zigflow-runner:latest \
+    DOCKER_NETWORK=temporal-network \
+    DOCKER_TEMPORAL_HOST=temporal:7233 \
+    LOG_LEVEL=INFO
+
+# Default: run the FastAPI server
+# Override with: docker run ... python -m app.temporal.worker
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

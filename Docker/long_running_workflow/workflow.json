@@ -1,0 +1,141 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "orchestrator-queue",
+    "workflowType": "parent-orchestrator",
+    "version": "1.0.0",
+    "metadata": {
+      "description": "Parent Orchestrator Workflow — Zigflow JSON DSL specification. NOTE: The production runtime uses the Python Temporal SDK implementation (orchestrator/app/temporal/workflows.py) which supports infinite looping via continue_as_new. This JSON file is the canonical DSL specification for one signal-dispatch cycle.",
+      "activityOptions": {
+        "startToCloseTimeout": {
+          "hours": 1
+        }
+      }
+    }
+  },
+  "use": {
+    "retries": {
+      "executionRetry": {
+        "delay": {
+          "seconds": 5
+        },
+        "backoff": {
+          "exponential": {}
+        },
+        "limit": {
+          "attempt": {
+            "count": 3
+          }
+        }
+      }
+    }
+  },
+  "do": [
+    {
+      "initialize": {
+        "set": {
+          "orchestratorId": "${ uuid }",
+          "startedAt": "${ timestamp }",
+          "status": "waiting-for-signal"
+        }
+      }
+    },
+    {
+      "exportState": {
+        "export": {
+          "as": "${ $context + {orchestratorId: .orchestratorId, startedAt: .startedAt} }"
+        }
+      }
+    },
+    {
+      "waitForExecutionSignal": {
+        "listen": {
+          "to": {
+            "one": {
+              "with": {
+                "id": "execute_workflow"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "extractPayload": {
+        "set": {
+          "workflowName": "${ $data.workflow }",
+          "workflowPath": "${ \"/app/workflows/json/\" + $data.workflow }",
+          "workflowInput": "${ $data.input // {} }",
+          "receivedAt": "${ timestamp }",
+          "status": "dispatching"
+        }
+      }
+    },
+    {
+      "persistPayload": {
+        "export": {
+          "as": "${ $context + {workflowName: .workflowName, workflowPath: .workflowPath, workflowInput: .workflowInput} }"
+        }
+      }
+    },
+    {
+      "callExecutionOrchestrator": {
+        "try": [
+          {
+            "executeViaAPI": {
+              "call": "http",
+              "with": {
+                "method": "POST",
+                "endpoint": "http://orchestrator:8000/api/v1/execute",
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "body": {
+                  "workflow": "${ $context.workflowName }",
+                  "workflowPath": "${ $context.workflowPath }",
+                  "input": "${ $context.workflowInput }"
+                }
+              },
+              "output": {
+                "as": {
+                  "executionResult": "${ . }"
+                }
+              },
+              "export": {
+                "as": "${ $context + {executionResult: .executionResult} }"
+              }
+            }
+          }
+        ],
+        "catch": {
+          "retry": {
+            "as": "executionRetry"
+          },
+          "do": [
+            {
+              "handleError": {
+                "set": {
+                  "status": "failed",
+                  "error": "${ $error.message }",
+                  "failedAt": "${ timestamp }"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "recordResult": {
+        "set": {
+          "status": "completed",
+          "executionId": "${ $context.executionResult.executionId // \"unknown\" }",
+          "containerResult": "${ $context.executionResult.result }",
+          "containerId": "${ $context.executionResult.containerId }",
+          "completedAt": "${ timestamp }",
+          "orchestratorId": "${ $context.orchestratorId }"
+        }
+      }
+    }
+  ]
+}

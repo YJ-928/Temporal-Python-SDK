@@ -1,0 +1,28 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow-hello",
+    "workflowType": "hello-world",
+    "version": "1.0.0",
+    "metadata": {
+      "description": "Minimal hello-world workflow — demonstrates set task and expression interpolation",
+      "activityOptions": {
+        "startToCloseTimeout": {
+          "minutes": 5
+        }
+      }
+    }
+  },
+  "do": [
+    {
+      "greet": {
+        "set": {
+          "greeting": "${ \"Hello, \" + ($input.name // \"World\") + \"!\" }",
+          "message": "Workflow executed successfully via Zigflow + Docker + Temporal",
+          "requestId": "${ uuid }",
+          "executedAt": "${ timestamp }"
+        }
+      }
+    }
+  ]
+}

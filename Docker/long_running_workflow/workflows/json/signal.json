@@ -1,0 +1,59 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow-signal",
+    "workflowType": "signal-driven",
+    "version": "1.0.0",
+    "metadata": {
+      "description": "Demonstrates signal-driven execution — workflow waits for an external 'approve' signal before proceeding",
+      "activityOptions": {
+        "startToCloseTimeout": {
+          "minutes": 30
+        }
+      }
+    }
+  },
+  "do": [
+    {
+      "initialize": {
+        "set": {
+          "requestId": "${ uuid }",
+          "startedAt": "${ timestamp }",
+          "status": "waiting-for-approval",
+          "submittedBy": "${ $input.submittedBy // \"anonymous\" }"
+        }
+      }
+    },
+    {
+      "persistInit": {
+        "export": {
+          "as": "${ $context + {requestId: .requestId, submittedBy: .submittedBy} }"
+        }
+      }
+    },
+    {
+      "waitForApproval": {
+        "listen": {
+          "to": {
+            "one": {
+              "with": {
+                "id": "approve"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "processApproval": {
+        "set": {
+          "status": "approved",
+          "approvedAt": "${ timestamp }",
+          "approvedBy": "${ $data.approvedBy // \"system\" }",
+          "requestId": "${ $context.requestId }",
+          "comment": "${ $data.comment // \"\" }"
+        }
+      }
+    }
+  ]
+}

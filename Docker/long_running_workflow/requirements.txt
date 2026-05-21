@@ -1,0 +1,20 @@
+# ── Python runtime ─────────────────────────────────────────────────────────────
+# Temporal Python SDK
+temporalio>=1.7.0
+
+# FastAPI + ASGI server
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# Pydantic v2 + settings
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+
+# Async HTTP client (activity → FastAPI calls)
+aiohttp>=3.9.5
+
+# Docker SDK for Python (orchestrator → runner container management)
+docker>=7.0.0
+
+# Structured JSON logging
+python-json-logger>=2.0.7

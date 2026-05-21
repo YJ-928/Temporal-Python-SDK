@@ -1,0 +1,129 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Zigflow Distributed Workflow Execution Platform
+#
+# Services
+# ─────────
+#  temporal          Temporal server (auto-setup, SQLite persistence)
+#  temporal-ui       Temporal Web UI at http://localhost:8233
+#  orchestrator      FastAPI Execution Orchestrator at http://localhost:8000
+#  worker            Temporal worker for ParentOrchestratorWorkflow
+#
+# Ephemeral runner containers are spawned at runtime by the orchestrator
+# service via the Docker socket. They do NOT appear here.
+#
+# Quick start
+# ───────────
+#  docker compose build
+#  docker compose up -d
+#  docker compose exec worker python scripts/start_workflow.py
+#  docker compose exec worker python scripts/send_signal.py \
+#      --workflow hello-world.json --input '{"name":"Yash"}'
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: zigflow-platform
+
+x-orchestrator-base: &orchestrator-base
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.orchestrator
+  depends_on:
+    temporal:
+      condition: service_healthy
+  networks:
+    - temporal-network
+  restart: unless-stopped
+
+services:
+
+  # ── Temporal Server ─────────────────────────────────────────────────────────
+  temporal:
+    image: temporalio/auto-setup:1.24.2
+    container_name: zigflow-temporal
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=sqlite
+      - TEMPORAL_CLI_SHOW_STACKS=1
+    volumes:
+      - temporal-data:/etc/temporal
+    networks:
+      - temporal-network
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "localhost:7233"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ── Temporal Web UI ─────────────────────────────────────────────────────────
+  temporal-ui:
+    image: temporalio/ui:2.26.2
+    container_name: zigflow-temporal-ui
+    ports:
+      - "8233:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:8233
+    networks:
+      - temporal-network
+    depends_on:
+      temporal:
+        condition: service_healthy
+
+  # ── FastAPI Execution Orchestrator ──────────────────────────────────────────
+  orchestrator:
+    <<: *orchestrator-base
+    container_name: zigflow-orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - TASK_QUEUE=orchestrator-queue
+      - ORCHESTRATOR_API_URL=http://orchestrator:8000
+      - WORKFLOWS_DIR=/app/workflows/json
+      - RUNNER_IMAGE=zigflow-runner:latest
+      - DOCKER_NETWORK=temporal-network
+      - DOCKER_TEMPORAL_HOST=temporal:7233
+      - EXECUTION_TIMEOUT_SECONDS=3600
+      - LOG_LEVEL=INFO
+    volumes:
+      # Docker socket — allows orchestrator to spawn runner containers (DooD)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Live reload of workflow definitions without rebuilding
+      - ./workflows:/app/workflows:ro
+    command:
+      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Temporal Worker (Parent Orchestrator Workflow) ──────────────────────────
+  worker:
+    <<: *orchestrator-base
+    container_name: zigflow-worker
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - TASK_QUEUE=orchestrator-queue
+      - ORCHESTRATOR_API_URL=http://orchestrator:8000
+      - WORKFLOWS_DIR=/app/workflows/json
+      - LOG_LEVEL=INFO
+    depends_on:
+      temporal:
+        condition: service_healthy
+      orchestrator:
+        condition: service_healthy
+    command: ["python", "-m", "app.temporal.worker"]
+
+networks:
+  temporal-network:
+    name: temporal-network
+    driver: bridge
+
+volumes:
+  temporal-data:
+    driver: local
