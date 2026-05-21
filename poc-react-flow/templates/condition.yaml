@@ -1,0 +1,11 @@
+- routeBy{{agent}}:
+    switch:
+      {%- for route in routes %}
+      - {{route.name}}:
+          when: {{route.condition}}
+          then: {{route.run}}
+      {%- endfor %}
+      {%- if defaultTask is defined %}
+      - default:
+          then: {{defaultTask}}
+      {%- endif %}

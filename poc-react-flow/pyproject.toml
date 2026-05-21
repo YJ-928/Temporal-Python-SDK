@@ -1,0 +1,11 @@
+[project]
+name = "graph"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "jinja2>=3.1.6",
+    "pydantic-ai>=0.7.2",
+    "pyyaml>=6.0.3",
+    "temporalio>=1.23.0",
+]

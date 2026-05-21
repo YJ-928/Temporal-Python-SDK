@@ -1,0 +1,9 @@
+/poetry.lock
+.idea
+__pycache__/
+*.pyc
+/migrations/versions/
+/venv
+/pem
+*.lock
+.env

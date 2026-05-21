@@ -1,0 +1,106 @@
+{
+  "nodes": [
+    {
+      "id": "input-node-1",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "data": {
+        "key": "userQuery",
+        "type": "string"
+      },
+      "type": "text-input"
+    },
+    {
+      "id": "agent-node-1",
+      "position": {
+        "x": 100,
+        "y": 200
+      },
+      "data": {
+        "name": "intent",
+        "input": [
+          {
+            "key": "userQuery",
+            "type": "string"
+          }
+        ],
+        "output": {
+          "key": "type",
+          "type": "string"
+        }
+      },
+      "type": "agent-node"
+    },
+    {
+      "id": "agent-node-2",
+      "position": {
+        "x": 50,
+        "y": 300
+      },
+      "data": {
+        "name": "hotel",
+        "input": [
+          {
+            "key": "userQuery",
+            "type": "string"
+          }
+        ],
+        "output": [
+          {
+            "key": "text",
+            "type": "string"
+          }
+        ]
+      },
+      "type": "agent-node"
+    },
+    {
+      "id": "agent-node-3",
+      "position": {
+        "x": 100,
+        "y": 300
+      },
+      "data": {
+        "name": "restaurant",
+        "input": [
+          {
+            "key": "userQuery",
+            "type": "string"
+          }
+        ],
+        "output": [
+          {
+            "key": "text",
+            "type": "string"
+          }
+        ]
+      },
+      "type": "agent-node"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "source": "input-node-1",
+      "target": "agent-node-1"
+    },
+    {
+      "id": "edge-2",
+      "source": "agent-node-1",
+      "target": "agent-node-2",
+      "data": {
+        "condition": "type == \"HOTE\""
+      }
+    },
+    {
+      "id": "edge-3",
+      "source": "agent-node-1",
+      "target": "agent-node-3",
+      "data": {
+        "condition": "type == \"RESTAURANT\""
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+document:
+  dsl: 1.0.0
+  taskQueue: zigflow
+  workflowType: pydantic-agent
+  version: 0.0.1
+  title: Pydantic Agent POC
+timeout:
+  after:
+    minutes: 5
+schema:
+  type: object
+  properties:
+    prompt:
+      type: string
+  required:
+    - prompt
+do:
+  - run_agent:
+      export:
+        as: '${ $context + { agent_result: . } }'
+      run:
+        container:
+          image: localhost:5000/pydantic-agent
+          arguments:
+            - '${ $input.prompt }'
+          environment:
+            OPENAI_API_KEY: '${ $env.OPENAI_API_KEY }'

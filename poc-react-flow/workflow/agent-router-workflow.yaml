@@ -1,0 +1,82 @@
+# Zigflow DSL for Temporal: Agent Router Workflow
+# https://zigflow.dev/docs/dsl/tasks/switch
+#
+# Flow:
+#   1. Collect user_query when the workflow is invoked (input: { "user_query": "..." }).
+#   2. Run intent parsing activity; result has "type": "HOTEL" | "RESTAURANT" | "OTHER".
+#   3. Switch on type: run hotel agent, restaurant agent, or set default message.
+#   4. Output the response (from agent or default message).
+
+document:
+  dsl: 1.0.0
+  namespace: zigflow
+  name: agent-router
+  version: 0.0.1
+
+do:
+  # Bind workflow input to state (invoke with: { "user_query": "your question" })
+  - captureInput:
+      set:
+        user_query: ${ $input.user_query }
+
+  # Run intent parsing agent activity
+  - parseIntent:
+      call: activity
+      with:
+        name: activity.execute_agent
+        arguments:
+          - ${ $data.user_query }
+          - "intent"
+        taskQueue: activity_queue
+  - saveIntent:
+      set:
+        intentResult: ${ $output }
+
+  # Branch on intent type (official Switch task)
+  - routeByIntent:
+      switch:
+        - hotel:
+            when: ${ $data.intentResult.type == "HOTEL" }
+            then: runHotel
+        - restaurant:
+            when: ${ $data.intentResult.type == "RESTAURANT" }
+            then: runRestaurant
+        - default:
+            then: setDefaultMessage
+
+  # Branch tasks: only the matched one runs, then execution continues to output
+  - runHotel:
+      do:
+        - runHotelActivity:
+            call: activity
+            with:
+              name: activity.execute_agent
+              arguments:
+                - ${ $data.user_query }
+                - "hotel"
+              taskQueue: activity_queue
+        - setHotelResponse:
+            set:
+              response: ${ $output.text }
+
+  - runRestaurant:
+      do:
+        - runRestaurantActivity:
+            call: activity
+            with:
+              name: activity.execute_agent
+              arguments:
+                - ${ $data.user_query }
+                - "restaurant"
+              taskQueue: activity_queue
+        - saveRestaurantResponse:
+            set:
+              response: ${ $output.text }
+
+  - setDefaultMessage:
+      do:
+        - setDefault:
+            set:
+              response: "I'm not able to answer your query please try another."
+
+

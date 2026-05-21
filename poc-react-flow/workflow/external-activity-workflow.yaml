@@ -1,0 +1,19 @@
+document:
+  dsl: 1.0.0
+  namespace: zigflow
+  name: ext-activity
+  version: 0.0.1
+do:
+  - captureInput:
+      set:
+        name: "sumit"
+  - greet:
+      call: activity
+      with:
+        name: activity.say_hello
+        arguments:
+          - ${ $data.name }
+        taskQueue: activity_queue
+      output:
+        as:
+          greet: ${ . }
