@@ -2,9 +2,10 @@
 
 > **Purpose:** This file is the authoritative AI-agent context document for this repository. It describes every project, pattern, convention, and concept present in the codebase so any AI assistant can orient instantly and generate accurate, idiomatic **Temporal Python** code and **Zigflow YAML** workflows.
 >
-> **Scope (as of April 2026):** This repo now covers two workflow layers:
+> **Scope (as of May 2026):** This repo now covers three workflow layers:
 > - **Temporal Python SDK** — programmatic workflows in Python (existing content, sections 1–25)
-> - **Zigflow** — declarative YAML-driven workflows on top of Temporal (new content, sections 26–31)
+> - **Zigflow** — declarative YAML-driven workflows on top of Temporal (sections 26–31)
+> - **DSL Compiler** — visual workflow builder that compiles a graph JSON into Zigflow DSL (sections 32–38)
 
 ---
 
@@ -56,6 +57,22 @@
 │   ├── notebooks/                 # 6 Jupyter notebooks
 │   ├── projects/                  # 3 runnable mini-projects
 │   └── utils/                     # Shared helpers (client, retry policy, activity options)
+├── poc-react-flow/                # ★ V0 prototype: ReactFlow graph → Zigflow DSL (agent-routing use case)
+│   ├── node_conversion.py         # Builder functions for Zigflow DSL task blocks
+│   ├── react_flow_to_temporal_json.py  # Core graph → do-list converter
+│   ├── reactflow_to_zigflow.py    # Second-pass converter with typed dataclasses
+│   └── bfs.py                     # BFS traversal utility
+├── poc-dsl-compiler/              # ★ V1 compiler POC: generic graph JSON → Zigflow DSL
+│   ├── docs/                      # Compiler design docs (01–05 + new compiler_*.md files)
+│   └── examples/
+│       ├── workflow_compiler.py   # Core compiler pipeline implementation
+│       ├── workflow_generator.py  # Random workflow generator (fuzz testing)
+│       ├── workflow_1_output.json # Sample input: simple hello-world workflow
+│       └── workflow_2_output.json # Sample input: branching workflow
+├── Documents/
+│   ├── workflow_builder_architecture.md  # Full system architecture (three-tier, V2 vision)
+│   ├── Zigflow_DSL_Cheatsheet.md  # DSL task-type reference
+│   └── Zigflow_CLI_Cheatsheet.md  # Zigflow CLI commands
 ├── Resources/
 │   ├── temporal_101/              # Official Temporal 101 course material (demos, exercises, samples)
 │   └── temporal_102/              # Official Temporal 102 course material
@@ -963,3 +980,212 @@ active: ${ .users | map(select(.active)) }  # jq filter
 8. **Validate before running** — always run `zigflow validate workflow.yaml` first; it catches schema errors before Temporal sees them.
 9. **`metadata.activityOptions` sets defaults for all tasks** — override per-task with a task-level `metadata.timeout`.
 10. **`workflowType` in YAML is the Temporal Workflow Type** — it appears as `workflowType` in `temporal workflow list` output.
+
+---
+
+## 32. DSL Compiler — Initiative Overview
+
+**Status:** POC (proof of concept) — active development.
+
+The DSL Compiler initiative builds a **Visual Workflow → Zigflow DSL compiler**. It is a layer that sits between a UI workflow builder and the Zigflow runtime. Temporal is the orchestration runtime only; the compiler does not generate Temporal Python code.
+
+```
+UI Workflow Builder
+        ↓
+  JSON Workflow Definition
+        ↓
+      Compiler
+        ↓
+  Zigflow DSL (JSON / YAML)
+        ↓
+  Executed by Zigflow + Temporal
+```
+
+**What the compiler is NOT:**
+- Not a Temporal workflow generator.
+- Not a Zigflow worker.
+- Not a runtime execution engine.
+
+**Backend (planned):** Python + FastAPI.
+
+**Key documents:**
+| File | Purpose |
+|---|---|
+| `poc-dsl-compiler/docs/compiler_context.md` | Full architecture explanation |
+| `poc-dsl-compiler/docs/compiler_pipeline.md` | Frozen pipeline stages with function signatures |
+| `poc-dsl-compiler/docs/workflow_json_contract.md` | Frozen input JSON contract |
+| `poc-dsl-compiler/docs/compiler_progress.md` | Completed / current / next steps |
+| `poc-dsl-compiler/docs/testing_strategy.md` | Workflow generator and fuzz-testing approach |
+| `Documents/workflow_builder_architecture.md` | Full three-tier system architecture (V2 vision) |
+
+---
+
+## 33. DSL Compiler — Architecture Pipeline
+
+The compiler transforms a Workflow JSON into Zigflow DSL through a sequential pipeline of pure functions. No classes. No templates (yet). No registry (yet). The compiler is stateless.
+
+```
+Workflow JSON  ({nodes, edges})
+        │
+        ▼
+  generate_node_map()          →  node_id → node dict
+        │
+        ▼
+  generate_adjacency_list()    →  source_id → [target_id, ...]
+        │
+        ▼
+  find_entrypoint()            →  ID of the START node
+        │
+        ▼
+  generate_graph_structure()   →  Recursive DAG; shared nodes appear once
+        │
+        ▼
+  print_graph()                →  Debug visualisation (DFS preorder)
+        │
+        ▼
+  traverse_graph()             →  Ordered list of nodes (DFS preorder)
+        │
+        ▼
+  DSL Builder                  →  Zigflow DSL dict / YAML string
+```
+
+**Implementation file:** `poc-dsl-compiler/examples/workflow_compiler.py`
+
+**Critical rules:**
+- Do NOT iterate the raw node array to determine execution order. Use graph traversal only.
+- Shared nodes (nodes with multiple incoming edges in a DAG) must not be duplicated in traversal.
+- Traversal order is DFS preorder.
+- Builder functions are pure — no side effects, no global state.
+
+---
+
+## 34. DSL Compiler — Frozen V1 Node Types
+
+These are the only node types implemented in V1. Do not add others without updating this file.
+
+| Node Type | DSL Output | Notes |
+|---|---|---|
+| `START` | None | Graph traversal entry point; emits no DSL task |
+| `END` | None | Graph traversal terminal; emits no DSL task |
+| `INPUT` | `set` task | Captures external input fields into named workflow variables |
+| `ACTION` | Activity call task | Transforms runtime variables; models a computation step |
+| `OUTPUT` | `set` task (expose) | Exposes named workflow variables as workflow output |
+
+**NOT implemented in V1** (deferred): `IF`, `WAIT`, `VARIABLE`, `WORKFLOW`, `PARALLEL`.
+
+### Node Data Contracts
+
+**INPUT node:**
+```json
+{
+  "type": "INPUT",
+  "data": {
+    "inputs": [
+      { "field": "name", "store_as": "user_name", "type": "string" }
+    ]
+  }
+}
+```
+
+**ACTION node:**
+```json
+{
+  "type": "ACTION",
+  "data": {
+    "operation": "greet",
+    "inputs": { "name": "user_name" },
+    "output": "message"
+  }
+}
+```
+
+**OUTPUT node:**
+```json
+{
+  "type": "OUTPUT",
+  "data": {
+    "outputs": [
+      { "field": "message", "type": "string" }
+    ]
+  }
+}
+```
+
+---
+
+## 35. DSL Compiler — Input JSON Contract (Frozen)
+
+```json
+{
+  "nodes": [
+    { "id": "N1", "type": "START" },
+    { "id": "N2", "type": "INPUT", "data": { ... } },
+    { "id": "N3", "type": "ACTION", "data": { ... } },
+    { "id": "N4", "type": "OUTPUT", "data": { ... } },
+    { "id": "N5", "type": "END" }
+  ],
+  "edges": [
+    { "id": "E1", "source": "N1", "target": "N2" },
+    { "id": "E2", "source": "N2", "target": "N3" },
+    { "id": "E3", "source": "N3", "target": "N4" },
+    { "id": "E4", "source": "N4", "target": "N5" }
+  ]
+}
+```
+
+**Invariants:**
+- `nodes` and `edges` are the only top-level keys required.
+- Every edge has exactly `{id, source, target}`. Edges carry no business data.
+- Node IDs must be unique across the graph.
+- Edge source and target must reference valid node IDs.
+- The graph must have exactly one `START` node and one `END` node.
+
+**Sample inputs:** `poc-dsl-compiler/examples/workflow_1_output.json`, `workflow_2_output.json`
+
+---
+
+## 36. DSL Compiler — Workflow Generator
+
+**File:** `poc-dsl-compiler/examples/workflow_generator.py`
+
+The workflow generator produces random Workflow JSON documents for fuzz-testing the compiler pipeline.
+
+**How to run:**
+```bash
+cd poc-dsl-compiler/examples
+python workflow_generator.py
+# Prompts: Total Nodes, Branches
+# Output: generated/workflow.json + generated/workflow.md (Mermaid diagram)
+```
+
+**What it generates:**
+- A `START` node → one shared `INPUT` node → N branches of random `INPUT`/`ACTION`/`OUTPUT` nodes → an `END` node
+- All `OUTPUT` nodes are wired directly to `END`
+- A Mermaid diagram is saved alongside the JSON for visual inspection
+
+**Supported node types in generator:** `INPUT`, `ACTION`, `OUTPUT` (the full V1 set, minus `START`/`END` which are always auto-generated).
+
+---
+
+## 37. DSL Compiler — How to Orient When Asked About the Compiler
+
+- **"Add a new node type to the compiler"** → First update `poc-dsl-compiler/docs/workflow_json_contract.md` and `compiler_context.md` to document the contract. Then add a builder function in `workflow_compiler.py`. Do not add node types that are in the NOT IMPLEMENTING list.
+- **"What nodes are supported?"** → V1 frozen set: `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`. See section 34.
+- **"What does an edge look like?"** → Always `{id, source, target}` only. No business logic in edges.
+- **"How does traversal work?"** → DFS preorder from the `START` node. Do not iterate the raw node array. See `traverse_graph()` in `workflow_compiler.py`.
+- **"Where is the compiler code?"** → `poc-dsl-compiler/examples/workflow_compiler.py`
+- **"Where is the V0 prototype?"** → `poc-react-flow/` — agent-routing specific, not generic. Key reference: `poc-react-flow/node_conversion.py` for builder function patterns.
+- **"Generate a test workflow"** → `python poc-dsl-compiler/examples/workflow_generator.py`
+- **"What is the three-tier architecture?"** → See `Documents/workflow_builder_architecture.md`. Tier 1 = UI (V2), Tier 2 = Compiler + API (V1), Tier 3 = Zigflow + Temporal execution.
+
+---
+
+## 38. DSL Compiler — What NOT to Do
+
+1. **Do not add Temporal Python Workflow code for the compiler output.** The compiler generates Zigflow DSL only.
+2. **Do not put business logic in edges.** Edges are `{id, source, target}` only.
+3. **Do not iterate the node array for execution order.** Always use graph traversal.
+4. **Do not duplicate shared nodes** in the traversal output. The graph structure handles them with a `visited` set.
+5. **Do not use classes** in the compiler functions. All functions are module-level and pure.
+6. **Do not add templates or a registry** until the V1 pure-function approach is validated end-to-end.
+7. **Do not implement** `IF`, `WAIT`, `VARIABLE`, `WORKFLOW`, or `PARALLEL` nodes in V1.

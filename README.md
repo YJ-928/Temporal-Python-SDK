@@ -60,6 +60,10 @@
 - [Repo Examples](#repo-examples)
 - [Cheatsheet Files](#cheatsheet-files)
 
+### DSL Compiler (Visual Workflow → Zigflow DSL)
+- [Overview](#dsl-compiler-overview)
+- [Architecture & Docs](#dsl-compiler-architecture--docs)
+
 ---
 
 ## What is Temporal?
@@ -1158,4 +1162,55 @@ Three standalone quick-reference files at the repo root:
 | [`Zigflow_DSL_Cheatsheet.md`](Zigflow_DSL_Cheatsheet.md) | All 11 task types, fork/listen/for/switch patterns, expressions, output/export |
 | [`Zigflow_CLI_Cheatsheet.md`](Zigflow_CLI_Cheatsheet.md) | All `zigflow` commands, flags, dev flow, failure debugging flow |
 | [`Temporal_CLI_Cheatsheet.md`](Temporal_CLI_Cheatsheet.md) | All `temporal` commands — server, workflow, signal, query, update, task queue |
+
+---
+
+## DSL Compiler Overview
+
+**Status:** POC (proof of concept) — active development.
+
+The DSL Compiler is a layer that sits between a visual workflow builder UI and the Zigflow runtime. It transforms a graph JSON document (nodes + edges) into a valid **Zigflow DSL** YAML file that can be executed by Zigflow on top of Temporal.
+
+```
+UI Workflow Builder  →  JSON Graph  →  Compiler  →  Zigflow DSL  →  Zigflow + Temporal
+```
+
+**What it is NOT:**
+- Not a Temporal Python workflow code generator
+- Not a Zigflow worker or runtime
+- Not an execution engine
+
+**V1 Frozen Node Types:** `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`
+
+**Key implementation files:**
+
+| File | Purpose |
+|---|---|
+| [`poc-dsl-compiler/examples/workflow_compiler.py`](poc-dsl-compiler/examples/workflow_compiler.py) | Core compiler pipeline |
+| [`poc-dsl-compiler/examples/workflow_generator.py`](poc-dsl-compiler/examples/workflow_generator.py) | Random workflow generator for fuzz-testing |
+| [`poc-dsl-compiler/examples/workflow_1_output.json`](poc-dsl-compiler/examples/workflow_1_output.json) | Static sample: linear workflow |
+| [`poc-dsl-compiler/examples/workflow_2_output.json`](poc-dsl-compiler/examples/workflow_2_output.json) | Static sample: branching workflow |
+
+**How to generate a test workflow:**
+```bash
+cd poc-dsl-compiler/examples
+python workflow_generator.py
+# Prompts: Total Nodes, Branches
+# Saves: generated/workflow.json + generated/workflow.md
+```
+
+---
+
+## DSL Compiler Architecture & Docs
+
+All compiler documentation lives in [`poc-dsl-compiler/docs/`](poc-dsl-compiler/docs/):
+
+| Doc | Purpose |
+|---|---|
+| [`compiler_context.md`](poc-dsl-compiler/docs/compiler_context.md) | Architecture overview — what the compiler is, pipeline diagram, design constraints |
+| [`compiler_pipeline.md`](poc-dsl-compiler/docs/compiler_pipeline.md) | All pipeline stages with exact function signatures |
+| [`workflow_json_contract.md`](poc-dsl-compiler/docs/workflow_json_contract.md) | Frozen V1 input JSON schema with node data contracts |
+| [`compiler_progress.md`](poc-dsl-compiler/docs/compiler_progress.md) | Completed / current / next steps tracker |
+| [`testing_strategy.md`](poc-dsl-compiler/docs/testing_strategy.md) | Fuzz-testing approach and manual validation checklist |
+| [`Documents/workflow_builder_architecture.md`](Documents/workflow_builder_architecture.md) | Full three-tier system architecture (V2 vision) |
 
