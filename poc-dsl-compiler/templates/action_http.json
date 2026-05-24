@@ -1,0 +1,18 @@
+{
+  "id": "",
+
+  "call": "http",
+
+  "with": {
+
+    "method": "",
+
+    "endpoint": "",
+
+    "headers": {},
+
+    "body": {}
+  },
+
+  "output": ""
+}

@@ -1,0 +1,5 @@
+{
+  "input": {
+    "set":"{{input_expression}}"
+  }
+}
