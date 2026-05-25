@@ -1,0 +1,113 @@
+{
+  "nodes": [
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "enrich_profile",
+        "inputs": {
+          "value": "dob"
+        },
+        "output": "enriched_profile"
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "lookup_location",
+        "inputs": {
+          "value": "country"
+        },
+        "output": "location_data"
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "date_of_birth",
+            "store_as": "dob",
+            "type": "string"
+          },
+          {
+            "field": "country",
+            "store_as": "country",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N7",
+      "type": "END"
+    },
+    {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "location_data",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "enriched_profile",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N2",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N3",
+      "target": "N5"
+    },
+    {
+      "id": "E5",
+      "source": "N4",
+      "target": "N6"
+    },
+    {
+      "id": "E6",
+      "source": "N5",
+      "target": "N7"
+    },
+    {
+      "id": "E7",
+      "source": "N6",
+      "target": "N7"
+    }
+  ]
+}

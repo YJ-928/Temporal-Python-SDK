@@ -1,0 +1,145 @@
+{
+  "nodes": [
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "verify_phone",
+        "inputs": {
+          "value": "order_id"
+        },
+        "output": "phone_verified"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "notification_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "validation_result",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N9",
+      "type": "END"
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "user_id",
+            "store_as": "user_id",
+            "type": "string"
+          },
+          {
+            "field": "order_id",
+            "store_as": "order_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "validate_email",
+        "inputs": {
+          "value": "order_status"
+        },
+        "output": "validation_result"
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "process_order",
+        "inputs": {
+          "value": "user_id"
+        },
+        "output": "order_status"
+      }
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_notification",
+        "inputs": {
+          "value": "phone_verified"
+        },
+        "output": "notification_status"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5"
+    },
+    {
+      "id": "E5",
+      "source": "N5",
+      "target": "N9"
+    },
+    {
+      "id": "E6",
+      "source": "N2",
+      "target": "N6"
+    },
+    {
+      "id": "E7",
+      "source": "N6",
+      "target": "N7"
+    },
+    {
+      "id": "E8",
+      "source": "N7",
+      "target": "N8"
+    },
+    {
+      "id": "E9",
+      "source": "N8",
+      "target": "N9"
+    }
+  ]
+}

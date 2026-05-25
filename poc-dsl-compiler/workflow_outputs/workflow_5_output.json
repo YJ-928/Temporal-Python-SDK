@@ -1,0 +1,158 @@
+{
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N10",
+      "type": "END"
+    },
+    {
+      "id": "N8",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_email",
+        "inputs": {
+          "value": "validation_result"
+        },
+        "output": "email_status"
+      }
+    },
+    {
+      "id": "N5",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "phone_number",
+            "store_as": "phone",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "validate_email",
+        "inputs": {
+          "value": "product_details"
+        },
+        "output": "validation_result"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "fetch_product",
+        "inputs": {
+          "value": "phone"
+        },
+        "output": "product_details"
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "greet",
+        "inputs": {
+          "value": "order_id"
+        },
+        "output": "greeting"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "greeting",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "order_id",
+            "store_as": "order_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N9",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "email_status",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N10"
+    },
+    {
+      "id": "E5",
+      "source": "N1",
+      "target": "N5"
+    },
+    {
+      "id": "E6",
+      "source": "N5",
+      "target": "N6"
+    },
+    {
+      "id": "E7",
+      "source": "N6",
+      "target": "N7"
+    },
+    {
+      "id": "E8",
+      "source": "N7",
+      "target": "N8"
+    },
+    {
+      "id": "E9",
+      "source": "N8",
+      "target": "N9"
+    },
+    {
+      "id": "E10",
+      "source": "N9",
+      "target": "N10"
+    }
+  ]
+}

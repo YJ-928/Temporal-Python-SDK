@@ -1,0 +1,107 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "order_id": "${ $input.order_id }"
+        }
+      }
+    },
+    {
+      "N3_greet": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/greet",
+          "body": {
+            "value": "${ .order_id }"
+          }
+        },
+        "output": {
+          "as": {
+            "greeting": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N4_expose": {
+        "set": {
+          "greeting": "${ .greeting }"
+        }
+      }
+    },
+    {
+      "N5_capture": {
+        "set": {
+          "phone": "${ $input.phone_number }"
+        }
+      }
+    },
+    {
+      "N6_fetch_product": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/fetch_product",
+          "body": {
+            "value": "${ .phone }"
+          }
+        },
+        "output": {
+          "as": {
+            "product_details": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N7_validate_email": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/validate_email",
+          "body": {
+            "value": "${ .product_details }"
+          }
+        },
+        "output": {
+          "as": {
+            "validation_result": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N8_send_email": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/send_email",
+          "body": {
+            "value": "${ .validation_result }"
+          }
+        },
+        "output": {
+          "as": {
+            "email_status": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N9_expose": {
+        "set": {
+          "email_status": "${ .email_status }"
+        }
+      }
+    }
+  ]
+}

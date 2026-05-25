@@ -1,0 +1,156 @@
+{
+  "nodes": [
+    {
+      "id": "N9",
+      "type": "END"
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "fetch_product",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "product_details"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "product_details",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "geocode",
+        "inputs": {
+          "value": "country"
+        },
+        "output": "coordinates"
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "calculate_age",
+        "inputs": {
+          "value": "product_id"
+        },
+        "output": "age"
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "product_id",
+            "store_as": "product_id",
+            "type": "string"
+          },
+          {
+            "field": "country",
+            "store_as": "country",
+            "type": "string"
+          },
+          {
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "coordinates",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "age",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N9"
+    },
+    {
+      "id": "E5",
+      "source": "N2",
+      "target": "N5"
+    },
+    {
+      "id": "E6",
+      "source": "N5",
+      "target": "N6"
+    },
+    {
+      "id": "E7",
+      "source": "N6",
+      "target": "N9"
+    },
+    {
+      "id": "E8",
+      "source": "N2",
+      "target": "N7"
+    },
+    {
+      "id": "E9",
+      "source": "N7",
+      "target": "N8"
+    },
+    {
+      "id": "E10",
+      "source": "N8",
+      "target": "N9"
+    }
+  ]
+}

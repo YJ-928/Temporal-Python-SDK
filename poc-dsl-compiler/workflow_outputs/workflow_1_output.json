@@ -1,0 +1,70 @@
+{
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "coordinates",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "geocode",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "coordinates"
+      }
+    },
+    {
+      "id": "N5",
+      "type": "END"
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5"
+    }
+  ]
+}
