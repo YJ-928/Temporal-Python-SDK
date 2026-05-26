@@ -1,5 +1,7 @@
 {
-  "input": {
-    "set":"{{input_expression}}"
+  "<nodeId>_capture": {
+    "set": {
+      "<store_as>": "${ $input.<field> }"
+    }
   }
 }

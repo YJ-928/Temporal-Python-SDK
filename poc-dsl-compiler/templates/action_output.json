@@ -1,5 +1,7 @@
 {
-  "output": {
-    "as":"{{output_variable}}"
+  "<nodeId>_expose": {
+    "set": {
+      "<field>": "${ .<field> }"
+    }
   }
 }

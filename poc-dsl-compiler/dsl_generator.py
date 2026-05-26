@@ -5,6 +5,7 @@ from builders.terminal_builder import build_terminal
 from builders.input_builder import build_input
 from builders.action_builder import build_action
 from builders.output_builder import build_output
+from builders.wait_builder import build_wait
 
 
 # Dispatch table: node type -> builder function
@@ -13,6 +14,7 @@ NODE_BUILDERS = {
     "INPUT": build_input,
     "ACTION": build_action,
     "OUTPUT": build_output,
+    "WAIT": build_wait,
     "END": build_terminal,
 }
 

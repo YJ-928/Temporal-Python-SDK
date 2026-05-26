@@ -1,9 +1,11 @@
 {
-  "document":{
-    "dsl":"",
-    "taskQueue":"",
-    "workflowType":"",
-    "version":""
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "<taskQueue>",
+    "workflowType": "<workflowType>",
+    "version": "1.0.0",
+    "metadata": {}
   },
-  "do":[]
+  "do": []
 }
+

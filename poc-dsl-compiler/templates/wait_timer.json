@@ -1,6 +1,7 @@
 {
-  "wait": {
-
-    "duration": ""
+  "<nodeId>_wait": {
+    "wait": {
+      "seconds|minutes|hours": "<value>"
+    }
   }
 }

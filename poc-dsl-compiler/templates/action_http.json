@@ -1,18 +1,17 @@
 {
-  "id": "",
-
-  "call": "http",
-
-  "with": {
-
-    "method": "",
-
-    "endpoint": "",
-
-    "headers": {},
-
-    "body": {}
-  },
-
-  "output": ""
+  "<nodeId>_<operation>": {
+    "call": "http",
+    "with": {
+      "method": "post",
+      "endpoint": "http://localhost:8080/<operation>",
+      "body": {
+        "<param>": "${ .<context_var> }"
+      }
+    },
+    "output": {
+      "as": {
+        "<output_var>": "${ . }"
+      }
+    }
+  }
 }

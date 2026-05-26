@@ -97,6 +97,19 @@ ACTION_VOCAB = [
     },
 ]
 
+WAIT_VOCAB = [
+    {"seconds": 10,  "label": "10 seconds"},
+    {"seconds": 30,  "label": "30 seconds"},
+    {"seconds": 60,  "label": "60 seconds"},
+    {"minutes": 1,   "label": "1 minute"},
+    {"minutes": 2,   "label": "2 minutes"},
+    {"minutes": 5,   "label": "5 minutes"},
+    {"minutes": 10,  "label": "10 minutes"},
+    {"minutes": 15,  "label": "15 minutes"},
+    {"hours": 1,     "label": "1 hour"},
+    {"hours": 2,     "label": "2 hours"},
+]
+
 # Reverse lookup: operation name to human-readable label
 _OPERATION_LABELS = {a["operation"]: a["label"] for a in ACTION_VOCAB}
 
@@ -145,6 +158,17 @@ def make_output(nid, fields):
         },
     }
 
+def make_wait(nid, duration):
+    """duration: one entry from WAIT_VOCAB (dict with a single time-unit key)."""
+    unit, value = next((k, v) for k, v in duration.items() if k != "label")
+    return {
+        "id": nid,
+        "type": "WAIT",
+        "data": {
+            "duration": {unit: value},
+        },
+    }
+
 # Edge Builder
 def make_edge(eid, src, tgt):
     return {"id": eid, "source": src, "target": tgt}
@@ -187,6 +211,15 @@ def _node_label(node):
         if len(fields) == 1:
             return f"Output: {fields[0]}"
         return "Output: " + " and ".join(fields)
+    if t == "WAIT":
+        d = node["data"]["duration"]
+        if "hours" in d:
+            unit, n = "hour", d["hours"]
+            return f"Wait: {n} {unit}{'s' if n != 1 else ''}"
+        if "minutes" in d:
+            unit, n = "minute", d["minutes"]
+            return f"Wait: {n} {unit}{'s' if n != 1 else ''}"
+        return f"Wait: {d['seconds']} seconds"
     return t
 
 def _edge_label(src_node, tgt_node):
@@ -423,6 +456,83 @@ def generate_level_5():
 
     return {"nodes": nodes, "edges": edges}
 
+
+def generate_level_6():
+    """
+    Level 6 — Linear with WAIT: ACTION output pauses before reaching OUTPUT
+    START to INPUT to ACTION to WAIT to OUTPUT to END
+    6 nodes, 5 edges
+    """
+    inp = random.choice(INPUT_VOCAB)
+    act = random.choice(ACTION_VOCAB)
+    wait = random.choice(WAIT_VOCAB)
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", [inp]),
+        make_action("N3", act["operation"], inp["store_as"], act["output"]),
+        make_wait("N4", wait),
+        make_output("N5", [{"field": act["output"], "type": "string"}]),
+        make_end("N6"),
+    ]
+
+    edges = [
+        make_edge("E1", "N1", "N2"),
+        make_edge("E2", "N2", "N3"),
+        make_edge("E3", "N3", "N4"),
+        make_edge("E4", "N4", "N5"),
+        make_edge("E5", "N5", "N6"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
+def generate_level_7():
+    """
+    Level 7 — Two branches with WAITs; branch 1 has an extra ACTION after the WAIT
+    START to INPUT(2 fields) to ACTION to WAIT to ACTION to OUTPUT to END
+                            to ACTION to WAIT to OUTPUT ↗
+    10 nodes, 10 edges
+    """
+    inputs = random.sample(INPUT_VOCAB, 2)
+    actions = random.sample(ACTION_VOCAB, 4)
+    a1, a2, a3, a4 = actions
+    wait_b1 = random.choice(WAIT_VOCAB)
+    wait_b2 = random.choice(WAIT_VOCAB)
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", inputs),
+        # Branch 1: ACTION → WAIT → ACTION → OUTPUT
+        make_action("N3", a1["operation"], inputs[0]["store_as"], a1["output"]),
+        make_wait("N4", wait_b1),
+        make_action("N5", a2["operation"], a1["output"], a2["output"]),
+        make_output("N6", [{"field": a2["output"], "type": "string"}]),
+        # Branch 2: ACTION → WAIT → OUTPUT
+        make_action("N7", a3["operation"], inputs[1]["store_as"], a3["output"]),
+        make_wait("N8", wait_b2),
+        make_output("N9", [{"field": a3["output"], "type": "string"}]),
+        make_end("N10"),
+    ]
+
+    edges = [
+        make_edge("E1", "N1", "N2"),
+        # Branch 1
+        make_edge("E2", "N2", "N3"),
+        make_edge("E3", "N3", "N4"),
+        make_edge("E4", "N4", "N5"),
+        make_edge("E5", "N5", "N6"),
+        make_edge("E6", "N6", "N10"),
+        # Branch 2
+        make_edge("E7", "N2", "N7"),
+        make_edge("E8", "N7", "N8"),
+        make_edge("E9", "N8", "N9"),
+        make_edge("E10", "N9", "N10"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
 # Save
 def save_workflow(workflow, mermaid_str, index):
     WORKFLOWS_DIR.mkdir(parents=True, exist_ok=True)
@@ -447,14 +557,18 @@ GENERATORS = {
     3: generate_level_3,
     4: generate_level_4,
     5: generate_level_5,
+    6: generate_level_6,
+    7: generate_level_7,
 }
 
 DESCRIPTIONS = {
     1: "Linear   — START to INPUT to ACTION to OUTPUT to END",
     2: "Branches — 2 parallel branches from shared INPUT",
     3: "Branches — 3 parallel branches from shared INPUT",
-    4: "Deep     — 2 branches with chained ACTIONs (INPUTtoACTIONtoACTIONtoOUTPUT)",
+    4: "Deep     — 2 branches with chained ACTIONs (INPUT to ACTION to ACTION to OUTPUT)",
     5: "Mixed    — 2 branches of different depths, branch 2 has its own INPUT",
+    6: "Wait     — Linear with a WAIT (duration pause) between ACTION and OUTPUT",
+    7: "Wait+    — 2 branches with WAITs; branch 1 has an extra ACTION after the WAIT",
 }
 
 if __name__ == "__main__":
@@ -462,10 +576,10 @@ if __name__ == "__main__":
     for k, v in DESCRIPTIONS.items():
         print(f"  {k}  {v}")
 
-    level = int(input("\nDifficulty Level (1-5): "))
+    level = int(input("\nDifficulty Level (1-7): "))
 
     if level not in GENERATORS:
-        print("Invalid level. Choose 1-5.")
+        print("Invalid level. Choose 1-7.")
         raise SystemExit(1)
 
     workflow = GENERATORS[level]()
