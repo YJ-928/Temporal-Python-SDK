@@ -21,24 +21,24 @@ Difficulty Levels:
   3  Branches — 3 parallel branches from shared INPUT
   4  Deep     — 2 branches with chained ACTIONs (INPUT to ACTION to ACTION to OUTPUT)
   5  Mixed    — 2 branches of different depths, branch 2 has its own INPUT
-  6  Wait     — Linear with a WAIT (duration pause) between ACTION and OUTPUT
-  7  Wait+    — 2 branches with WAITs; branch 1 has an extra ACTION after the WAIT
+  6  Wait     — Linear with WAIT(duration) between ACTION and OUTPUT
+  7  Wait+    — 2 branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT
+  8  Listen   — Linear with WAIT(listen): waits for an external signal before OUTPUT
+  9  Mixed W  — 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)
 
-Difficulty Level (1-7):
+Difficulty Level (1-9):
 ```
 
 The generator prompts for a level, then writes two files:
 
 | Output | Directory | File name |
 |---|---|---|
-| Mermaid diagram | `poc-dsl-compiler/workflows/` | `workflow_N.md` |
-| Workflow JSON | `poc-dsl-compiler/workflow_outputs/` | `workflow_N_output.json` |
+| Mermaid diagram | `poc-dsl-compiler/input/workflows/` | `workflow_N.md` |
+| Workflow JSON | `poc-dsl-compiler/input/workflow_outputs/` | `workflow_N_output.json` |
 
-Where `N` is auto-incremented based on existing files in `workflows/`.
+Where `N` is auto-incremented based on existing files in `input/workflows/`.
 
-> **NOTE:** These output directories are separate from the compiler's input directory.
-> The compiler reads from `poc-dsl-compiler/input/workflow_outputs/`, not from `poc-dsl-compiler/workflow_outputs/`.
-> Generated files must be copied manually if you want to compile them.
+> **NOTE:** Generator writes directly to the compiler's input directory. Run `python3 poc-dsl-compiler/main.py workflow_N_output` to compile after generating.
 
 ---
 
@@ -49,7 +49,7 @@ GENERATORS[level]()      — produces raw workflow dict {nodes, edges}
         ↓
 shuffle_nodes(workflow)  — randomly shuffles the nodes array in-place
         ↓
-get_next_index()         — scans workflows/ for workflow_N.md, returns max+1 (or 1 if empty)
+get_next_index()         — scans input/workflows/ for workflow_N.md, returns max+1 (or 1 if empty)
         ↓
 generate_mermaid(workflow) — builds fenced mermaid string from edges and node labels
         ↓
@@ -113,6 +113,17 @@ Each entry has exactly one time-unit key plus a `label` key (human display only;
 | `hours` | 1 | 1 hour |
 | `hours` | 2 | 2 hours |
 
+### LISTEN_VOCAB (4 entries)
+
+Each entry has a `signal` key (the Temporal signal name) plus a `label` key (human display only; never in generator output):
+
+| `signal` | Label |
+|---|---|
+| `user_confirmation` | User confirmation received |
+| `payment_completed` | Payment completed |
+| `notification_ack` | Notification acknowledged |
+| `approval_received` | Approval received |
+
 ---
 
 ## Node Builder Functions
@@ -172,18 +183,33 @@ Multiple fields are supported — all become entries in the `inputs` array.
 }
 ```
 
-### `make_wait(nid, duration)`
+### `make_wait_duration(nid, duration)`
 `duration`: one entry from `WAIT_VOCAB`. Extracts the single time-unit key by excluding `"label"`.
 ```json
 {
   "id": "N4",
   "type": "WAIT",
   "data": {
-    "duration": { "minutes": 5 }
+    "mode": "duration",
+    "config": { "minutes": 5 }
   }
 }
 ```
-**Rule:** The `label` key from `WAIT_VOCAB` is never included in the output. Only one time-unit key is present (`seconds`, `minutes`, or `hours`).
+**Rule:** The `label` key from `WAIT_VOCAB` is never included in the output. Only one time-unit key is present in `config` (`seconds`, `minutes`, or `hours`).
+
+### `make_wait_listen(nid, listen)`
+`listen`: one entry from `LISTEN_VOCAB`.
+```json
+{
+  "id": "N4",
+  "type": "WAIT",
+  "data": {
+    "mode": "listen",
+    "config": { "signal": "approval_received" }
+  }
+}
+```
+**Rule:** The `label` key from `LISTEN_VOCAB` is never included in the output. Only the `signal` key is present in `config`.
 
 ### `make_edge(eid, src, tgt)`
 ```json
@@ -210,7 +236,7 @@ Shuffles `workflow["nodes"]` in-place using `random.shuffle()`. Edges are never 
 
 ## `get_next_index()`
 
-Scans `poc-dsl-compiler/workflows/` for files matching `workflow_N.md`. Returns `max(N) + 1`, or `1` if no files exist.
+Scans `poc-dsl-compiler/input/workflows/` for files matching `workflow_N.md`. Returns `max(N) + 1`, or `1` if no files exist.
 
 **Rule:** Never overwrites existing files. Each generator run produces a new file pair.
 
@@ -225,22 +251,39 @@ Scans `poc-dsl-compiler/workflows/` for files matching `workflow_N.md`. Returns 
 | 3 | Branches | 9 | 10 | Shared INPUT → 3×(ACTION → OUTPUT) → END |
 | 4 | Deep | 9 | 9 | Shared INPUT → 2×(ACTION → ACTION → OUTPUT) → END |
 | 5 | Mixed | 10 | 10 | START → separate INPUTs; branch 1: shallow; branch 2: own INPUT → 3-action chain |
-| 6 | Wait | 6 | 5 | `START → INPUT → ACTION → WAIT → OUTPUT → END` |
-| 7 | Wait+ | 10 | 10 | Shared INPUT → branch1: ACTION→WAIT→ACTION→OUTPUT; branch2: ACTION→WAIT→OUTPUT → END |
+| 6 | Wait | 6 | 5 | `START → INPUT → ACTION → WAIT(duration) → OUTPUT → END` |
+| 7 | Wait+ | 10 | 10 | Shared INPUT → branch1: ACTION→WAIT(duration)→ACTION→OUTPUT; branch2: ACTION→WAIT(duration)→OUTPUT → END |
+| 8 | Listen | 6 | 5 | `START → INPUT → ACTION → WAIT(listen) → OUTPUT → END` |
+| 9 | Mixed W | 9 | 9 | Shared INPUT → branch A: ACTION→WAIT(duration)→OUTPUT; branch B: ACTION→WAIT(listen)→OUTPUT → END |
 
 ### Level 6 — exact structure
 ```
-START(N1) → INPUT(N2) → ACTION(N3) → WAIT(N4) → OUTPUT(N5) → END(N6)
+START(N1) → INPUT(N2) → ACTION(N3) → WAIT(duration)(N4) → OUTPUT(N5) → END(N6)
 Edges: E1(N1→N2) E2(N2→N3) E3(N3→N4) E4(N4→N5) E5(N5→N6)
 ```
 
 ### Level 7 — exact structure
 ```
 START(N1) → INPUT(N2) with 2 fields
-  Branch 1: INPUT(N2)→ACTION(N3)→WAIT(N4)→ACTION(N5)→OUTPUT(N6)→END(N10)
-  Branch 2: INPUT(N2)→ACTION(N7)→WAIT(N8)→OUTPUT(N9)→END(N10)
+  Branch 1: INPUT(N2)→ACTION(N3)→WAIT(duration)(N4)→ACTION(N5)→OUTPUT(N6)→END(N10)
+  Branch 2: INPUT(N2)→ACTION(N7)→WAIT(duration)(N8)→OUTPUT(N9)→END(N10)
 Edges: E1(N1→N2), E2(N2→N3), E3(N3→N4), E4(N4→N5), E5(N5→N6), E6(N6→N10)
         E7(N2→N7), E8(N7→N8), E9(N8→N9), E10(N9→N10)
+```
+
+### Level 8 — exact structure
+```
+START(N1) → INPUT(N2) → ACTION(N3) → WAIT(listen)(N4) → OUTPUT(N5) → END(N6)
+Edges: E1(N1→N2) E2(N2→N3) E3(N3→N4) E4(N4→N5) E5(N5→N6)
+```
+
+### Level 9 — exact structure
+```
+START(N1) → INPUT(N2) with 2 fields
+  Branch A: INPUT(N2)→ACTION(N3)→WAIT(duration)(N4)→OUTPUT(N5)→END(N9)
+  Branch B: INPUT(N2)→ACTION(N6)→WAIT(listen)(N7)→OUTPUT(N8)→END(N9)
+Edges: E1(N1→N2), E2(N2→N3), E3(N3→N4), E4(N4→N5), E5(N5→N9)
+        E6(N2→N6), E7(N6→N7), E8(N7→N8), E9(N8→N9)
 ```
 
 ---
@@ -272,7 +315,8 @@ graph TD
 | `INPUT` | `"Input: {field}"` (single); `"Input: {f1} and {f2}"` (multiple) |
 | `ACTION` | Human-readable label from `_OPERATION_LABELS` lookup; falls back to `op.replace("_", " ").title()` |
 | `OUTPUT` | `"Output: {field}"` (single); `"Output: {f1} and {f2}"` (multiple) |
-| `WAIT` | `"Wait: N hours/minutes"` (plural if N≠1); `"Wait: N seconds"` |
+| `WAIT` (duration) | `"Wait: N hours/minutes"` (plural if N≠1); `"Wait: N seconds"` |
+| `WAIT` (listen) | `"Listen: {signal_name}"` (underscores replaced with spaces, title-cased) |
 
 ### Edge labels — `_edge_label(src_node, tgt_node)`
 
@@ -317,8 +361,6 @@ The generator is independent of the compiler. It produces valid input JSON that 
 ```
 workflow_generator.py (this file)
         ↓  produces
-poc-dsl-compiler/workflow_outputs/workflow_N_output.json
-        ↓  (manual copy)
 poc-dsl-compiler/input/workflow_outputs/workflow_N_output.json
         ↓  compiler reads
 python3 poc-dsl-compiler/main.py workflow_N_output
@@ -328,7 +370,7 @@ poc-dsl-compiler/output/workflow_N_output_dsl_schema.json
 zigflow validate poc-dsl-compiler/output/workflow_N_output_dsl_schema.json
 ```
 
-**Rule:** Do not modify the compiler to auto-read from `workflow_outputs/`. The separation is intentional — the compiler reads only from `input/workflow_outputs/`.
+**Note:** Generator writes directly to `input/workflow_outputs/`. No manual copy step needed.
 
 ---
 

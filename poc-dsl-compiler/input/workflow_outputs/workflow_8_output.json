@@ -1,23 +1,8 @@
 {
   "nodes": [
     {
-      "id": "N1",
-      "type": "START"
-    },
-    {
       "id": "N6",
       "type": "END"
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "generate_report",
-        "inputs": {
-          "value": "user_name"
-        },
-        "output": "report"
-      }
     },
     {
       "id": "N5",
@@ -25,21 +10,36 @@
       "data": {
         "outputs": [
           {
-            "field": "report",
+            "field": "product_details",
             "type": "string"
           }
         ]
       }
     },
     {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "fetch_product",
+        "inputs": {
+          "value": "dob"
+        },
+        "output": "product_details"
+      }
+    },
+    {
       "id": "N4",
       "type": "WAIT",
       "data": {
-        "mode": "duration",
+        "mode": "listen",
         "config": {
-          "minutes": 5
+          "signal": "user_confirmation"
         }
       }
+    },
+    {
+      "id": "N1",
+      "type": "START"
     },
     {
       "id": "N2",
@@ -47,8 +47,8 @@
       "data": {
         "inputs": [
           {
-            "field": "name",
-            "store_as": "user_name",
+            "field": "date_of_birth",
+            "store_as": "dob",
             "type": "string"
           }
         ]

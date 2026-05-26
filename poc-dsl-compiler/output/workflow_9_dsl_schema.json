@@ -10,8 +10,8 @@
     {
       "N2_capture": {
         "set": {
-          "product_id": "${ $input.product_id }",
-          "user_email": "${ $input.email }"
+          "phone": "${ $input.phone_number }",
+          "user_location": "${ $input.location }"
         }
       }
     },
@@ -22,7 +22,7 @@
           "method": "post",
           "endpoint": "http://localhost:8080/generate_report",
           "body": {
-            "value": "${ .product_id }"
+            "value": "${ .phone }"
           }
         },
         "output": {
@@ -35,62 +35,51 @@
     {
       "N4_wait": {
         "wait": {
-          "seconds": 30
+          "minutes": 15
         }
       }
     },
     {
-      "N5_validate_email": {
+      "N5_expose": {
+        "set": {
+          "report": "${ .report }"
+        }
+      }
+    },
+    {
+      "N6_process_order": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/validate_email",
+          "endpoint": "http://localhost:8080/process_order",
           "body": {
-            "value": "${ .report }"
+            "value": "${ .user_location }"
           }
         },
         "output": {
           "as": {
-            "validation_result": "${ . }"
+            "order_status": "${ . }"
           }
         }
       }
     },
     {
-      "N6_expose": {
+      "N7_wait": {
+        "listen": {
+          "to": {
+            "one": {
+              "with": {
+                "id": "payment_completed"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "N8_expose": {
         "set": {
-          "validation_result": "${ .validation_result }"
-        }
-      }
-    },
-    {
-      "N7_fetch_product": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/fetch_product",
-          "body": {
-            "value": "${ .user_email }"
-          }
-        },
-        "output": {
-          "as": {
-            "product_details": "${ . }"
-          }
-        }
-      }
-    },
-    {
-      "N8_wait": {
-        "wait": {
-          "seconds": 10
-        }
-      }
-    },
-    {
-      "N9_expose": {
-        "set": {
-          "product_details": "${ .product_details }"
+          "order_status": "${ .order_status }"
         }
       }
     }

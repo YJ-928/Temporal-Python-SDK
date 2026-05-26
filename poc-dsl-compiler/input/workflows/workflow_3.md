@@ -1,13 +1,13 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: product id and country and email]
-    B[Input: product id and country and email] -- {product_id} --> C[Calculate age from date of birth]
-    C[Calculate age from date of birth] -- {age} --> D[Output: age]
-    D[Output: age] --> I[End]
-    B[Input: product id and country and email] -- {country} --> E[Geocode location to coordinates]
-    E[Geocode location to coordinates] -- {coordinates} --> F[Output: coordinates]
-    F[Output: coordinates] --> I[End]
-    B[Input: product id and country and email] -- {user_email} --> G[Fetch product details]
-    G[Fetch product details] -- {product_details} --> H[Output: product details]
-    H[Output: product details] --> I[End]
+    A[Start] --> B[Input: email and order id and location]
+    B[Input: email and order id and location] -- {user_email} --> C[Process order]
+    C[Process order] -- {order_status} --> D[Output: order status]
+    D[Output: order status] --> I[End]
+    B[Input: email and order id and location] -- {order_id} --> E[Send notification to user]
+    E[Send notification to user] -- {notification_status} --> F[Output: notification status]
+    F[Output: notification status] --> I[End]
+    B[Input: email and order id and location] -- {user_location} --> G[Verify phone number]
+    G[Verify phone number] -- {phone_verified} --> H[Output: phone verified]
+    H[Output: phone verified] --> I[End]
 ```

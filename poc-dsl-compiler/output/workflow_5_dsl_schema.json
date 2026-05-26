@@ -10,23 +10,23 @@
     {
       "N2_capture": {
         "set": {
-          "order_id": "${ $input.order_id }"
+          "user_email": "${ $input.email }"
         }
       }
     },
     {
-      "N3_greet": {
+      "N3_verify_phone": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/greet",
+          "endpoint": "http://localhost:8080/verify_phone",
           "body": {
-            "value": "${ .order_id }"
+            "value": "${ .user_email }"
           }
         },
         "output": {
           "as": {
-            "greeting": "${ . }"
+            "phone_verified": "${ . }"
           }
         }
       }
@@ -34,64 +34,64 @@
     {
       "N4_expose": {
         "set": {
-          "greeting": "${ .greeting }"
+          "phone_verified": "${ .phone_verified }"
         }
       }
     },
     {
       "N5_capture": {
         "set": {
-          "phone": "${ $input.phone_number }"
+          "country": "${ $input.country }"
         }
       }
     },
     {
-      "N6_fetch_product": {
+      "N6_send_notification": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/fetch_product",
+          "endpoint": "http://localhost:8080/send_notification",
           "body": {
-            "value": "${ .phone }"
+            "value": "${ .country }"
           }
         },
         "output": {
           "as": {
-            "product_details": "${ . }"
-          }
-        }
-      }
-    },
-    {
-      "N7_validate_email": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/validate_email",
-          "body": {
-            "value": "${ .product_details }"
-          }
-        },
-        "output": {
-          "as": {
-            "validation_result": "${ . }"
+            "notification_status": "${ . }"
           }
         }
       }
     },
     {
-      "N8_send_email": {
+      "N7_enrich_profile": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/send_email",
+          "endpoint": "http://localhost:8080/enrich_profile",
           "body": {
-            "value": "${ .validation_result }"
+            "value": "${ .notification_status }"
           }
         },
         "output": {
           "as": {
-            "email_status": "${ . }"
+            "enriched_profile": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N8_format_output": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/format_output",
+          "body": {
+            "value": "${ .enriched_profile }"
+          }
+        },
+        "output": {
+          "as": {
+            "formatted_output": "${ . }"
           }
         }
       }
@@ -99,7 +99,7 @@
     {
       "N9_expose": {
         "set": {
-          "email_status": "${ .email_status }"
+          "formatted_output": "${ .formatted_output }"
         }
       }
     }

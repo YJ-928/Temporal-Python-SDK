@@ -1,13 +1,13 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: date of birth and city]
-    B[Input: date of birth and city] -- {dob} --> C[Calculate age from date of birth]
-    C[Calculate age from date of birth] -- {age} --> D[Wait: 30 seconds]
-    D[Wait: 30 seconds] --> E[Look up location data]
-    E[Look up location data] -- {location_data} --> F[Output: location data]
-    F[Output: location data] --> J[End]
-    B[Input: date of birth and city] -- {city} --> G[Send notification to user]
-    G[Send notification to user] -- {notification_status} --> H[Wait: 10 seconds]
-    H[Wait: 10 seconds] --> I[Output: notification status]
-    I[Output: notification status] --> J[End]
+    A[Start] --> B[Input: product id and email]
+    B[Input: product id and email] -- {product_id} --> C[Generate user activity report]
+    C[Generate user activity report] -- {report} --> D[Wait: 30 seconds]
+    D[Wait: 30 seconds] --> E[Validate email address]
+    E[Validate email address] -- {validation_result} --> F[Output: validation result]
+    F[Output: validation result] --> J[End]
+    B[Input: product id and email] -- {user_email} --> G[Fetch product details]
+    G[Fetch product details] -- {product_details} --> H[Wait: 10 seconds]
+    H[Wait: 10 seconds] --> I[Output: product details]
+    I[Output: product details] --> J[End]
 ```

@@ -1,34 +1,26 @@
 {
   "nodes": [
     {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "validation_result",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
       "id": "N7",
       "type": "ACTION",
       "data": {
-        "operation": "send_notification",
+        "operation": "fetch_product",
         "inputs": {
-          "value": "city"
+          "value": "user_email"
         },
-        "output": "notification_status"
-      }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "calculate_age",
-        "inputs": {
-          "value": "dob"
-        },
-        "output": "age"
-      }
-    },
-    {
-      "id": "N8",
-      "type": "WAIT",
-      "data": {
-        "duration": {
-          "seconds": 10
-        }
+        "output": "product_details"
       }
     },
     {
@@ -36,12 +28,40 @@
       "type": "START"
     },
     {
+      "id": "N8",
+      "type": "WAIT",
+      "data": {
+        "mode": "duration",
+        "config": {
+          "seconds": 10
+        }
+      }
+    },
+    {
       "id": "N9",
       "type": "OUTPUT",
       "data": {
         "outputs": [
           {
-            "field": "notification_status",
+            "field": "product_details",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "product_id",
+            "store_as": "product_id",
+            "type": "string"
+          },
+          {
+            "field": "email",
+            "store_as": "user_email",
             "type": "string"
           }
         ]
@@ -51,29 +71,11 @@
       "id": "N5",
       "type": "ACTION",
       "data": {
-        "operation": "lookup_location",
+        "operation": "validate_email",
         "inputs": {
-          "value": "age"
+          "value": "report"
         },
-        "output": "location_data"
-      }
-    },
-    {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "date_of_birth",
-            "store_as": "dob",
-            "type": "string"
-          },
-          {
-            "field": "city",
-            "store_as": "city",
-            "type": "string"
-          }
-        ]
+        "output": "validation_result"
       }
     },
     {
@@ -81,24 +83,24 @@
       "type": "END"
     },
     {
-      "id": "N4",
-      "type": "WAIT",
+      "id": "N3",
+      "type": "ACTION",
       "data": {
-        "duration": {
-          "seconds": 30
-        }
+        "operation": "generate_report",
+        "inputs": {
+          "value": "product_id"
+        },
+        "output": "report"
       }
     },
     {
-      "id": "N6",
-      "type": "OUTPUT",
+      "id": "N4",
+      "type": "WAIT",
       "data": {
-        "outputs": [
-          {
-            "field": "location_data",
-            "type": "string"
-          }
-        ]
+        "mode": "duration",
+        "config": {
+          "seconds": 30
+        }
       }
     }
   ],

@@ -15,7 +15,7 @@ V1 — POC complete. Pure-function pipeline validated end-to-end.
 | `INPUT` | `input_builder.build_input` | `set` | ✅ |
 | `ACTION` | `action_builder.build_action` | `call: http` | ✅ |
 | `OUTPUT` | `output_builder.build_output` | `set` | ✅ |
-| `WAIT` | `wait_builder.build_wait` | `wait` | ✅ |
+| `WAIT` | `wait_builder.build_wait` | `wait` (duration mode) or `listen` (listen mode) | ✅ |
 
 ---
 
@@ -75,21 +75,22 @@ V1 — POC complete. Pure-function pipeline validated end-to-end.
 ## Workflow Generator
 
 - **File:** `poc-dsl-compiler/workflow_generator.py`
-- **Status:** ✅ 7 difficulty levels implemented and validated
+- **Status:** ✅ 9 difficulty levels implemented and validated
 - **Run:** `python3 poc-dsl-compiler/workflow_generator.py`
-- Prompts for level 1–7; writes Mermaid to `poc-dsl-compiler/workflows/` and JSON to `poc-dsl-compiler/workflow_outputs/`
-- Generator output is **separate** from compiler input (`input/workflow_outputs/`) — copy manually to compile
+- Prompts for level 1–9; writes Mermaid to `poc-dsl-compiler/input/workflows/` and JSON to `poc-dsl-compiler/input/workflow_outputs/` (compiler's input directory — no manual copy needed)
 - Full documentation: `.github/features/workflow_generator.md`
 
-| Level | Shape | Nodes | Edges | WAIT? |
+| Level | Shape | Nodes | Edges | WAIT mode |
 |---|---|---|---|---|
 | 1 | Linear | 5 | 4 | — |
 | 2 | 2 parallel branches | 7 | 7 | — |
 | 3 | 3 parallel branches | 9 | 10 | — |
 | 4 | 2 deep-chained branches | 9 | 9 | — |
 | 5 | Mixed depth (branch 2 has own INPUT) | 10 | 10 | — |
-| 6 | Linear with WAIT | 6 | 5 | ✅ |
-| 7 | 2 branches with WAITs | 10 | 10 | ✅ |
+| 6 | Linear with WAIT(duration) | 6 | 5 | duration |
+| 7 | 2 branches with WAIT(duration) | 10 | 10 | duration |
+| 8 | Linear with WAIT(listen) | 6 | 5 | listen |
+| 9 | 2 branches: branch A duration, branch B listen | 9 | 9 | duration + listen |
 
 ---
 

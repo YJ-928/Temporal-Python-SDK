@@ -229,7 +229,7 @@ Files in `poc-dsl-compiler/templates/` are **not used at runtime**. They documen
 | `if_switch.json` | no builder yet | ❌ deferred |
 | `parallel.json` | no builder yet | ❌ deferred |
 | `variable.json` | no builder yet | ❌ deferred |
-| `wait_signal.json` | no builder yet | ❌ deferred |
+| `wait_signal.json` | `wait_builder` (listen mode) | ✅ matches builder output |
 | `workflow.json` | no builder yet | ❌ deferred |
 
 **Rule:** When adding a new builder, update the corresponding template to match the builder's exact output and mark it ✅ in this table.

@@ -224,7 +224,7 @@ INPUT → set
 
 ACTION → call:http
 
-WAIT → wait
+WAIT → wait (duration mode) or listen (listen mode)
 
 OUTPUT → set
 
@@ -373,19 +373,9 @@ Modes:
 
 duration
 
-signal
+listen
 
-event
-
-Current:
-
-duration implemented.
-
-Future:
-
-signal
-
-event
+Both implemented.
 
 WAIT changes DSL only.
 

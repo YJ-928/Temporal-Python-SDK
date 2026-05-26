@@ -5,17 +5,32 @@
       "type": "START"
     },
     {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "enrich_profile",
+        "inputs": {
+          "value": "user_location"
+        },
+        "output": "enriched_profile"
+      }
+    },
+    {
       "id": "N2",
       "type": "INPUT",
       "data": {
         "inputs": [
           {
-            "field": "email",
-            "store_as": "user_email",
+            "field": "location",
+            "store_as": "user_location",
             "type": "string"
           }
         ]
       }
+    },
+    {
+      "id": "N5",
+      "type": "END"
     },
     {
       "id": "N4",
@@ -23,26 +38,11 @@
       "data": {
         "outputs": [
           {
-            "field": "coordinates",
+            "field": "enriched_profile",
             "type": "string"
           }
         ]
       }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "geocode",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "coordinates"
-      }
-    },
-    {
-      "id": "N5",
-      "type": "END"
     }
   ],
   "edges": [

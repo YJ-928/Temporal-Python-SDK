@@ -79,6 +79,35 @@ Architectural decisions for the DSL compiler. Each entry records what was decide
 - Documenting runtime semantics inside a builder conflates two separate concerns
 - A builder author should think about DSL shape, not execution model
 
+---
+
+## 2026-05 — WAIT extended with modes (duration and listen)
+
+**Decision:** WAIT remains a single node type. Execution behaviour is selected via `data.mode` (`"duration"` or `"listen"`). No new node types are created.
+
+**Reason:**
+- Both `wait` and `listen` are temporal-pause constructs; they share the same semantic position in a graph (block until condition met)
+- Creating separate `EVENT`, `SIGNAL`, or `WAIT_LISTEN` node types would add node-type surface area without changing the compiler, traversal, or dispatch table
+- The builder is the correct layer for DSL dispatch; the compiler is unaware of modes
+
+**Rejected:**
+- Separate `WAIT_LISTEN` node type — unnecessary node-type proliferation; no graph algorithm benefit
+- `signal` key on the WAIT node alongside `duration` — ambiguous schema; a single `mode` discriminator is cleaner
+
+**Schema:**
+```json
+{ "type": "WAIT", "data": { "mode": "duration", "config": { "minutes": 5 } } }
+{ "type": "WAIT", "data": { "mode": "listen",   "config": { "signal": "approval_received" } } }
+```
+
+**Backward compatibility:** Old schema (`data.duration`) is supported by the builder via a fallback check. Existing input files (`workflow_6_output.json`, `workflow_7_output.json`) compile correctly without modification.
+
+**DSL output:**
+- `mode: duration` → Zigflow `wait` task: `{"wait": {"minutes": 5}}`
+- `mode: listen`   → Zigflow `listen` task: `{"listen": {"to": {"one": {"with": {"id": "approval_received"}}}}}`
+
+**Files changed:** `builders/wait_builder.py` only. `compiler.py`, `dsl_generator.py`, and `NODE_BUILDERS` dispatch table are unchanged.
+
 **Consequence:**
 - Documentation (builders.md, dsl_compiler.md) uses "emits a Zigflow wait task" rather than "runs as a durable Temporal timer"
 - The distinction matters: future builders (IF, PARALLEL) must follow the same principle

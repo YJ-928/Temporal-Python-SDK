@@ -10,23 +10,23 @@
     {
       "N2_capture": {
         "set": {
-          "user_email": "${ $input.email }"
+          "user_location": "${ $input.location }"
         }
       }
     },
     {
-      "N3_geocode": {
+      "N3_enrich_profile": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/geocode",
+          "endpoint": "http://localhost:8080/enrich_profile",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ .user_location }"
           }
         },
         "output": {
           "as": {
-            "coordinates": "${ . }"
+            "enriched_profile": "${ . }"
           }
         }
       }
@@ -34,7 +34,7 @@
     {
       "N4_expose": {
         "set": {
-          "coordinates": "${ .coordinates }"
+          "enriched_profile": "${ .enriched_profile }"
         }
       }
     }

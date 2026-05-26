@@ -8,34 +8,11 @@
       "id": "N7",
       "type": "ACTION",
       "data": {
-        "operation": "fetch_product",
+        "operation": "verify_phone",
         "inputs": {
-          "value": "user_email"
+          "value": "user_location"
         },
-        "output": "product_details"
-      }
-    },
-    {
-      "id": "N8",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "product_details",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N5",
-      "type": "ACTION",
-      "data": {
-        "operation": "geocode",
-        "inputs": {
-          "value": "country"
-        },
-        "output": "coordinates"
+        "output": "phone_verified"
       }
     },
     {
@@ -43,14 +20,15 @@
       "type": "START"
     },
     {
-      "id": "N3",
-      "type": "ACTION",
+      "id": "N8",
+      "type": "OUTPUT",
       "data": {
-        "operation": "calculate_age",
-        "inputs": {
-          "value": "product_id"
-        },
-        "output": "age"
+        "outputs": [
+          {
+            "field": "phone_verified",
+            "type": "string"
+          }
+        ]
       }
     },
     {
@@ -59,30 +37,18 @@
       "data": {
         "inputs": [
           {
-            "field": "product_id",
-            "store_as": "product_id",
-            "type": "string"
-          },
-          {
-            "field": "country",
-            "store_as": "country",
-            "type": "string"
-          },
-          {
             "field": "email",
             "store_as": "user_email",
             "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N6",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
+          },
           {
-            "field": "coordinates",
+            "field": "order_id",
+            "store_as": "order_id",
+            "type": "string"
+          },
+          {
+            "field": "location",
+            "store_as": "user_location",
             "type": "string"
           }
         ]
@@ -94,10 +60,44 @@
       "data": {
         "outputs": [
           {
-            "field": "age",
+            "field": "order_status",
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "process_order",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "order_status"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "notification_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_notification",
+        "inputs": {
+          "value": "order_id"
+        },
+        "output": "notification_status"
       }
     }
   ],

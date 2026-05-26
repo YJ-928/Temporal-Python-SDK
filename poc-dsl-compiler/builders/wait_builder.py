@@ -1,9 +1,56 @@
+def _build_wait_duration(node_id: str, config: dict) -> dict:
+    """
+    Emit a Zigflow wait task for a timed pause.
+
+    Args:
+        node_id: node ID from the graph (used as task name prefix)
+        config:  dict with exactly one time-unit key: seconds, minutes, or hours
+
+    Returns:
+        DSL fragment: { "{node_id}_wait": { "wait": config } }
+    """
+    task_name = f"{node_id}_wait"
+    return {
+        task_name: {
+            "wait": config,
+        }
+    }
+
+
+def _build_wait_listen(node_id: str, config: dict) -> dict:
+    """
+    Emit a Zigflow listen task for an external signal.
+
+    Args:
+        node_id: node ID from the graph (used as task name prefix)
+        config:  dict with key "signal" — the Temporal signal name to wait for
+
+    Returns:
+        DSL fragment: { "{node_id}_wait": { "listen": { "to": { "one": { "with": { "id": signal } } } } } }
+    """
+    task_name = f"{node_id}_wait"
+    return {
+        task_name: {
+            "listen": {
+                "to": {
+                    "one": {
+                        "with": {
+                            "id": config["signal"],
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
 def build_wait(node: dict) -> dict:
     """
-    Convert a WAIT node into a wait DSL fragment.
+    Convert a WAIT node into a wait or listen DSL fragment.
 
-    The duration dict from node data is passed directly to the Zigflow
-    wait task. Supported keys: seconds, minutes, hours.
+    Dispatches internally based on node["data"]["mode"]:
+      - "duration" → Zigflow wait task (timed pause)
+      - "listen"   → Zigflow listen task (external signal)
 
     Task name: {node_id}_wait
 
@@ -11,15 +58,13 @@ def build_wait(node: dict) -> dict:
         node: WAIT node dict from traversal
 
     Returns:
-        DSL fragment dict with wait task
+        DSL fragment dict — either a wait task or a listen task
     """
     node_id = node["id"]
-    duration = node["data"]["duration"]  # e.g. {"seconds": 30} or {"minutes": 1}
-
-    task_name = f"{node_id}_wait"
-
-    return {
-        task_name: {
-            "wait": duration,
-        }
-    }
+    data = node["data"]
+    mode = data["mode"]
+    config = data["config"]
+    if mode == "listen":
+        return _build_wait_listen(node_id, config)
+    # mode == "duration"
+    return _build_wait_duration(node_id, config)

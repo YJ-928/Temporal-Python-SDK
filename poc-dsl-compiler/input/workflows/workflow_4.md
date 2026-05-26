@@ -1,12 +1,12 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: user id and order id]
-    B[Input: user id and order id] -- {user_id} --> C[Process order]
-    C[Process order] -- {order_status} --> D[Validate email address]
-    D[Validate email address] -- {validation_result} --> E[Output: validation result]
-    E[Output: validation result] --> I[End]
-    B[Input: user id and order id] -- {order_id} --> F[Verify phone number]
-    F[Verify phone number] -- {phone_verified} --> G[Send notification to user]
-    G[Send notification to user] -- {notification_status} --> H[Output: notification status]
-    H[Output: notification status] --> I[End]
+    A[Start] --> B[Input: email and date of birth]
+    B[Input: email and date of birth] -- {user_email} --> C[Fetch product details]
+    C[Fetch product details] -- {product_details} --> D[Generate personalized greeting]
+    D[Generate personalized greeting] -- {greeting} --> E[Output: greeting]
+    E[Output: greeting] --> I[End]
+    B[Input: email and date of birth] -- {dob} --> F[Look up location data]
+    F[Look up location data] -- {location_data} --> G[Verify phone number]
+    G[Verify phone number] -- {phone_verified} --> H[Output: phone verified]
+    H[Output: phone verified] --> I[End]
 ```

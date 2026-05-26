@@ -10,24 +10,24 @@
     {
       "N2_capture": {
         "set": {
-          "dob": "${ $input.date_of_birth }",
-          "country": "${ $input.country }"
+          "user_email": "${ $input.email }",
+          "order_id": "${ $input.order_id }"
         }
       }
     },
     {
-      "N3_enrich_profile": {
+      "N3_send_email": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/enrich_profile",
+          "endpoint": "http://localhost:8080/send_email",
           "body": {
-            "value": "${ .dob }"
+            "value": "${ .user_email }"
           }
         },
         "output": {
           "as": {
-            "enriched_profile": "${ . }"
+            "email_status": "${ . }"
           }
         }
       }
@@ -35,23 +35,23 @@
     {
       "N5_expose": {
         "set": {
-          "enriched_profile": "${ .enriched_profile }"
+          "email_status": "${ .email_status }"
         }
       }
     },
     {
-      "N4_lookup_location": {
+      "N4_format_output": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/lookup_location",
+          "endpoint": "http://localhost:8080/format_output",
           "body": {
-            "value": "${ .country }"
+            "value": "${ .order_id }"
           }
         },
         "output": {
           "as": {
-            "location_data": "${ . }"
+            "formatted_output": "${ . }"
           }
         }
       }
@@ -59,7 +59,7 @@
     {
       "N6_expose": {
         "set": {
-          "location_data": "${ .location_data }"
+          "formatted_output": "${ .formatted_output }"
         }
       }
     }

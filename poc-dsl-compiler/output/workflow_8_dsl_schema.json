@@ -10,38 +10,44 @@
     {
       "N2_capture": {
         "set": {
-          "user_name": "${ $input.name }"
+          "dob": "${ $input.date_of_birth }"
         }
       }
     },
     {
-      "N3_generate_report": {
+      "N3_fetch_product": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/generate_report",
+          "endpoint": "http://localhost:8080/fetch_product",
           "body": {
-            "value": "${ .user_name }"
+            "value": "${ .dob }"
           }
         },
         "output": {
           "as": {
-            "report": "${ . }"
+            "product_details": "${ . }"
           }
         }
       }
     },
     {
       "N4_wait": {
-        "wait": {
-          "minutes": 5
+        "listen": {
+          "to": {
+            "one": {
+              "with": {
+                "id": "user_confirmation"
+              }
+            }
+          }
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "report": "${ .report }"
+          "product_details": "${ .product_details }"
         }
       }
     }

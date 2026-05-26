@@ -1,19 +1,15 @@
 {
   "nodes": [
     {
-      "id": "N3",
+      "id": "N6",
       "type": "ACTION",
       "data": {
-        "operation": "fetch_product",
+        "operation": "process_order",
         "inputs": {
-          "value": "user_email"
+          "value": "user_location"
         },
-        "output": "product_details"
+        "output": "order_status"
       }
-    },
-    {
-      "id": "N9",
-      "type": "END"
     },
     {
       "id": "N2",
@@ -21,16 +17,35 @@
       "data": {
         "inputs": [
           {
-            "field": "email",
-            "store_as": "user_email",
+            "field": "phone_number",
+            "store_as": "phone",
             "type": "string"
           },
           {
-            "field": "date_of_birth",
-            "store_as": "dob",
+            "field": "location",
+            "store_as": "user_location",
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N9",
+      "type": "END"
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "generate_report",
+        "inputs": {
+          "value": "phone"
+        },
+        "output": "report"
       }
     },
     {
@@ -39,7 +54,7 @@
       "data": {
         "outputs": [
           {
-            "field": "greeting",
+            "field": "report",
             "type": "string"
           }
         ]
@@ -51,48 +66,31 @@
       "data": {
         "outputs": [
           {
-            "field": "phone_verified",
+            "field": "order_status",
             "type": "string"
           }
         ]
       }
     },
     {
-      "id": "N4",
-      "type": "ACTION",
-      "data": {
-        "operation": "greet",
-        "inputs": {
-          "value": "product_details"
-        },
-        "output": "greeting"
-      }
-    },
-    {
-      "id": "N6",
-      "type": "ACTION",
-      "data": {
-        "operation": "lookup_location",
-        "inputs": {
-          "value": "dob"
-        },
-        "output": "location_data"
-      }
-    },
-    {
       "id": "N7",
-      "type": "ACTION",
+      "type": "WAIT",
       "data": {
-        "operation": "verify_phone",
-        "inputs": {
-          "value": "location_data"
-        },
-        "output": "phone_verified"
+        "mode": "listen",
+        "config": {
+          "signal": "payment_completed"
+        }
       }
     },
     {
-      "id": "N1",
-      "type": "START"
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "mode": "duration",
+        "config": {
+          "minutes": 15
+        }
+      }
     }
   ],
   "edges": [

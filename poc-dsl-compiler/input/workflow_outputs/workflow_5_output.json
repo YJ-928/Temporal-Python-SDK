@@ -5,18 +5,14 @@
       "type": "START"
     },
     {
-      "id": "N10",
-      "type": "END"
-    },
-    {
-      "id": "N8",
+      "id": "N6",
       "type": "ACTION",
       "data": {
-        "operation": "send_email",
+        "operation": "send_notification",
         "inputs": {
-          "value": "validation_result"
+          "value": "country"
         },
-        "output": "email_status"
+        "output": "notification_status"
       }
     },
     {
@@ -25,66 +21,8 @@
       "data": {
         "inputs": [
           {
-            "field": "phone_number",
-            "store_as": "phone",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N7",
-      "type": "ACTION",
-      "data": {
-        "operation": "validate_email",
-        "inputs": {
-          "value": "product_details"
-        },
-        "output": "validation_result"
-      }
-    },
-    {
-      "id": "N6",
-      "type": "ACTION",
-      "data": {
-        "operation": "fetch_product",
-        "inputs": {
-          "value": "phone"
-        },
-        "output": "product_details"
-      }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "greet",
-        "inputs": {
-          "value": "order_id"
-        },
-        "output": "greeting"
-      }
-    },
-    {
-      "id": "N4",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "greeting",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "order_id",
-            "store_as": "order_id",
+            "field": "country",
+            "store_as": "country",
             "type": "string"
           }
         ]
@@ -96,10 +34,72 @@
       "data": {
         "outputs": [
           {
-            "field": "email_status",
+            "field": "formatted_output",
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "phone_verified",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N8",
+      "type": "ACTION",
+      "data": {
+        "operation": "format_output",
+        "inputs": {
+          "value": "enriched_profile"
+        },
+        "output": "formatted_output"
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "verify_phone",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "phone_verified"
+      }
+    },
+    {
+      "id": "N10",
+      "type": "END"
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "enrich_profile",
+        "inputs": {
+          "value": "notification_status"
+        },
+        "output": "enriched_profile"
       }
     }
   ],

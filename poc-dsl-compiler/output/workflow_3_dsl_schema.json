@@ -10,25 +10,25 @@
     {
       "N2_capture": {
         "set": {
-          "product_id": "${ $input.product_id }",
-          "country": "${ $input.country }",
-          "user_email": "${ $input.email }"
+          "user_email": "${ $input.email }",
+          "order_id": "${ $input.order_id }",
+          "user_location": "${ $input.location }"
         }
       }
     },
     {
-      "N3_calculate_age": {
+      "N3_process_order": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/calculate_age",
+          "endpoint": "http://localhost:8080/process_order",
           "body": {
-            "value": "${ .product_id }"
+            "value": "${ .user_email }"
           }
         },
         "output": {
           "as": {
-            "age": "${ . }"
+            "order_status": "${ . }"
           }
         }
       }
@@ -36,23 +36,23 @@
     {
       "N4_expose": {
         "set": {
-          "age": "${ .age }"
+          "order_status": "${ .order_status }"
         }
       }
     },
     {
-      "N5_geocode": {
+      "N5_send_notification": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/geocode",
+          "endpoint": "http://localhost:8080/send_notification",
           "body": {
-            "value": "${ .country }"
+            "value": "${ .order_id }"
           }
         },
         "output": {
           "as": {
-            "coordinates": "${ . }"
+            "notification_status": "${ . }"
           }
         }
       }
@@ -60,23 +60,23 @@
     {
       "N6_expose": {
         "set": {
-          "coordinates": "${ .coordinates }"
+          "notification_status": "${ .notification_status }"
         }
       }
     },
     {
-      "N7_fetch_product": {
+      "N7_verify_phone": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/fetch_product",
+          "endpoint": "http://localhost:8080/verify_phone",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ .user_location }"
           }
         },
         "output": {
           "as": {
-            "product_details": "${ . }"
+            "phone_verified": "${ . }"
           }
         }
       }
@@ -84,7 +84,7 @@
     {
       "N8_expose": {
         "set": {
-          "product_details": "${ .product_details }"
+          "phone_verified": "${ .phone_verified }"
         }
       }
     }

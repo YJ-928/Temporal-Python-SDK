@@ -6,8 +6,8 @@ from pathlib import Path
 # Paths
 
 BASE_DIR = Path(__file__).parent
-WORKFLOWS_DIR = BASE_DIR / "workflows"
-OUTPUTS_DIR = BASE_DIR / "workflow_outputs"
+WORKFLOWS_DIR = BASE_DIR / "input" / "workflows"
+OUTPUTS_DIR = BASE_DIR / "input" / "workflow_outputs"
 
 # Vocabulary
 
@@ -110,6 +110,13 @@ WAIT_VOCAB = [
     {"hours": 2,     "label": "2 hours"},
 ]
 
+LISTEN_VOCAB = [
+    {"signal": "user_confirmation",  "label": "User confirmation"},
+    {"signal": "payment_completed",  "label": "Payment completed"},
+    {"signal": "notification_ack",   "label": "Notification acknowledged"},
+    {"signal": "approval_received",  "label": "Approval received"},
+]
+
 # Reverse lookup: operation name to human-readable label
 _OPERATION_LABELS = {a["operation"]: a["label"] for a in ACTION_VOCAB}
 
@@ -158,14 +165,28 @@ def make_output(nid, fields):
         },
     }
 
-def make_wait(nid, duration):
+def make_wait_duration(nid, duration):
     """duration: one entry from WAIT_VOCAB (dict with a single time-unit key)."""
     unit, value = next((k, v) for k, v in duration.items() if k != "label")
     return {
         "id": nid,
         "type": "WAIT",
         "data": {
-            "duration": {unit: value},
+            "mode": "duration",
+            "config": {unit: value},
+        },
+    }
+
+def make_wait_listen(nid, listen):
+    """listen: one entry from LISTEN_VOCAB."""
+    return {
+        "id": nid,
+        "type": "WAIT",
+        "data": {
+            "mode": "listen",
+            "config": {
+                "signal": listen["signal"],
+            },
         },
     }
 
@@ -212,7 +233,16 @@ def _node_label(node):
             return f"Output: {fields[0]}"
         return "Output: " + " and ".join(fields)
     if t == "WAIT":
-        d = node["data"]["duration"]
+        data = node["data"]
+        if "mode" in data:
+            if data["mode"] == "listen":
+                signal_label = data["config"]["signal"].replace("_", " ")
+                return f"Listen: {signal_label}"
+            # mode == "duration"
+            d = data["config"]
+        else:
+            # backward compat: old schema has data.duration
+            d = data["duration"]
         if "hours" in d:
             unit, n = "hour", d["hours"]
             return f"Wait: {n} {unit}{'s' if n != 1 else ''}"
@@ -459,8 +489,8 @@ def generate_level_5():
 
 def generate_level_6():
     """
-    Level 6 — Linear with WAIT: ACTION output pauses before reaching OUTPUT
-    START to INPUT to ACTION to WAIT to OUTPUT to END
+    Level 6 — Linear with WAIT(duration): ACTION output pauses before reaching OUTPUT
+    START to INPUT to ACTION to WAIT(duration) to OUTPUT to END
     6 nodes, 5 edges
     """
     inp = random.choice(INPUT_VOCAB)
@@ -471,7 +501,7 @@ def generate_level_6():
         make_start("N1"),
         make_input("N2", [inp]),
         make_action("N3", act["operation"], inp["store_as"], act["output"]),
-        make_wait("N4", wait),
+        make_wait_duration("N4", wait),
         make_output("N5", [{"field": act["output"], "type": "string"}]),
         make_end("N6"),
     ]
@@ -489,9 +519,9 @@ def generate_level_6():
 
 def generate_level_7():
     """
-    Level 7 — Two branches with WAITs; branch 1 has an extra ACTION after the WAIT
-    START to INPUT(2 fields) to ACTION to WAIT to ACTION to OUTPUT to END
-                            to ACTION to WAIT to OUTPUT ↗
+    Level 7 — Two branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT
+    START to INPUT(2 fields) to ACTION to WAIT(duration) to ACTION to OUTPUT to END
+                            to ACTION to WAIT(duration) to OUTPUT ↗
     10 nodes, 10 edges
     """
     inputs = random.sample(INPUT_VOCAB, 2)
@@ -503,14 +533,14 @@ def generate_level_7():
     nodes = [
         make_start("N1"),
         make_input("N2", inputs),
-        # Branch 1: ACTION → WAIT → ACTION → OUTPUT
+        # Branch 1: ACTION → WAIT(duration) → ACTION → OUTPUT
         make_action("N3", a1["operation"], inputs[0]["store_as"], a1["output"]),
-        make_wait("N4", wait_b1),
+        make_wait_duration("N4", wait_b1),
         make_action("N5", a2["operation"], a1["output"], a2["output"]),
         make_output("N6", [{"field": a2["output"], "type": "string"}]),
-        # Branch 2: ACTION → WAIT → OUTPUT
+        # Branch 2: ACTION → WAIT(duration) → OUTPUT
         make_action("N7", a3["operation"], inputs[1]["store_as"], a3["output"]),
-        make_wait("N8", wait_b2),
+        make_wait_duration("N8", wait_b2),
         make_output("N9", [{"field": a3["output"], "type": "string"}]),
         make_end("N10"),
     ]
@@ -528,6 +558,80 @@ def generate_level_7():
         make_edge("E8", "N7", "N8"),
         make_edge("E9", "N8", "N9"),
         make_edge("E10", "N9", "N10"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
+def generate_level_8():
+    """
+    Level 8 — Linear with WAIT(listen): waits for an external signal before proceeding
+    START to INPUT to ACTION to WAIT(listen) to OUTPUT to END
+    6 nodes, 5 edges
+    """
+    inp = random.choice(INPUT_VOCAB)
+    act = random.choice(ACTION_VOCAB)
+    listen = random.choice(LISTEN_VOCAB)
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", [inp]),
+        make_action("N3", act["operation"], inp["store_as"], act["output"]),
+        make_wait_listen("N4", listen),
+        make_output("N5", [{"field": act["output"], "type": "string"}]),
+        make_end("N6"),
+    ]
+
+    edges = [
+        make_edge("E1", "N1", "N2"),
+        make_edge("E2", "N2", "N3"),
+        make_edge("E3", "N3", "N4"),
+        make_edge("E4", "N4", "N5"),
+        make_edge("E5", "N5", "N6"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
+def generate_level_9():
+    """
+    Level 9 — Two branches: branch A uses WAIT(duration), branch B uses WAIT(listen)
+    START to INPUT(2 fields) to ACTION to WAIT(duration) to OUTPUT to END
+                            to ACTION to WAIT(listen) to OUTPUT ↗
+    9 nodes, 9 edges
+    """
+    inputs = random.sample(INPUT_VOCAB, 2)
+    actions = random.sample(ACTION_VOCAB, 2)
+    a1, a2 = actions
+    wait_dur = random.choice(WAIT_VOCAB)
+    wait_lis = random.choice(LISTEN_VOCAB)
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", inputs),
+        # Branch A: ACTION → WAIT(duration) → OUTPUT
+        make_action("N3", a1["operation"], inputs[0]["store_as"], a1["output"]),
+        make_wait_duration("N4", wait_dur),
+        make_output("N5", [{"field": a1["output"], "type": "string"}]),
+        # Branch B: ACTION → WAIT(listen) → OUTPUT
+        make_action("N6", a2["operation"], inputs[1]["store_as"], a2["output"]),
+        make_wait_listen("N7", wait_lis),
+        make_output("N8", [{"field": a2["output"], "type": "string"}]),
+        make_end("N9"),
+    ]
+
+    edges = [
+        make_edge("E1", "N1", "N2"),
+        # Branch A
+        make_edge("E2", "N2", "N3"),
+        make_edge("E3", "N3", "N4"),
+        make_edge("E4", "N4", "N5"),
+        make_edge("E5", "N5", "N9"),
+        # Branch B
+        make_edge("E6", "N2", "N6"),
+        make_edge("E7", "N6", "N7"),
+        make_edge("E8", "N7", "N8"),
+        make_edge("E9", "N8", "N9"),
     ]
 
     return {"nodes": nodes, "edges": edges}
@@ -559,6 +663,8 @@ GENERATORS = {
     5: generate_level_5,
     6: generate_level_6,
     7: generate_level_7,
+    8: generate_level_8,
+    9: generate_level_9,
 }
 
 DESCRIPTIONS = {
@@ -567,8 +673,10 @@ DESCRIPTIONS = {
     3: "Branches — 3 parallel branches from shared INPUT",
     4: "Deep     — 2 branches with chained ACTIONs (INPUT to ACTION to ACTION to OUTPUT)",
     5: "Mixed    — 2 branches of different depths, branch 2 has its own INPUT",
-    6: "Wait     — Linear with a WAIT (duration pause) between ACTION and OUTPUT",
-    7: "Wait+    — 2 branches with WAITs; branch 1 has an extra ACTION after the WAIT",
+    6: "Wait     — Linear with WAIT(duration) between ACTION and OUTPUT",
+    7: "Wait+    — 2 branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT",
+    8: "Listen   — Linear with WAIT(listen): waits for an external signal before OUTPUT",
+    9: "Mixed W  — 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)",
 }
 
 if __name__ == "__main__":
@@ -576,10 +684,10 @@ if __name__ == "__main__":
     for k, v in DESCRIPTIONS.items():
         print(f"  {k}  {v}")
 
-    level = int(input("\nDifficulty Level (1-7): "))
+    level = int(input("\nDifficulty Level (1-9): "))
 
     if level not in GENERATORS:
-        print("Invalid level. Choose 1-7.")
+        print("Invalid level. Choose 1-9.")
         raise SystemExit(1)
 
     workflow = GENERATORS[level]()

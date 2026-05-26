@@ -1,29 +1,15 @@
 {
   "nodes": [
     {
-      "id": "N3",
-      "type": "ACTION",
+      "id": "N5",
+      "type": "OUTPUT",
       "data": {
-        "operation": "enrich_profile",
-        "inputs": {
-          "value": "dob"
-        },
-        "output": "enriched_profile"
-      }
-    },
-    {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N4",
-      "type": "ACTION",
-      "data": {
-        "operation": "lookup_location",
-        "inputs": {
-          "value": "country"
-        },
-        "output": "location_data"
+        "outputs": [
+          {
+            "field": "email_status",
+            "type": "string"
+          }
+        ]
       }
     },
     {
@@ -32,17 +18,32 @@
       "data": {
         "inputs": [
           {
-            "field": "date_of_birth",
-            "store_as": "dob",
+            "field": "email",
+            "store_as": "user_email",
             "type": "string"
           },
           {
-            "field": "country",
-            "store_as": "country",
+            "field": "order_id",
+            "store_as": "order_id",
             "type": "string"
           }
         ]
       }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_email",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "email_status"
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
     },
     {
       "id": "N7",
@@ -54,22 +55,21 @@
       "data": {
         "outputs": [
           {
-            "field": "location_data",
+            "field": "formatted_output",
             "type": "string"
           }
         ]
       }
     },
     {
-      "id": "N5",
-      "type": "OUTPUT",
+      "id": "N4",
+      "type": "ACTION",
       "data": {
-        "outputs": [
-          {
-            "field": "enriched_profile",
-            "type": "string"
-          }
-        ]
+        "operation": "format_output",
+        "inputs": {
+          "value": "order_id"
+        },
+        "output": "formatted_output"
       }
     }
   ],

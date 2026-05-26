@@ -10,41 +10,41 @@
     {
       "N2_capture": {
         "set": {
-          "user_id": "${ $input.user_id }",
-          "order_id": "${ $input.order_id }"
+          "user_email": "${ $input.email }",
+          "dob": "${ $input.date_of_birth }"
         }
       }
     },
     {
-      "N3_process_order": {
+      "N3_fetch_product": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/process_order",
+          "endpoint": "http://localhost:8080/fetch_product",
           "body": {
-            "value": "${ .user_id }"
+            "value": "${ .user_email }"
           }
         },
         "output": {
           "as": {
-            "order_status": "${ . }"
+            "product_details": "${ . }"
           }
         }
       }
     },
     {
-      "N4_validate_email": {
+      "N4_greet": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/validate_email",
+          "endpoint": "http://localhost:8080/greet",
           "body": {
-            "value": "${ .order_status }"
+            "value": "${ .product_details }"
           }
         },
         "output": {
           "as": {
-            "validation_result": "${ . }"
+            "greeting": "${ . }"
           }
         }
       }
@@ -52,18 +52,35 @@
     {
       "N5_expose": {
         "set": {
-          "validation_result": "${ .validation_result }"
+          "greeting": "${ .greeting }"
         }
       }
     },
     {
-      "N6_verify_phone": {
+      "N6_lookup_location": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/lookup_location",
+          "body": {
+            "value": "${ .dob }"
+          }
+        },
+        "output": {
+          "as": {
+            "location_data": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N7_verify_phone": {
         "call": "http",
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8080/verify_phone",
           "body": {
-            "value": "${ .order_id }"
+            "value": "${ .location_data }"
           }
         },
         "output": {
@@ -74,26 +91,9 @@
       }
     },
     {
-      "N7_send_notification": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/send_notification",
-          "body": {
-            "value": "${ .phone_verified }"
-          }
-        },
-        "output": {
-          "as": {
-            "notification_status": "${ . }"
-          }
-        }
-      }
-    },
-    {
       "N8_expose": {
         "set": {
-          "notification_status": "${ .notification_status }"
+          "phone_verified": "${ .phone_verified }"
         }
       }
     }

@@ -1,8 +1,8 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: location]
-    B[Input: location] -- {user_location} --> C[Send notification to user]
-    C[Send notification to user] -- {notification_status} --> D[Wait: 1 minute]
-    D[Wait: 1 minute] --> E[Output: notification status]
-    E[Output: notification status] --> F[End]
+    A[Start] --> B[Input: name]
+    B[Input: name] -- {user_name} --> C[Generate user activity report]
+    C[Generate user activity report] -- {report} --> D[Wait: 5 minutes]
+    D[Wait: 5 minutes] --> E[Output: report]
+    E[Output: report] --> F[End]
 ```
