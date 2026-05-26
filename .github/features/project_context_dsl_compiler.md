@@ -157,9 +157,10 @@ Output:
 ```python
 {
 "node_map":{},
-"adjacency":{},
+"adjacency":{},   # {source_id: [(target_id, control), ...]}; control=None for non-IF edges
 "graph":{},
-"traversal":[]
+"traversal":[],
+"builder_context": {"adjacency": ..., "node_map": ...}  # passed to generate_dsl()
 }
 ```
 
@@ -227,6 +228,8 @@ ACTION → call:http
 WAIT → wait (duration mode) or listen (listen mode)
 
 OUTPUT → set
+
+IF → switch (case/when/then + default/then)
 
 END → None
 
@@ -347,15 +350,37 @@ WAIT
 
 OUTPUT
 
+IF
+
 END
+
+---
+
+# IF Node Schema
+
+`condition` is a root-level key on IF nodes — same level as `id`, `type`, `data`:
+
+```json
+{ "id": "N3", "type": "IF", "condition": { "left": "user_email", "operator": "!=", "right": "" } }
+```
+
+For nested IF where a child needs parent-scoped values, `data` carries those values:
+
+```json
+{ "id": "N4", "type": "IF", "condition": { "left": "email_verified", "operator": "==", "right": true }, "data": { "parent_field": "..." } }
+```
+
+`data` is optional — omitted for simple IF nodes. `condition` is always required.
+
+Expression building: `builders/condition_builder.py → build_condition_expression(condition)` → `'${ .user_email != "" }'`
+
+This utility is shared — any future node type that evaluates a condition imports from `condition_builder`, not from `if_builder`.
 
 ---
 
 # Deferred Nodes
 
 V2:
-
-IF
 
 PARALLEL
 
@@ -537,13 +562,13 @@ Complete.
 
 Next milestone:
 
-WAIT variants
+Nested IF (Level 11)
 
 ↓
 
-IF
+Validated ✅
 
-↓
+Next:
 
 PARALLEL
 

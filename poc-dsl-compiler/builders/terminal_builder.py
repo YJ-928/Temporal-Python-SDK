@@ -1,4 +1,4 @@
-def build_terminal(node: dict) -> None:
+def build_terminal(node: dict, compiler_context: dict | None = None) -> None:
     """
     START and END nodes produce no DSL output.
 

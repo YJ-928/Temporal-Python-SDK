@@ -9,13 +9,27 @@ V1 — POC complete. Pure-function pipeline validated end-to-end.
 ## Implemented Node Types
 
 | Node | Builder | DSL task | Status |
-|---|---|---|---|
+|---|---|---|-|
 | `START` | `terminal_builder.build_terminal` | none (returns `None`) | ✅ |
 | `END` | `terminal_builder.build_terminal` | none (returns `None`) | ✅ |
 | `INPUT` | `input_builder.build_input` | `set` | ✅ |
 | `ACTION` | `action_builder.build_action` | `call: http` | ✅ |
 | `OUTPUT` | `output_builder.build_output` | `set` | ✅ |
 | `WAIT` | `wait_builder.build_wait` | `wait` (duration mode) or `listen` (listen mode) | ✅ |
+| `IF` | `if_builder.build_if` | `switch` (case/when/then + default/then) | ✅ |
+
+**IF node schema:** `condition` is a root-level key on the IF node (same level as `id`, `type`, `data`). `data` is optional — omitted for simple IF nodes; present when a nested IF receives parent-scoped values. Expression building is delegated to `builders/condition_builder.py → build_condition_expression(condition)`.
+
+```json
+{ "id": "N3", "type": "IF", "condition": { "left": "user_email", "operator": "!=", "right": "" } }
+```
+
+Nested IF with parent data:
+```json
+{ "id": "N4", "type": "IF", "condition": { "left": "email_verified", "operator": "==", "right": true }, "data": { "parent_field": "..." } }
+```
+
+**Shared utility:** `builders/condition_builder.py` — `build_condition_expression(condition: dict) -> str`. Converts a condition dict to a Zigflow jq expression string (e.g. `${ .user_email != "" }`). Reusable by any future node type that evaluates a condition (LOOP, etc.). Validates operator against `SUPPORTED_OPERATORS` frozenset.
 
 ---
 
@@ -23,7 +37,6 @@ V1 — POC complete. Pure-function pipeline validated end-to-end.
 
 | Node | Planned DSL task | Reason deferred |
 |---|---|---|
-| `IF` | `switch` | Conditional branching — V2 |
 | `PARALLEL` | `fork` | Parallel execution — V2 |
 | `VARIABLE` | `set` | Variable binding — V2 |
 | `WORKFLOW` | `run: workflow` | Sub-workflow invocation — V2 |
@@ -52,7 +65,7 @@ V1 — POC complete. Pure-function pipeline validated end-to-end.
 | Stage | Function | Status |
 |---|---|---|
 | Node map | `generate_node_map()` | ✅ |
-| Adjacency list | `generate_adjaceny_list()` | ✅ (intentional typo — do not rename) |
+| Adjacency list | `generate_adjaceny_list()` | ✅ (intentional typo — do not rename); tuples `(target_id, control)` — `control=None` for non-IF edges, `{"branch": "true"|"false"}` for IF branch edges |
 | Entrypoint detection | `find_entrypoint()` | ✅ |
 | Graph structure | `generate_graph_structure()` | ✅ |
 | Traversal | `traverse_graph()` | ✅ |
@@ -75,9 +88,9 @@ V1 — POC complete. Pure-function pipeline validated end-to-end.
 ## Workflow Generator
 
 - **File:** `poc-dsl-compiler/workflow_generator.py`
-- **Status:** ✅ 9 difficulty levels implemented and validated
+- **Status:** ✅ 11 difficulty levels implemented and validated
 - **Run:** `python3 poc-dsl-compiler/workflow_generator.py`
-- Prompts for level 1–9; writes Mermaid to `poc-dsl-compiler/input/workflows/` and JSON to `poc-dsl-compiler/input/workflow_outputs/` (compiler's input directory — no manual copy needed)
+- Prompts for level 1–11; writes Mermaid to `poc-dsl-compiler/input/workflows/` and JSON to `poc-dsl-compiler/input/workflow_outputs/` (compiler's input directory — no manual copy needed)
 - Full documentation: `.github/features/workflow_generator.md`
 
 | Level | Shape | Nodes | Edges | WAIT mode |
@@ -91,6 +104,8 @@ V1 — POC complete. Pure-function pipeline validated end-to-end.
 | 7 | 2 branches with WAIT(duration) | 10 | 10 | duration |
 | 8 | Linear with WAIT(listen) | 6 | 5 | listen |
 | 9 | 2 branches: branch A duration, branch B listen | 9 | 9 | duration + listen |
+| 10 | Linear IF: email presence guard, true/false branches | 8 | 8 | — |
+| 11 | Nested IF: outer email-presence guard; inner email-verified check in true branch | 11 | 12 | — |
 
 ---
 

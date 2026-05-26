@@ -16,7 +16,7 @@ def generate_adjaceny_list(workflow: dict):
         if source not in adjacency:
             adjacency[source] = []
 
-        adjacency[source].append(target)
+        adjacency[source].append((target, edge.get("control")))
 
     return adjacency
 
@@ -38,14 +38,13 @@ def generate_graph_structure(entrypoint, node_map, adjacency, graph=None):
     graph[entrypoint] = {"node": node_map[entrypoint], "children": []}
     children = adjacency.get(entrypoint, [])
 
-    for child in children:
-        graph[entrypoint]["children"].append(
-            generate_graph_structure(child, node_map, adjacency, graph)
-        )
+    for target_id, control in children:
+        child_graph = generate_graph_structure(target_id, node_map, adjacency, graph)
+        graph[entrypoint]["children"].append({"control": control, "child": child_graph})
 
     return graph[entrypoint]
 
-def print_graph(graph, level=0, visited=None):
+def print_graph(graph, level=0, visited=None, control=None):
     if visited is None:
         visited = set()
 
@@ -57,12 +56,16 @@ def print_graph(graph, level=0, visited=None):
         return
 
     visited.add(node_id)
-    print(prefix + graph["node"]["type"])
+    node_type = graph["node"]["type"]
+    branch = control.get("branch") if control else None
+    display = node_type + (f" [branch={branch}]" if branch else "")
+    print(prefix + display)
 
-    for child in graph["children"]:
-        print_graph(child, level + 1, visited)
+    for edge in graph["children"]:
+        print_graph(edge["child"], level + 1, visited, edge["control"])
 
 def traverse_graph(graph, order=None, visited=None):
+    """Perform DFS on the graph and generate traversal"""
     if order is None:
         order = []
 
@@ -78,8 +81,8 @@ def traverse_graph(graph, order=None, visited=None):
 
     order.append(graph["node"])
 
-    for child in graph["children"]:
-        traverse_graph(child, order, visited)
+    for edge in graph["children"]:
+        traverse_graph(edge["child"], order, visited)
 
     return order
 
@@ -97,4 +100,8 @@ def run_compiler(workflow: dict) -> dict:
         "adjacency": adjacency,
         "graph": graph,
         "traversal": traversal,
+        "builder_context": {
+            "adjacency": adjacency,
+            "node_map": node_map,
+        },
     }

@@ -1,0 +1,90 @@
+{
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "IF",
+      "condition": {
+        "left": "user_email",
+        "operator": "!=",
+        "right": ""
+      }
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_notification",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "notification_status"
+      }
+    },
+    {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "notification_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "log_missing_email",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "log_id"
+      }
+    },
+    {
+      "id": "N7",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "log_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N8",
+      "type": "END"
+    }
+  ],
+  "edges": [
+    {"id": "E1", "source": "N1", "target": "N2"},
+    {"id": "E2", "source": "N2", "target": "N3"},
+    {"id": "E3", "source": "N3", "target": "N4", "control": {"branch": "true"}},
+    {"id": "E4", "source": "N3", "target": "N6", "control": {"branch": "false"}},
+    {"id": "E5", "source": "N4", "target": "N5"},
+    {"id": "E6", "source": "N5", "target": "N8"},
+    {"id": "E7", "source": "N6", "target": "N7"},
+    {"id": "E8", "source": "N7", "target": "N8"}
+  ]
+}

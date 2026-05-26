@@ -1,5 +1,8 @@
 {
-  "switch": [
-
-  ]
+  "N3_if": {
+    "switch": [
+      {"case": {"when": "${ .country == \"US\" }", "then": "N4_greet"}},
+      {"default": {"then": "N6_validate_email"}}
+    ]
+  }
 }

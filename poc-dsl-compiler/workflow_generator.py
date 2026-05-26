@@ -117,6 +117,15 @@ LISTEN_VOCAB = [
     {"signal": "approval_received",  "label": "Approval received"},
 ]
 
+IF_VOCAB = [
+    {"left": "country",    "operator": "==", "right": "US",     "label": "country == US"},
+    {"left": "country",    "operator": "!=", "right": "CN",     "label": "country != CN"},
+    {"left": "city",       "operator": "==", "right": "Paris",  "label": "city == Paris"},
+    {"left": "city",       "operator": "!=", "right": "London", "label": "city != London"},
+    {"left": "user_name",  "operator": "==", "right": "admin",  "label": "user_name == admin"},
+    {"left": "user_email", "operator": "!=", "right": "",       "label": "user_email != empty"},
+]
+
 # Reverse lookup: operation name to human-readable label
 _OPERATION_LABELS = {a["operation"]: a["label"] for a in ACTION_VOCAB}
 
@@ -190,9 +199,24 @@ def make_wait_listen(nid, listen):
         },
     }
 
+def make_if(nid, cond):
+    """cond: one entry from IF_VOCAB."""
+    return {
+        "id": nid,
+        "type": "IF",
+        "condition": {
+            "left": cond["left"],
+            "operator": cond["operator"],
+            "right": cond["right"],
+        },
+    }
+
 # Edge Builder
-def make_edge(eid, src, tgt):
-    return {"id": eid, "source": src, "target": tgt}
+def make_edge(eid, src, tgt, control=None):
+    edge = {"id": eid, "source": src, "target": tgt}
+    if control is not None:
+        edge["control"] = control
+    return edge
 
 # Utilities
 def get_next_index():
@@ -250,9 +274,14 @@ def _node_label(node):
             unit, n = "minute", d["minutes"]
             return f"Wait: {n} {unit}{'s' if n != 1 else ''}"
         return f"Wait: {d['seconds']} seconds"
+    if t == "IF":
+        cond = node["condition"]
+        return f"IF: {cond['left']} {cond['operator']} {cond['right']}"
     return t
 
-def _edge_label(src_node, tgt_node):
+def _edge_label(src_node, tgt_node, edge=None):
+    if edge and edge.get("control", {}).get("branch"):
+        return "[" + edge["control"]["branch"] + "]"
     st = src_node["type"]
     tt = tgt_node["type"]
 
@@ -289,7 +318,7 @@ def generate_mermaid(workflow):
         tgt_l = letter_map[tgt]
         src_label = _node_label(node_map[src])
         tgt_label = _node_label(node_map[tgt])
-        label = _edge_label(node_map[src], node_map[tgt])
+        label = _edge_label(node_map[src], node_map[tgt], edge)
 
         if label:
             lines.append(f"    {src_l}[{src_label}] -- {label} --> {tgt_l}[{tgt_label}]")
@@ -637,6 +666,99 @@ def generate_level_9():
     return {"nodes": nodes, "edges": edges}
 
 
+def generate_level_10():
+    """
+    Level 10 — Linear IF: conditional branch on email presence
+    START to INPUT(email) to IF(user_email != "") -[true]-> send_notification to OUTPUT(notification_status) to END
+                                                   -[false]-> log_missing_email to OUTPUT(log_id) ↗
+    8 nodes, 8 edges
+
+    Fixed topology (not randomised) to enforce a semantically coherent
+    email-presence guard: only notify when email is present, log otherwise.
+    """
+    cond = {"left": "user_email", "operator": "!=", "right": ""}
+    inp = next(i for i in INPUT_VOCAB if i["store_as"] == "user_email")
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", [inp]),
+        make_if("N3", cond),
+        make_action("N4", "send_notification",  "user_email", "notification_status"),
+        make_output("N5", [{"field": "notification_status", "type": "string"}]),
+        make_action("N6", "log_missing_email", "user_email", "log_id"),
+        make_output("N7", [{"field": "log_id", "type": "string"}]),
+        make_end("N8"),
+    ]
+
+    edges = [
+        make_edge("E1", "N1", "N2"),
+        make_edge("E2", "N2", "N3"),
+        make_edge("E3", "N3", "N4", control={"branch": "true"}),
+        make_edge("E4", "N3", "N6", control={"branch": "false"}),
+        make_edge("E5", "N4", "N5"),
+        make_edge("E6", "N5", "N8"),
+        make_edge("E7", "N6", "N7"),
+        make_edge("E8", "N7", "N8"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
+def generate_level_11():
+    """
+    Level 11 — Nested IF: outer guard on email presence, inner guard on verified status
+    START to INPUT(email)
+          to IF outer (user_email != "") -[true]-> lookup_user -> IF inner (email_verified == true)
+                                                                     -[true]-> send_notification -> OUTPUT(notification_status)
+                                                                     -[false]-> send_email       -> OUTPUT(email_status)
+                                         -[false]-> log_missing_email -> OUTPUT(log_id)
+          to END
+    12 nodes, 13 edges
+
+    lookup_user ACTION produces email_verified so the inner IF always reads
+    a defined variable. Without this producer, email_verified is undefined.
+
+    Validates: nested switch traversal, nested compiler_context branch lookup,
+    nested DSL switch goto routing, variable producer before nested IF.
+    """
+    inp = next(i for i in INPUT_VOCAB if i["store_as"] == "user_email")
+    cond_outer = {"left": "user_email",    "operator": "!=", "right": ""}
+    cond_inner = {"left": "email_verified", "operator": "==", "right": True}
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", [inp]),
+        make_if("N3", cond_outer),                                       # outer IF
+        make_action("N12", "lookup_user", "user_email", "email_verified"), # produces email_verified
+        make_if("N4", cond_inner),                                       # inner IF (in outer-true branch)
+        make_action("N5", "send_notification",  "user_email", "notification_status"),
+        make_output("N6", [{"field": "notification_status", "type": "string"}]),
+        make_action("N7", "send_email",         "user_email", "email_status"),
+        make_output("N8", [{"field": "email_status", "type": "string"}]),
+        make_action("N9", "log_missing_email",  "user_email", "log_id"),
+        make_output("N10", [{"field": "log_id", "type": "string"}]),
+        make_end("N11"),
+    ]
+
+    edges = [
+        make_edge("E1",  "N1",  "N2"),
+        make_edge("E2",  "N2",  "N3"),
+        make_edge("E3",  "N3",  "N12", control={"branch": "true"}),   # outer true  → lookup_user
+        make_edge("E4",  "N3",  "N9",  control={"branch": "false"}),  # outer false → log
+        make_edge("E13", "N12", "N4"),                                 # lookup_user → inner IF
+        make_edge("E5",  "N4",  "N5",  control={"branch": "true"}),   # inner true  → notify
+        make_edge("E6",  "N4",  "N7",  control={"branch": "false"}),  # inner false → send email
+        make_edge("E7",  "N5",  "N6"),
+        make_edge("E8",  "N6",  "N11"),
+        make_edge("E9",  "N7",  "N8"),
+        make_edge("E10", "N8",  "N11"),
+        make_edge("E11", "N9",  "N10"),
+        make_edge("E12", "N10", "N11"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
 # Save
 def save_workflow(workflow, mermaid_str, index):
     WORKFLOWS_DIR.mkdir(parents=True, exist_ok=True)
@@ -665,6 +787,8 @@ GENERATORS = {
     7: generate_level_7,
     8: generate_level_8,
     9: generate_level_9,
+    10: generate_level_10,
+    11: generate_level_11,
 }
 
 DESCRIPTIONS = {
@@ -677,6 +801,8 @@ DESCRIPTIONS = {
     7: "Wait+    — 2 branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT",
     8: "Listen   — Linear with WAIT(listen): waits for an external signal before OUTPUT",
     9: "Mixed W  — 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)",
+    10: "IF       — Linear IF: email presence guard, true/false branches",
+    11: "Nested IF — Outer email-presence guard; inner email-verified check in true branch",
 }
 
 if __name__ == "__main__":
@@ -684,10 +810,10 @@ if __name__ == "__main__":
     for k, v in DESCRIPTIONS.items():
         print(f"  {k}  {v}")
 
-    level = int(input("\nDifficulty Level (1-9): "))
+    level = int(input("\nDifficulty Level (1-11): "))
 
     if level not in GENERATORS:
-        print("Invalid level. Choose 1-9.")
+        print("Invalid level. Choose 1-11.")
         raise SystemExit(1)
 
     workflow = GENERATORS[level]()

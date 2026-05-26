@@ -1,0 +1,83 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "user_email": "${ $input.email }"
+        }
+      }
+    },
+    {
+      "N3_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ .user_email != \"\" }",
+              "then": "N4_send_notification"
+            }
+          },
+          {
+            "default": {
+              "then": "N6_log_missing_email"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N4_send_notification": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/send_notification",
+          "body": {
+            "value": "${ .user_email }"
+          }
+        },
+        "output": {
+          "as": {
+            "notification_status": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N5_expose": {
+        "set": {
+          "notification_status": "${ .notification_status }"
+        }
+      }
+    },
+    {
+      "N6_log_missing_email": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/log_missing_email",
+          "body": {
+            "value": "${ .user_email }"
+          }
+        },
+        "output": {
+          "as": {
+            "log_id": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N7_expose": {
+        "set": {
+          "log_id": "${ .log_id }"
+        }
+      }
+    }
+  ]
+}

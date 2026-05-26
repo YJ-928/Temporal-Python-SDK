@@ -1,4 +1,4 @@
-def build_action(node: dict) -> dict:
+def build_action(node: dict, compiler_context: dict | None = None) -> dict:
     """
     Convert an ACTION node into a call: http DSL fragment.
 

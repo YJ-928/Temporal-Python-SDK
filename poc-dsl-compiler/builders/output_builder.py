@@ -1,4 +1,4 @@
-def build_output(node: dict) -> dict:
+def build_output(node: dict, compiler_context: dict | None = None) -> dict:
     """
     Convert an OUTPUT node into a set DSL fragment.
 

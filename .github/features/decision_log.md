@@ -141,6 +141,117 @@ Architectural decisions for the DSL compiler. Each entry records what was decide
 
 ---
 
+## 2026-05 — IF node: switch DSL, tuple adjacency, compiler_context threading
+
+**Decision:** IF node emits a Zigflow `switch` task. Branch routing uses tuple adjacency `(target_id, control)`. The IF builder receives graph context via `compiler_context` threaded from `run_compiler()` through `generate_dsl()`.
+
+**IF DSL shape:**
+```json
+{
+  "N3_if": {
+    "switch": [
+      {"case":    {"when": "${ .field == \"value\" }", "then": "N4_task_name"}},
+      {"default": {"then": "N6_other_task"}}
+    ]
+  }
+}
+```
+
+**Adjacency model change:**
+- Old: `adjacency[source].append(target_id)` — list of string IDs
+- New: `adjacency[source].append((target_id, control))` — list of tuples
+- Non-IF edges: `control=None`
+- IF branch edges: `control={"branch": "true"}` or `control={"branch": "false"}`
+- Edges carry `"control"` key in JSON only when present (`make_edge(eid, src, tgt, control=None)`)
+
+**compiler_context threading:**
+- `run_compiler()` returns `"builder_context": {"adjacency": adjacency, "node_map": node_map}`
+- `generate_dsl(traversal, compiler_context=None, ...)` accepts it as second positional arg
+- Every builder signature extended to `build_X(node: dict, compiler_context: dict | None = None)`
+- Only `if_builder.build_if` consumes `compiler_context`; all others ignore it
+- Generator (`dsl_generator.py`) stays a pure assembler — no graph logic added
+
+**Rejected:**
+- Injecting `_branch_children` directly into traversal node dicts — violates compiler/generator boundary; traversal output must not carry graph metadata
+- Passing `graph=compiler_output` to `generate_dsl()` — makes the assembler graph-aware; generator must only see traversal + optional opaque context
+- Separate `TRUE_BRANCH` / `FALSE_BRANCH` node types — unnecessary node-type proliferation; one IF node is correct
+
+**Known limitation (V1):** `generate_graph_structure()` mutates `child_graph["control"]` on the shared graph entry for IF branch children. If the same node were an IF-branch child of two different IFs, the control metadata would be clobbered. This topology does not arise in Level 10/11 and is acceptable for V1.
+
+**Level 11 (nested IF):** Deferred until Level 10 switch goto semantics are validated end-to-end with the Zigflow runtime.
+
+---
+
+## 2026-05 — IF condition schema: condition at root level
+
+**Decision:** `condition` is a root-level key on IF nodes — same level as `id`, `type`, and `data` — not nested inside `data`.
+
+**Schema:**
+```json
+{ "id": "N3", "type": "IF", "condition": { "left": "user_email", "operator": "!=", "right": "" } }
+```
+
+**Nested IF with parent data:**
+```json
+{ "id": "N4", "type": "IF", "condition": { "left": "email_verified", "operator": "==", "right": true }, "data": { "parent_field": "..." } }
+```
+
+**Reason:**
+- `condition` is not operational data about the node — it is the branching predicate, a first-class concern of the IF type. Placing it at root makes this distinction explicit.
+- `data` is reserved for node-specific operational payload (e.g., parent-scoped values passed into a nested IF). Keeping them separate prevents `data` from becoming a catch-all.
+- For simple IF nodes `data` is omitted entirely, keeping the schema minimal.
+- `if_builder.py` reads `node["condition"]` directly — no intermediate `data` access needed.
+
+**Consequence:** All IF node input JSON fixtures use root-level `condition`. `workflow_10_output.json` and `workflow_11_output.json` migrated. `make_if()` in `workflow_generator.py` emits root-level `condition`.
+
+**Rejected:** `data.condition` wrapper — obscures the structural role of the condition; makes `data` semantically ambiguous.
+
+---
+
+## 2026-05 — condition_builder.py as shared utility
+
+## 2026-05 — condition_builder.py as shared utility
+
+**Decision:** Extract condition expression building into `builders/condition_builder.py → build_condition_expression(condition: dict) -> str`.
+
+**Reason:**
+- IF builder previously contained an inline f-string for jq expression construction
+- The same expression format will be needed by LOOP, conditional WAIT, and any other node that evaluates a condition
+- Centralising the expression format in one file means operator support (adding `in`, `not in`, etc.) is a one-file change
+- Operator validation (`SUPPORTED_OPERATORS` frozenset) is now explicit and discoverable
+
+**Consequence:**
+- `if_builder.py` imports from `condition_builder.py` — this is the correct direction (builder → utility)
+- `condition_builder.py` does not import from any builder or from `compiler.py` — it is a leaf utility
+- Future node builders that need conditions should import `build_condition_expression`, not reimplement it
+
+**Rejected:** Keeping the f-string inline in `if_builder.py` — breaks reuse; each future conditional builder would need its own copy.
+
+---
+
+## 2026-05 — Level 11: nested IF validation
+
+**Decision:** Add Level 11 to the workflow generator (nested IF topology) as the end-to-end validation for nested `switch` DSL goto routing.
+
+**Topology:**
+```
+START → INPUT(email)
+      → IF outer (user_email != "") → [true]  → IF inner (email_verified == "true")
+                                                    → [true]  → send_notification → OUTPUT → END
+                                                    → [false] → send_email        → OUTPUT → END
+                                      → [false] → log_missing_email → OUTPUT → END
+```
+
+**What this validates:**
+- Nested switch tasks in flat Zigflow DSL (goto routing handles nesting implicitly)
+- `compiler_context` adjacency lookup for nested IF branch resolution
+- DFS preorder traversal correctly orders: outer IF → inner IF → true branch → false branch → outer false branch
+- `task_names.resolve_task_name()` resolves IF-to-IF goto correctly (`N4_if`)
+
+**Zigflow validation result:** ✅ `workflow_11_dsl_schema.json` passes `zigflow validate`
+
+---
+
 ## 2026-05 — Compiler does not validate generator output
 
 **Decision:** The compiler assumes workflow JSON produced by the generator is structurally valid. It does not explicitly validate graph constraints before traversal.

@@ -1,4 +1,4 @@
-def build_input(node: dict) -> dict:
+def build_input(node: dict, compiler_context: dict | None = None) -> dict:
     """
     Convert an INPUT node into a set DSL fragment.
 

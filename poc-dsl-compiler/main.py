@@ -115,7 +115,7 @@ def main():
     print()
 
     # DSL Generator
-    dsl = generate_dsl(traversal)
+    dsl = generate_dsl(traversal, compiler_context=compiler_output["builder_context"])
     save_dsl(dsl, output_path)
 
     print(f"=== DSL Output: {output_path} ===")

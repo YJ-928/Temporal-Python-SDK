@@ -44,7 +44,7 @@ def _build_wait_listen(node_id: str, config: dict) -> dict:
     }
 
 
-def build_wait(node: dict) -> dict:
+def build_wait(node: dict, compiler_context: dict | None = None) -> dict:
     """
     Convert a WAIT node into a wait or listen DSL fragment.
 

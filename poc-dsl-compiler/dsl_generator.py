@@ -6,6 +6,7 @@ from builders.input_builder import build_input
 from builders.action_builder import build_action
 from builders.output_builder import build_output
 from builders.wait_builder import build_wait
+from builders.if_builder import build_if
 
 
 # Dispatch table: node type -> builder function
@@ -15,11 +16,13 @@ NODE_BUILDERS = {
     "ACTION": build_action,
     "OUTPUT": build_output,
     "WAIT": build_wait,
+    "IF": build_if,
     "END": build_terminal,
 }
 
 def generate_dsl(
     traversal: list,
+    compiler_context: dict | None = None,
     dsl_version: str = "1.0.0",
     version: str = "1.0.0",
     workflow_type: str = "compiled-workflow",
@@ -29,11 +32,13 @@ def generate_dsl(
     Build a Zigflow-compatible DSL dict from a pre-computed traversal.
 
     Args:
-        traversal:     Ordered list of node dicts from traverse_graph()
-        dsl_version:   DSL spec version string
-        version:       Workflow definition version string
-        workflow_type: Temporal workflow type name
-        task_queue:    Temporal task queue name
+        traversal:        Ordered list of node dicts from traverse_graph()
+        compiler_context: Optional {"adjacency": ..., "node_map": ...} from run_compiler().
+                          Passed to every builder; only IF builder consumes it.
+        dsl_version:      DSL spec version string
+        version:          Workflow definition version string
+        workflow_type:    Temporal workflow type name
+        task_queue:       Temporal task queue name
 
     Returns:
         Zigflow DSL dict: { "document": {...}, "do": [...] }
@@ -54,7 +59,7 @@ def generate_dsl(
             print(f"[WARNING] No builder for node type '{node_type}' (id={node['id']}). Skipped.")
             continue
 
-        fragment = builder(node)
+        fragment = builder(node, compiler_context=compiler_context)
 
         if fragment is None:
             # START and END emit no DSL.
