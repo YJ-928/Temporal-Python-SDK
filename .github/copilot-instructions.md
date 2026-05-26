@@ -1068,10 +1068,11 @@ These are the only node types implemented in V1. Do not add others without updat
 | `START` | None | Graph traversal entry point; emits no DSL task |
 | `END` | None | Graph traversal terminal; emits no DSL task |
 | `INPUT` | `set` task | Captures external input fields into named workflow variables |
-| `ACTION` | Activity call task | Transforms runtime variables; models a computation step |
+| `ACTION` | `call: http` task | Transforms runtime variables; models an HTTP service call |
 | `OUTPUT` | `set` task (expose) | Exposes named workflow variables as workflow output |
+| `WAIT` | `wait` task | Durable pause for a fixed duration (`seconds`, `minutes`, or `hours`) |
 
-**NOT implemented in V1** (deferred): `IF`, `WAIT`, `VARIABLE`, `WORKFLOW`, `PARALLEL`.
+**NOT implemented in V1** (deferred): `IF`, `VARIABLE`, `WORKFLOW`, `PARALLEL`.
 
 ### Node Data Contracts
 
@@ -1146,24 +1147,36 @@ These are the only node types implemented in V1. Do not add others without updat
 
 ## 36. DSL Compiler — Workflow Generator
 
-**File:** `poc-dsl-compiler/examples/workflow_generator.py`
+**File:** `poc-dsl-compiler/workflow_generator.py`
+**Full docs:** `.github/features/workflow_generator.md`
 
-The workflow generator produces random Workflow JSON documents for fuzz-testing the compiler pipeline.
+The workflow generator produces random Workflow JSON documents and Mermaid diagrams for fuzz-testing the DSL compiler pipeline. 7 difficulty levels covering linear, branching, deep-chained, mixed-depth, and WAIT-based topologies.
 
 **How to run:**
 ```bash
-cd poc-dsl-compiler/examples
-python workflow_generator.py
-# Prompts: Total Nodes, Branches
-# Output: generated/workflow.json + generated/workflow.md (Mermaid diagram)
+python3 poc-dsl-compiler/workflow_generator.py
+# Prompts: Difficulty Level (1-7)
+# Writes: poc-dsl-compiler/workflows/workflow_N.md
+#         poc-dsl-compiler/workflow_outputs/workflow_N_output.json
 ```
 
-**What it generates:**
-- A `START` node → one shared `INPUT` node → N branches of random `INPUT`/`ACTION`/`OUTPUT` nodes → an `END` node
-- All `OUTPUT` nodes are wired directly to `END`
-- A Mermaid diagram is saved alongside the JSON for visual inspection
+**Difficulty levels:**
+- Level 1: Linear — `START → INPUT → ACTION → OUTPUT → END` (5 nodes)
+- Level 2: 2 parallel branches from shared INPUT (7 nodes)
+- Level 3: 3 parallel branches from shared INPUT (9 nodes)
+- Level 4: 2 deep-chained branches with ACTION→ACTION (9 nodes)
+- Level 5: Mixed depth; branch 2 has its own INPUT and a 3-action chain (10 nodes)
+- Level 6: Linear with WAIT between ACTION and OUTPUT (6 nodes)
+- Level 7: 2 branches each with a WAIT; branch 1 has an extra ACTION after WAIT (10 nodes)
 
-**Supported node types in generator:** `INPUT`, `ACTION`, `OUTPUT` (the full V1 set, minus `START`/`END` which are always auto-generated).
+**Supported node types:** `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`, `WAIT`
+
+**Key design rules:**
+- `shuffle_nodes()` is always called — nodes array is randomized, compiler must not rely on array position
+- `get_next_index()` auto-increments file names by scanning `workflows/` for existing `workflow_N.md` files
+- Generator output (`workflow_outputs/`) is separate from compiler input (`input/workflow_outputs/`) — copy manually to compile
+- Vocabulary (`INPUT_VOCAB`, `ACTION_VOCAB`, `WAIT_VOCAB`) provides semantically realistic randomized content
+- WAIT data contract: `{"duration": {"<unit>": <value>}}` — exactly one time key (`seconds`/`minutes`/`hours`), no `label` key
 
 ---
 
@@ -1175,7 +1188,7 @@ python workflow_generator.py
 - **"How does traversal work?"** → DFS preorder from the `START` node. Do not iterate the raw node array. See `traverse_graph()` in `workflow_compiler.py`.
 - **"Where is the compiler code?"** → `poc-dsl-compiler/examples/workflow_compiler.py`
 - **"Where is the V0 prototype?"** → `poc-react-flow/` — agent-routing specific, not generic. Key reference: `poc-react-flow/node_conversion.py` for builder function patterns.
-- **"Generate a test workflow"** → `python poc-dsl-compiler/examples/workflow_generator.py`
+- **"Generate a test workflow"** → `python3 poc-dsl-compiler/workflow_generator.py` (prompts for difficulty level 1–7)
 - **"What is the three-tier architecture?"** → See `Documents/workflow_builder_architecture.md`. Tier 1 = UI (V2), Tier 2 = Compiler + API (V1), Tier 3 = Zigflow + Temporal execution.
 
 ---
@@ -1188,4 +1201,61 @@ python workflow_generator.py
 4. **Do not duplicate shared nodes** in the traversal output. The graph structure handles them with a `visited` set.
 5. **Do not use classes** in the compiler functions. All functions are module-level and pure.
 6. **Do not add templates or a registry** until the V1 pure-function approach is validated end-to-end.
-7. **Do not implement** `IF`, `WAIT`, `VARIABLE`, `WORKFLOW`, or `PARALLEL` nodes in V1.
+7. `IF`, `VARIABLE`, `WORKFLOW`, and `PARALLEL` nodes are **deferred until architecture expansion**. See `.github/features/current_state.md` for the current implemented set and deferred list.
+
+---
+
+## 39. DSL Compiler — AI Agent Context
+
+Whenever a prompt references any of these terms:
+
+- `dsl`, `compiler`, `builders`, `dsl_generator`, `node_builder`
+- `traversal`, `graph`, `node_map`, `adjacency`
+- `zigflow`, `workflow_outputs`, `dsl_schema`
+- `build_input`, `build_action`, `build_output`, `build_wait`, `build_terminal`
+
+**Read these files first before making any edit or suggestion:**
+
+1. `.github/features/dsl_compiler.md` — pipeline, architecture constraints, input contract, node types, how to add a new node
+2. `.github/features/dsl_generator.md` — dispatch table, `generate_dsl()`, `save_dsl()`, output shape
+3. `.github/features/builders.md` — all builder contracts, exact DSL output, f-string escaping, template rules
+4. `.github/features/current_state.md` — implementation status, validation status, what is deferred
+
+Whenever a prompt references any of these terms related to workflow generation:
+
+- `workflow_generator`, `difficulty level`, `random workflow`, `fuzz`, `mermaid diagram`
+- `WAIT_VOCAB`, `INPUT_VOCAB`, `ACTION_VOCAB`, `make_wait`, `generate_level_`, `shuffle_nodes`
+
+**Read this file first before making any edit or suggestion:**
+
+5. `.github/features/workflow_generator.md` — vocabulary tables, node builders, mermaid rules, difficulty level topologies, constraint rules, output directories
+
+**Then execute.** Prefer feature docs over repository-wide conventions when compiler files are involved. Temporal SDK patterns (sections 1–25) still apply to any Python worker or client code in this repo, but do not apply to the compiler pipeline itself.
+
+### Rules that must be preserved on every edit
+
+| Rule | Detail |
+|---|---|
+| Pure functions only | No classes anywhere in `poc-dsl-compiler/` |
+| Dispatch table only | `NODE_BUILDERS` dict in `dsl_generator.py` is the only dispatch mechanism |
+| Compiler separation | `compiler.py` owns graph; never imports from `builders/` |
+| Builder separation | Each builder owns exactly one node type; never imports from `compiler.py` |
+| Templates are docs | `templates/` files are never imported, loaded, or executed at runtime |
+| No registry | Do not add a factory, registry, or plugin system |
+| Zigflow task types | Only: `set`, `call`, `do`, `fork`, `for`, `listen`, `raise`, `run`, `switch`, `try`, `wait` |
+
+### Adding any new node type requires all these steps
+
+```
+1. Create builders/<type_lower>_builder.py  (pure function, returns DSL fragment dict)
+2. Register in dsl_generator.py NODE_BUILDERS  (import + one-line entry)
+3. Update or create templates/<type>.json  (synchronized with builder output)
+4. Add difficulty level or node to workflow_generator.py vocabularies
+5. Add input JSON in input/workflow_outputs/  (exercises the new node)
+6. Run validate_outputs.py — all outputs must pass zigflow validate
+7. Update .github/features/dsl_compiler.md node type table
+8. Update .github/features/builders.md builder reference + template table
+9. Update .github/features/current_state.md implemented list
+10. Update .github/features/decision_log.md with the decision rationale
+11. Update .github/copilot-instructions.md if the checklist or rules change
+```
