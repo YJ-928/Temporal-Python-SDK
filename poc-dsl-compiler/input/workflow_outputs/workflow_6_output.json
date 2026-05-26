@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "duration": {
+          "minutes": 1
+        }
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "location",
+            "store_as": "user_location",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "notification_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N6",
+      "type": "END"
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_notification",
+        "inputs": {
+          "value": "user_location"
+        },
+        "output": "notification_status"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5"
+    },
+    {
+      "id": "E5",
+      "source": "N5",
+      "target": "N6"
+    }
+  ]
+}

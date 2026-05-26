@@ -1,0 +1,157 @@
+{
+  "nodes": [
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_notification",
+        "inputs": {
+          "value": "city"
+        },
+        "output": "notification_status"
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "calculate_age",
+        "inputs": {
+          "value": "dob"
+        },
+        "output": "age"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "WAIT",
+      "data": {
+        "duration": {
+          "seconds": 10
+        }
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N9",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "notification_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "lookup_location",
+        "inputs": {
+          "value": "age"
+        },
+        "output": "location_data"
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "date_of_birth",
+            "store_as": "dob",
+            "type": "string"
+          },
+          {
+            "field": "city",
+            "store_as": "city",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N10",
+      "type": "END"
+    },
+    {
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "duration": {
+          "seconds": 30
+        }
+      }
+    },
+    {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "location_data",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5"
+    },
+    {
+      "id": "E5",
+      "source": "N5",
+      "target": "N6"
+    },
+    {
+      "id": "E6",
+      "source": "N6",
+      "target": "N10"
+    },
+    {
+      "id": "E7",
+      "source": "N2",
+      "target": "N7"
+    },
+    {
+      "id": "E8",
+      "source": "N7",
+      "target": "N8"
+    },
+    {
+      "id": "E9",
+      "source": "N8",
+      "target": "N9"
+    },
+    {
+      "id": "E10",
+      "source": "N9",
+      "target": "N10"
+    }
+  ]
+}

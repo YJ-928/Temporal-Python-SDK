@@ -1,0 +1,49 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "user_location": "${ $input.location }"
+        }
+      }
+    },
+    {
+      "N3_send_notification": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/send_notification",
+          "body": {
+            "value": "${ .user_location }"
+          }
+        },
+        "output": {
+          "as": {
+            "notification_status": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N4_wait": {
+        "wait": {
+          "minutes": 1
+        }
+      }
+    },
+    {
+      "N5_expose": {
+        "set": {
+          "notification_status": "${ .notification_status }"
+        }
+      }
+    }
+  ]
+}

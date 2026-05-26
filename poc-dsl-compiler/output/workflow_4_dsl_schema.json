@@ -1,0 +1,101 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "user_id": "${ $input.user_id }",
+          "order_id": "${ $input.order_id }"
+        }
+      }
+    },
+    {
+      "N3_process_order": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/process_order",
+          "body": {
+            "value": "${ .user_id }"
+          }
+        },
+        "output": {
+          "as": {
+            "order_status": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N4_validate_email": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/validate_email",
+          "body": {
+            "value": "${ .order_status }"
+          }
+        },
+        "output": {
+          "as": {
+            "validation_result": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N5_expose": {
+        "set": {
+          "validation_result": "${ .validation_result }"
+        }
+      }
+    },
+    {
+      "N6_verify_phone": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/verify_phone",
+          "body": {
+            "value": "${ .order_id }"
+          }
+        },
+        "output": {
+          "as": {
+            "phone_verified": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N7_send_notification": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/send_notification",
+          "body": {
+            "value": "${ .phone_verified }"
+          }
+        },
+        "output": {
+          "as": {
+            "notification_status": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N8_expose": {
+        "set": {
+          "notification_status": "${ .notification_status }"
+        }
+      }
+    }
+  ]
+}

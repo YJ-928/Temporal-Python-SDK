@@ -1,0 +1,67 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "dob": "${ $input.date_of_birth }",
+          "country": "${ $input.country }"
+        }
+      }
+    },
+    {
+      "N3_enrich_profile": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/enrich_profile",
+          "body": {
+            "value": "${ .dob }"
+          }
+        },
+        "output": {
+          "as": {
+            "enriched_profile": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N5_expose": {
+        "set": {
+          "enriched_profile": "${ .enriched_profile }"
+        }
+      }
+    },
+    {
+      "N4_lookup_location": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/lookup_location",
+          "body": {
+            "value": "${ .country }"
+          }
+        },
+        "output": {
+          "as": {
+            "location_data": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N6_expose": {
+        "set": {
+          "location_data": "${ .location_data }"
+        }
+      }
+    }
+  ]
+}

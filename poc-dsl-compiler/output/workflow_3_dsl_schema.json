@@ -1,0 +1,92 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "product_id": "${ $input.product_id }",
+          "country": "${ $input.country }",
+          "user_email": "${ $input.email }"
+        }
+      }
+    },
+    {
+      "N3_calculate_age": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/calculate_age",
+          "body": {
+            "value": "${ .product_id }"
+          }
+        },
+        "output": {
+          "as": {
+            "age": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N4_expose": {
+        "set": {
+          "age": "${ .age }"
+        }
+      }
+    },
+    {
+      "N5_geocode": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/geocode",
+          "body": {
+            "value": "${ .country }"
+          }
+        },
+        "output": {
+          "as": {
+            "coordinates": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N6_expose": {
+        "set": {
+          "coordinates": "${ .coordinates }"
+        }
+      }
+    },
+    {
+      "N7_fetch_product": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/fetch_product",
+          "body": {
+            "value": "${ .user_email }"
+          }
+        },
+        "output": {
+          "as": {
+            "product_details": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N8_expose": {
+        "set": {
+          "product_details": "${ .product_details }"
+        }
+      }
+    }
+  ]
+}

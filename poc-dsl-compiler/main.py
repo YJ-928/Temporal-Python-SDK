@@ -10,9 +10,10 @@
 #   5. Print: graph, traversal, DSL path + contents
 #
 # Usage:
-#   python main.py                        # default: examples/workflow_1_output.json
-#   python main.py workflow.json          # resolved from input/ dir
-#   python main.py /full/path/to/wf.json  # absolute path used directly
+#   python main.py                             # default: input/workflow_outputs/workflow_1_output.json
+#   python main.py workflow_4_output           # resolved from input/workflow_outputs/ (.json added automatically)
+#   python main.py workflow_4_output.json      # same, extension already present
+#   python main.py /full/path/to/wf.json       # absolute path used directly
 
 import json
 import os
@@ -26,22 +27,39 @@ from dsl_generator import generate_dsl, save_dsl
 
 
 BASE = os.path.dirname(__file__)
-DEFAULT_INPUT = os.path.join(BASE, "examples", "workflow_1_output.json")
-DEFAULT_OUTPUT = os.path.join(BASE, "output", "generated_dsl.json")
+DEFAULT_INPUT = os.path.join(BASE, "input", "workflow_outputs", "workflow_1_output.json")
+INPUT_DIR = os.path.join(BASE, "input", "workflow_outputs")
+OUTPUT_DIR = os.path.join(BASE, "output")
+
+def resolve_output_path(input_path: str) -> str:
+    """
+    Derive the output filename from the input filename.
+
+    Examples:
+        workflow_1_output.json  →  output/workflow_1_dsl_schema.json
+        my_flow.json            →  output/my_flow_dsl_schema.json
+    """
+    stem = os.path.splitext(os.path.basename(input_path))[0]  # e.g. "workflow_1_output"
+    if stem.endswith("_output"):
+        stem = stem[: -len("_output")]                        # e.g. "workflow_1"
+    filename = f"{stem}_dsl_schema.json"                      # e.g. "workflow_1_dsl_schema.json"
+    return os.path.join(OUTPUT_DIR, filename)
 
 def resolve_input_path(arg: str | None) -> str:
     """
     Resolve the input JSON path.
 
-    - No arg:                 use DEFAULT_INPUT (examples/workflow_1_output.json)
-    - Absolute path:          use as-is
-    - Relative path that exists under cwd: use as-is (e.g. poc-dsl-compiler/examples/...)
-    - Bare filename:          resolve from input/ directory
+    - No arg:              use DEFAULT_INPUT (input/workflow_outputs/workflow_1_output.json)
+    - Absolute path:       used as-is; raises FileNotFoundError if missing
+    - Relative path that exists under cwd: used as-is
+    - Bare name (with or without .json): looked up in input/workflow_outputs/
     """
     if arg is None:
         return DEFAULT_INPUT
 
     if os.path.isabs(arg):
+        if not os.path.exists(arg):
+            raise FileNotFoundError(f"Input file not found: {arg}")
         return arg
 
     # Relative path that resolves from the current working directory
@@ -49,12 +67,20 @@ def resolve_input_path(arg: str | None) -> str:
     if os.path.exists(cwd_path):
         return cwd_path
 
-    # Bare filename look inside the input/ directory
-    return os.path.join(BASE, "input", arg)
+    # Bare name — normalise extension then look in input/workflow_outputs/
+    name = arg if arg.endswith(".json") else arg + ".json"
+    candidate = os.path.join(INPUT_DIR, name)
+    if os.path.exists(candidate):
+        return candidate
+
+    raise FileNotFoundError(
+        f"Input file not found: '{arg}'\n"
+        f"Expected location: {os.path.join(INPUT_DIR, name)}"
+    )
 
 def main():
     input_path = resolve_input_path(sys.argv[1] if len(sys.argv) > 1 else None)
-    output_path = DEFAULT_OUTPUT
+    output_path = resolve_output_path(input_path)
 
     # Load JSON (UI workflow output)
     with open(input_path, encoding="utf-8") as f:

@@ -1,0 +1,98 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "dob": "${ $input.date_of_birth }",
+          "city": "${ $input.city }"
+        }
+      }
+    },
+    {
+      "N3_calculate_age": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/calculate_age",
+          "body": {
+            "value": "${ .dob }"
+          }
+        },
+        "output": {
+          "as": {
+            "age": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N4_wait": {
+        "wait": {
+          "seconds": 30
+        }
+      }
+    },
+    {
+      "N5_lookup_location": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/lookup_location",
+          "body": {
+            "value": "${ .age }"
+          }
+        },
+        "output": {
+          "as": {
+            "location_data": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N6_expose": {
+        "set": {
+          "location_data": "${ .location_data }"
+        }
+      }
+    },
+    {
+      "N7_send_notification": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/send_notification",
+          "body": {
+            "value": "${ .city }"
+          }
+        },
+        "output": {
+          "as": {
+            "notification_status": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N8_wait": {
+        "wait": {
+          "seconds": 10
+        }
+      }
+    },
+    {
+      "N9_expose": {
+        "set": {
+          "notification_status": "${ .notification_status }"
+        }
+      }
+    }
+  ]
+}

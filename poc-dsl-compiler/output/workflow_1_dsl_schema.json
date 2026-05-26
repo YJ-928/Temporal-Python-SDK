@@ -1,0 +1,42 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "user_email": "${ $input.email }"
+        }
+      }
+    },
+    {
+      "N3_geocode": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/geocode",
+          "body": {
+            "value": "${ .user_email }"
+          }
+        },
+        "output": {
+          "as": {
+            "coordinates": "${ . }"
+          }
+        }
+      }
+    },
+    {
+      "N4_expose": {
+        "set": {
+          "coordinates": "${ .coordinates }"
+        }
+      }
+    }
+  ]
+}
