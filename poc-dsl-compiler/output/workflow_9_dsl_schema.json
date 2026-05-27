@@ -10,56 +10,66 @@
     {
       "N2_capture": {
         "set": {
-          "phone": "${ $input.phone_number }",
-          "user_location": "${ $input.location }"
+          "user_location": "${ $input.location }",
+          "order_id": "${ $input.order_id }"
+        },
+        "export": {
+          "as": "${ $context + {user_location: .user_location, order_id: .order_id} }"
         }
       }
     },
     {
-      "N3_generate_report": {
+      "N3_format_output": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/generate_report",
+          "endpoint": "http://localhost:8080/format_output",
           "body": {
-            "value": "${ .phone }"
+            "value": "${ $context.user_location }"
           }
         },
         "output": {
           "as": {
-            "report": "${ . }"
+            "formatted_output": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {formatted_output: .formatted_output} }"
         }
       }
     },
     {
       "N4_wait": {
         "wait": {
-          "minutes": 15
+          "minutes": 2
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "report": "${ .report }"
-        }
+          "formatted_output": "${ .formatted_output }"
+        },
+        "then": "end"
       }
     },
     {
-      "N6_process_order": {
+      "N6_calculate_age": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/process_order",
+          "endpoint": "http://localhost:8080/calculate_age",
           "body": {
-            "value": "${ .user_location }"
+            "value": "${ $context.order_id }"
           }
         },
         "output": {
           "as": {
-            "order_status": "${ . }"
+            "age": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {age: .age} }"
         }
       }
     },
@@ -69,7 +79,7 @@
           "to": {
             "one": {
               "with": {
-                "id": "payment_completed"
+                "id": "notification_ack"
               }
             }
           }
@@ -79,8 +89,9 @@
     {
       "N8_expose": {
         "set": {
-          "order_status": "${ .order_status }"
-        }
+          "age": "${ .age }"
+        },
+        "then": "end"
       }
     }
   ]

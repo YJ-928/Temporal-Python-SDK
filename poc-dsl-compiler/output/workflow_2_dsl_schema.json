@@ -10,57 +10,68 @@
     {
       "N2_capture": {
         "set": {
-          "user_email": "${ $input.email }",
+          "phone": "${ $input.phone_number }",
           "order_id": "${ $input.order_id }"
+        },
+        "export": {
+          "as": "${ $context + {phone: .phone, order_id: .order_id} }"
         }
       }
     },
     {
-      "N3_send_email": {
+      "N3_log_activity": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/send_email",
+          "endpoint": "http://localhost:8080/log_activity",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ $context.phone }"
           }
         },
         "output": {
           "as": {
-            "email_status": "${ . }"
+            "log_id": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {log_id: .log_id} }"
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "email_status": "${ .email_status }"
-        }
+          "log_id": "${ .log_id }"
+        },
+        "then": "end"
       }
     },
     {
-      "N4_format_output": {
+      "N4_greet": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/format_output",
+          "endpoint": "http://localhost:8080/greet",
           "body": {
-            "value": "${ .order_id }"
+            "value": "${ $context.order_id }"
           }
         },
         "output": {
           "as": {
-            "formatted_output": "${ . }"
+            "greeting": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {greeting: .greeting} }"
         }
       }
     },
     {
       "N6_expose": {
         "set": {
-          "formatted_output": "${ .formatted_output }"
-        }
+          "greeting": "${ .greeting }"
+        },
+        "then": "end"
       }
     }
   ]

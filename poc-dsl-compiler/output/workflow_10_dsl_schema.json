@@ -11,6 +11,9 @@
       "N2_capture": {
         "set": {
           "user_email": "${ $input.email }"
+        },
+        "export": {
+          "as": "${ $context + {user_email: .user_email} }"
         }
       }
     },
@@ -38,13 +41,16 @@
           "method": "post",
           "endpoint": "http://localhost:8080/send_notification",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
             "notification_status": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {notification_status: .notification_status} }"
         }
       }
     },
@@ -52,7 +58,8 @@
       "N5_expose": {
         "set": {
           "notification_status": "${ .notification_status }"
-        }
+        },
+        "then": "end"
       }
     },
     {
@@ -62,13 +69,16 @@
           "method": "post",
           "endpoint": "http://localhost:8080/log_missing_email",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
             "log_id": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {log_id: .log_id} }"
         }
       }
     },
@@ -76,7 +86,8 @@
       "N7_expose": {
         "set": {
           "log_id": "${ .log_id }"
-        }
+        },
+        "then": "end"
       }
     }
   ]

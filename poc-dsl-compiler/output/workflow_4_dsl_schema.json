@@ -10,91 +10,108 @@
     {
       "N2_capture": {
         "set": {
-          "user_email": "${ $input.email }",
-          "dob": "${ $input.date_of_birth }"
-        }
-      }
-    },
-    {
-      "N3_fetch_product": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/fetch_product",
-          "body": {
-            "value": "${ .user_email }"
-          }
+          "user_location": "${ $input.location }",
+          "user_email": "${ $input.email }"
         },
-        "output": {
-          "as": {
-            "product_details": "${ . }"
-          }
+        "export": {
+          "as": "${ $context + {user_location: .user_location, user_email: .user_email} }"
         }
       }
     },
     {
-      "N4_greet": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/greet",
-          "body": {
-            "value": "${ .product_details }"
-          }
-        },
-        "output": {
-          "as": {
-            "greeting": "${ . }"
-          }
-        }
-      }
-    },
-    {
-      "N5_expose": {
-        "set": {
-          "greeting": "${ .greeting }"
-        }
-      }
-    },
-    {
-      "N6_lookup_location": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/lookup_location",
-          "body": {
-            "value": "${ .dob }"
-          }
-        },
-        "output": {
-          "as": {
-            "location_data": "${ . }"
-          }
-        }
-      }
-    },
-    {
-      "N7_verify_phone": {
+      "N3_verify_phone": {
         "call": "http",
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8080/verify_phone",
           "body": {
-            "value": "${ .location_data }"
+            "value": "${ $context.user_location }"
           }
         },
         "output": {
           "as": {
             "phone_verified": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {phone_verified: .phone_verified} }"
+        }
+      }
+    },
+    {
+      "N4_generate_report": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/generate_report",
+          "body": {
+            "value": "${ $context.phone_verified }"
+          }
+        },
+        "output": {
+          "as": {
+            "report": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {report: .report} }"
+        }
+      }
+    },
+    {
+      "N5_expose": {
+        "set": {
+          "report": "${ .report }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N6_fetch_product": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/fetch_product",
+          "body": {
+            "value": "${ $context.user_email }"
+          }
+        },
+        "output": {
+          "as": {
+            "product_details": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {product_details: .product_details} }"
+        }
+      }
+    },
+    {
+      "N7_calculate_age": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/calculate_age",
+          "body": {
+            "value": "${ $context.product_details }"
+          }
+        },
+        "output": {
+          "as": {
+            "age": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {age: .age} }"
         }
       }
     },
     {
       "N8_expose": {
         "set": {
-          "phone_verified": "${ .phone_verified }"
-        }
+          "age": "${ .age }"
+        },
+        "then": "end"
       }
     }
   ]

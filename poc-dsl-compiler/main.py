@@ -4,8 +4,8 @@
 #
 # Flow:
 #   1. Load workflow JSON from input/ dir (by filename) or by full path
-#   2. run_compiler(workflow) → node_map, adjacency, graph, traversal
-#   3. generate_dsl(traversal) → DSL dict
+#   2. run_compiler(workflow) -> node_map, adjacency, graph, traversal
+#   3. generate_dsl(traversal) -> DSL dict
 #   4. save_dsl(dsl, output_path)
 #   5. Print: graph, traversal, DSL path + contents
 #
@@ -36,13 +36,13 @@ def resolve_output_path(input_path: str) -> str:
     Derive the output filename from the input filename.
 
     Examples:
-        workflow_1_output.json  →  output/workflow_1_dsl_schema.json
-        my_flow.json            →  output/my_flow_dsl_schema.json
+        workflow_1_output.json  ->  output/workflow_1_dsl_schema.json
+        my_flow.json            ->  output/my_flow_dsl_schema.json
     """
-    stem = os.path.splitext(os.path.basename(input_path))[0]  # e.g. "workflow_1_output"
+    stem = os.path.splitext(os.path.basename(input_path))[0]
     if stem.endswith("_output"):
-        stem = stem[: -len("_output")]                        # e.g. "workflow_1"
-    filename = f"{stem}_dsl_schema.json"                      # e.g. "workflow_1_dsl_schema.json"
+        stem = stem[: -len("_output")]
+    filename = f"{stem}_dsl_schema.json"
     return os.path.join(OUTPUT_DIR, filename)
 
 def resolve_input_path(arg: str | None) -> str:

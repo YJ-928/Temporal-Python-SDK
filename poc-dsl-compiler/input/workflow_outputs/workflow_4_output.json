@@ -1,7 +1,61 @@
 {
   "nodes": [
     {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "report",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "generate_report",
+        "inputs": {
+          "value": "phone_verified"
+        },
+        "output": "report"
+      }
+    },
+    {
       "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "verify_phone",
+        "inputs": {
+          "value": "user_location"
+        },
+        "output": "phone_verified"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "age",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N9",
+      "type": "END"
+    },
+    {
+      "id": "N6",
       "type": "ACTION",
       "data": {
         "operation": "fetch_product",
@@ -12,87 +66,33 @@
       }
     },
     {
-      "id": "N9",
-      "type": "END"
-    },
-    {
       "id": "N2",
       "type": "INPUT",
       "data": {
         "inputs": [
           {
-            "field": "email",
-            "store_as": "user_email",
+            "field": "location",
+            "store_as": "user_location",
             "type": "string"
           },
           {
-            "field": "date_of_birth",
-            "store_as": "dob",
+            "field": "email",
+            "store_as": "user_email",
             "type": "string"
           }
         ]
-      }
-    },
-    {
-      "id": "N5",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "greeting",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N8",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "phone_verified",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N4",
-      "type": "ACTION",
-      "data": {
-        "operation": "greet",
-        "inputs": {
-          "value": "product_details"
-        },
-        "output": "greeting"
-      }
-    },
-    {
-      "id": "N6",
-      "type": "ACTION",
-      "data": {
-        "operation": "lookup_location",
-        "inputs": {
-          "value": "dob"
-        },
-        "output": "location_data"
       }
     },
     {
       "id": "N7",
       "type": "ACTION",
       "data": {
-        "operation": "verify_phone",
+        "operation": "calculate_age",
         "inputs": {
-          "value": "location_data"
+          "value": "product_details"
         },
-        "output": "phone_verified"
+        "output": "age"
       }
-    },
-    {
-      "id": "N1",
-      "type": "START"
     }
   ],
   "edges": [

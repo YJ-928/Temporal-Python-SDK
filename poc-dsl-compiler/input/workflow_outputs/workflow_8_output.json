@@ -1,6 +1,16 @@
 {
   "nodes": [
     {
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "mode": "listen",
+        "config": {
+          "signal": "notification_ack"
+        }
+      }
+    },
+    {
       "id": "N6",
       "type": "END"
     },
@@ -10,31 +20,10 @@
       "data": {
         "outputs": [
           {
-            "field": "product_details",
+            "field": "validation_result",
             "type": "string"
           }
         ]
-      }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "fetch_product",
-        "inputs": {
-          "value": "dob"
-        },
-        "output": "product_details"
-      }
-    },
-    {
-      "id": "N4",
-      "type": "WAIT",
-      "data": {
-        "mode": "listen",
-        "config": {
-          "signal": "user_confirmation"
-        }
       }
     },
     {
@@ -47,11 +36,22 @@
       "data": {
         "inputs": [
           {
-            "field": "date_of_birth",
-            "store_as": "dob",
+            "field": "order_id",
+            "store_as": "order_id",
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "validate_email",
+        "inputs": {
+          "value": "order_id"
+        },
+        "output": "validation_result"
       }
     }
   ],

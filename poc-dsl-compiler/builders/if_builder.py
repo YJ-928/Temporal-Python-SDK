@@ -1,5 +1,5 @@
 from builders.condition_builder import build_condition_expression
-from builders.task_names import resolve_task_name
+from utils.task_names import resolve_task_name
 
 
 def build_if(node: dict, compiler_context: dict | None = None) -> dict:

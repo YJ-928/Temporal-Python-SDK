@@ -10,32 +10,39 @@
     {
       "N2_capture": {
         "set": {
-          "user_location": "${ $input.location }"
+          "phone": "${ $input.phone_number }"
+        },
+        "export": {
+          "as": "${ $context + {phone: .phone} }"
         }
       }
     },
     {
-      "N3_enrich_profile": {
+      "N3_log_activity": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/enrich_profile",
+          "endpoint": "http://localhost:8080/log_activity",
           "body": {
-            "value": "${ .user_location }"
+            "value": "${ $context.phone }"
           }
         },
         "output": {
           "as": {
-            "enriched_profile": "${ . }"
+            "log_id": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {log_id: .log_id} }"
         }
       }
     },
     {
       "N4_expose": {
         "set": {
-          "enriched_profile": "${ .enriched_profile }"
-        }
+          "log_id": "${ .log_id }"
+        },
+        "then": "end"
       }
     }
   ]

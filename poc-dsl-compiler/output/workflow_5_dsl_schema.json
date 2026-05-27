@@ -10,7 +10,10 @@
     {
       "N2_capture": {
         "set": {
-          "user_email": "${ $input.email }"
+          "product_id": "${ $input.product_id }"
+        },
+        "export": {
+          "as": "${ $context + {product_id: .product_id} }"
         }
       }
     },
@@ -21,13 +24,16 @@
           "method": "post",
           "endpoint": "http://localhost:8080/verify_phone",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ $context.product_id }"
           }
         },
         "output": {
           "as": {
             "phone_verified": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {phone_verified: .phone_verified} }"
         }
       }
     },
@@ -35,72 +41,86 @@
       "N4_expose": {
         "set": {
           "phone_verified": "${ .phone_verified }"
-        }
+        },
+        "then": "end"
       }
     },
     {
       "N5_capture": {
         "set": {
-          "country": "${ $input.country }"
+          "city": "${ $input.city }"
+        },
+        "export": {
+          "as": "${ $context + {city: .city} }"
         }
       }
     },
     {
-      "N6_send_notification": {
+      "N6_generate_report": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/send_notification",
+          "endpoint": "http://localhost:8080/generate_report",
           "body": {
-            "value": "${ .country }"
+            "value": "${ $context.city }"
           }
         },
         "output": {
           "as": {
-            "notification_status": "${ . }"
+            "report": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {report: .report} }"
         }
       }
     },
     {
-      "N7_enrich_profile": {
+      "N7_process_order": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/enrich_profile",
+          "endpoint": "http://localhost:8080/process_order",
           "body": {
-            "value": "${ .notification_status }"
+            "value": "${ $context.report }"
           }
         },
         "output": {
           "as": {
-            "enriched_profile": "${ . }"
+            "order_status": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {order_status: .order_status} }"
         }
       }
     },
     {
-      "N8_format_output": {
+      "N8_send_email": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/format_output",
+          "endpoint": "http://localhost:8080/send_email",
           "body": {
-            "value": "${ .enriched_profile }"
+            "value": "${ $context.order_status }"
           }
         },
         "output": {
           "as": {
-            "formatted_output": "${ . }"
+            "email_status": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {email_status: .email_status} }"
         }
       }
     },
     {
       "N9_expose": {
         "set": {
-          "formatted_output": "${ .formatted_output }"
-        }
+          "email_status": "${ .email_status }"
+        },
+        "then": "end"
       }
     }
   ]

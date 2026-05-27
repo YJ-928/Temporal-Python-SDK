@@ -1,8 +1,8 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: date of birth]
-    B[Input: date of birth] -- {dob} --> C[Fetch product details]
-    C[Fetch product details] -- {product_details} --> D[Listen: user confirmation]
-    D[Listen: user confirmation] --> E[Output: product details]
-    E[Output: product details] --> F[End]
+    A[Start] --> B[Input: order id]
+    B[Input: order id] -- {order_id} --> C[Validate email address]
+    C[Validate email address] -- {validation_result} --> D[Listen: notification ack]
+    D[Listen: notification ack] --> E[Output: validation result]
+    E[Output: validation result] --> F[End]
 ```

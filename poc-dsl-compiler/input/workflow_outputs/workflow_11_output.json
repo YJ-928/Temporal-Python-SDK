@@ -1,23 +1,13 @@
 {
   "nodes": [
     {
-      "id": "N5",
-      "type": "ACTION",
+      "id": "N2",
+      "type": "INPUT",
       "data": {
-        "operation": "send_notification",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "notification_status"
-      }
-    },
-    {
-      "id": "N8",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
+        "inputs": [
           {
-            "field": "email_status",
+            "field": "email",
+            "store_as": "user_email",
             "type": "string"
           }
         ]
@@ -33,55 +23,8 @@
       }
     },
     {
-      "id": "N7",
-      "type": "ACTION",
-      "data": {
-        "operation": "send_email",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "email_status"
-      }
-    },
-    {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "email",
-            "store_as": "user_email",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N10",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "log_id",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N9",
-      "type": "ACTION",
-      "data": {
-        "operation": "log_missing_email",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "log_id"
-      }
+      "id": "N11",
+      "type": "END"
     },
     {
       "id": "N6",
@@ -105,8 +48,65 @@
       }
     },
     {
-      "id": "N11",
-      "type": "END"
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_email",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "email_status"
+      }
+    },
+    {
+      "id": "N10",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "log_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "email_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_notification",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "notification_status"
+      }
+    },
+    {
+      "id": "N9",
+      "type": "ACTION",
+      "data": {
+        "operation": "log_missing_email",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "log_id"
+      }
     },
     {
       "id": "N12",
@@ -146,6 +146,11 @@
       "control": {
         "branch": "false"
       }
+    },
+    {
+      "id": "E13",
+      "source": "N12",
+      "target": "N4"
     },
     {
       "id": "E5",
@@ -192,11 +197,6 @@
       "id": "E12",
       "source": "N10",
       "target": "N11"
-    },
-    {
-      "id": "E13",
-      "source": "N12",
-      "target": "N4"
     }
   ]
 }

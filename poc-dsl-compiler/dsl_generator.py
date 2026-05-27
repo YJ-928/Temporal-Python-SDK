@@ -67,6 +67,20 @@ def generate_dsl(
             # Safe to continue iteration.
             continue
 
+        # If this node leads directly to END, the branch must terminate here
+        # rather than falling through to the next task in the flat do list.
+        # This is a graph property (direct successor is END), not a heuristic.
+        if compiler_context:
+            _adjacency = compiler_context["adjacency"]
+            _node_map = compiler_context["node_map"]
+            leads_to_end = any(
+                _node_map.get(succ_id, {}).get("type") == "END"
+                for succ_id, _ in _adjacency.get(node["id"], [])
+            )
+            if leads_to_end:
+                task_name = next(iter(fragment))
+                fragment[task_name]["then"] = "end"
+
         dsl["do"].append(fragment)
 
     return dsl

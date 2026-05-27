@@ -1,34 +1,14 @@
 {
   "nodes": [
     {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N6",
-      "type": "END"
-    },
-    {
       "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "generate_report",
+        "operation": "send_email",
         "inputs": {
-          "value": "user_name"
+          "value": "country"
         },
-        "output": "report"
-      }
-    },
-    {
-      "id": "N5",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "report",
-            "type": "string"
-          }
-        ]
+        "output": "email_status"
       }
     },
     {
@@ -37,9 +17,17 @@
       "data": {
         "mode": "duration",
         "config": {
-          "minutes": 5
+          "minutes": 1
         }
       }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N6",
+      "type": "END"
     },
     {
       "id": "N2",
@@ -47,8 +35,20 @@
       "data": {
         "inputs": [
           {
-            "field": "name",
-            "store_as": "user_name",
+            "field": "country",
+            "store_as": "country",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "email_status",
             "type": "string"
           }
         ]

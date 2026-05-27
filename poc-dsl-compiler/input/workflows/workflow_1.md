@@ -1,7 +1,7 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: location]
-    B[Input: location] -- {user_location} --> C[Enrich user profile]
-    C[Enrich user profile] -- {enriched_profile} --> D[Output: enriched profile]
-    D[Output: enriched profile] --> E[End]
+    A[Start] --> B[Input: phone number]
+    B[Input: phone number] -- {phone} --> C[Log user activity]
+    C[Log user activity] -- {log_id} --> D[Output: log id]
+    D[Output: log id] --> E[End]
 ```

@@ -1,23 +1,27 @@
 {
   "nodes": [
     {
-      "id": "N9",
-      "type": "END"
-    },
-    {
       "id": "N7",
       "type": "ACTION",
       "data": {
-        "operation": "verify_phone",
+        "operation": "greet",
         "inputs": {
-          "value": "user_location"
+          "value": "product_id"
         },
-        "output": "phone_verified"
+        "output": "greeting"
       }
     },
     {
-      "id": "N1",
-      "type": "START"
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "location_data",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "N8",
@@ -25,7 +29,23 @@
       "data": {
         "outputs": [
           {
-            "field": "phone_verified",
+            "field": "greeting",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N9",
+      "type": "END"
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "report",
             "type": "string"
           }
         ]
@@ -42,25 +62,13 @@
             "type": "string"
           },
           {
-            "field": "order_id",
-            "store_as": "order_id",
+            "field": "user_id",
+            "store_as": "user_id",
             "type": "string"
           },
           {
-            "field": "location",
-            "store_as": "user_location",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N4",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "order_status",
+            "field": "product_id",
+            "store_as": "product_id",
             "type": "string"
           }
         ]
@@ -70,35 +78,27 @@
       "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "process_order",
+        "operation": "generate_report",
         "inputs": {
           "value": "user_email"
         },
-        "output": "order_status"
-      }
-    },
-    {
-      "id": "N6",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "notification_status",
-            "type": "string"
-          }
-        ]
+        "output": "report"
       }
     },
     {
       "id": "N5",
       "type": "ACTION",
       "data": {
-        "operation": "send_notification",
+        "operation": "lookup_location",
         "inputs": {
-          "value": "order_id"
+          "value": "user_id"
         },
-        "output": "notification_status"
+        "output": "location_data"
       }
+    },
+    {
+      "id": "N1",
+      "type": "START"
     }
   ],
   "edges": [

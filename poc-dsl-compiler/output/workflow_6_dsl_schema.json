@@ -10,39 +10,46 @@
     {
       "N2_capture": {
         "set": {
-          "user_name": "${ $input.name }"
+          "country": "${ $input.country }"
+        },
+        "export": {
+          "as": "${ $context + {country: .country} }"
         }
       }
     },
     {
-      "N3_generate_report": {
+      "N3_send_email": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/generate_report",
+          "endpoint": "http://localhost:8080/send_email",
           "body": {
-            "value": "${ .user_name }"
+            "value": "${ $context.country }"
           }
         },
         "output": {
           "as": {
-            "report": "${ . }"
+            "email_status": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {email_status: .email_status} }"
         }
       }
     },
     {
       "N4_wait": {
         "wait": {
-          "minutes": 5
+          "minutes": 1
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "report": "${ .report }"
-        }
+          "email_status": "${ .email_status }"
+        },
+        "then": "end"
       }
     }
   ]

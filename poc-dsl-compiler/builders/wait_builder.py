@@ -16,7 +16,6 @@ def _build_wait_duration(node_id: str, config: dict) -> dict:
         }
     }
 
-
 def _build_wait_listen(node_id: str, config: dict) -> dict:
     """
     Emit a Zigflow listen task for an external signal.
@@ -42,7 +41,6 @@ def _build_wait_listen(node_id: str, config: dict) -> dict:
             }
         }
     }
-
 
 def build_wait(node: dict, compiler_context: dict | None = None) -> dict:
     """

@@ -1,31 +1,14 @@
 {
   "nodes": [
     {
-      "id": "N1",
-      "type": "START"
-    },
-    {
       "id": "N6",
       "type": "ACTION",
       "data": {
-        "operation": "send_notification",
+        "operation": "generate_report",
         "inputs": {
-          "value": "country"
+          "value": "city"
         },
-        "output": "notification_status"
-      }
-    },
-    {
-      "id": "N5",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "country",
-            "store_as": "country",
-            "type": "string"
-          }
-        ]
+        "output": "report"
       }
     },
     {
@@ -34,10 +17,32 @@
       "data": {
         "outputs": [
           {
-            "field": "formatted_output",
+            "field": "email_status",
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "verify_phone",
+        "inputs": {
+          "value": "product_id"
+        },
+        "output": "phone_verified"
+      }
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "process_order",
+        "inputs": {
+          "value": "report"
+        },
+        "output": "order_status"
       }
     },
     {
@@ -53,38 +58,33 @@
       }
     },
     {
-      "id": "N2",
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N5",
       "type": "INPUT",
       "data": {
         "inputs": [
           {
-            "field": "email",
-            "store_as": "user_email",
+            "field": "city",
+            "store_as": "city",
             "type": "string"
           }
         ]
       }
     },
     {
-      "id": "N8",
-      "type": "ACTION",
+      "id": "N2",
+      "type": "INPUT",
       "data": {
-        "operation": "format_output",
-        "inputs": {
-          "value": "enriched_profile"
-        },
-        "output": "formatted_output"
-      }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "verify_phone",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "phone_verified"
+        "inputs": [
+          {
+            "field": "product_id",
+            "store_as": "product_id",
+            "type": "string"
+          }
+        ]
       }
     },
     {
@@ -92,14 +92,14 @@
       "type": "END"
     },
     {
-      "id": "N7",
+      "id": "N8",
       "type": "ACTION",
       "data": {
-        "operation": "enrich_profile",
+        "operation": "send_email",
         "inputs": {
-          "value": "notification_status"
+          "value": "order_status"
         },
-        "output": "enriched_profile"
+        "output": "email_status"
       }
     }
   ],

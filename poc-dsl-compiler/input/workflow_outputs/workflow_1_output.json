@@ -5,27 +5,26 @@
       "type": "START"
     },
     {
-      "id": "N3",
-      "type": "ACTION",
+      "id": "N4",
+      "type": "OUTPUT",
       "data": {
-        "operation": "enrich_profile",
-        "inputs": {
-          "value": "user_location"
-        },
-        "output": "enriched_profile"
-      }
-    },
-    {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
+        "outputs": [
           {
-            "field": "location",
-            "store_as": "user_location",
+            "field": "log_id",
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "log_activity",
+        "inputs": {
+          "value": "phone"
+        },
+        "output": "log_id"
       }
     },
     {
@@ -33,12 +32,13 @@
       "type": "END"
     },
     {
-      "id": "N4",
-      "type": "OUTPUT",
+      "id": "N2",
+      "type": "INPUT",
       "data": {
-        "outputs": [
+        "inputs": [
           {
-            "field": "enriched_profile",
+            "field": "phone_number",
+            "store_as": "phone",
             "type": "string"
           }
         ]

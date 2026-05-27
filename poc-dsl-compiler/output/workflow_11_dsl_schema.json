@@ -11,6 +11,9 @@
       "N2_capture": {
         "set": {
           "user_email": "${ $input.email }"
+        },
+        "export": {
+          "as": "${ $context + {user_email: .user_email} }"
         }
       }
     },
@@ -38,13 +41,16 @@
           "method": "post",
           "endpoint": "http://localhost:8080/lookup_user",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
             "email_verified": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {email_verified: .email_verified} }"
         }
       }
     },
@@ -72,13 +78,16 @@
           "method": "post",
           "endpoint": "http://localhost:8080/send_notification",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
             "notification_status": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {notification_status: .notification_status} }"
         }
       }
     },
@@ -86,7 +95,8 @@
       "N6_expose": {
         "set": {
           "notification_status": "${ .notification_status }"
-        }
+        },
+        "then": "end"
       }
     },
     {
@@ -96,13 +106,16 @@
           "method": "post",
           "endpoint": "http://localhost:8080/send_email",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
             "email_status": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {email_status: .email_status} }"
         }
       }
     },
@@ -110,7 +123,8 @@
       "N8_expose": {
         "set": {
           "email_status": "${ .email_status }"
-        }
+        },
+        "then": "end"
       }
     },
     {
@@ -120,13 +134,16 @@
           "method": "post",
           "endpoint": "http://localhost:8080/log_missing_email",
           "body": {
-            "value": "${ .user_email }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
             "log_id": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {log_id: .log_id} }"
         }
       }
     },
@@ -134,7 +151,8 @@
       "N10_expose": {
         "set": {
           "log_id": "${ .log_id }"
-        }
+        },
+        "then": "end"
       }
     }
   ]

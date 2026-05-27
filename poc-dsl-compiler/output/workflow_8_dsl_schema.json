@@ -10,24 +10,30 @@
     {
       "N2_capture": {
         "set": {
-          "dob": "${ $input.date_of_birth }"
+          "order_id": "${ $input.order_id }"
+        },
+        "export": {
+          "as": "${ $context + {order_id: .order_id} }"
         }
       }
     },
     {
-      "N3_fetch_product": {
+      "N3_validate_email": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/fetch_product",
+          "endpoint": "http://localhost:8080/validate_email",
           "body": {
-            "value": "${ .dob }"
+            "value": "${ $context.order_id }"
           }
         },
         "output": {
           "as": {
-            "product_details": "${ . }"
+            "validation_result": "${ . }"
           }
+        },
+        "export": {
+          "as": "${ $context + {validation_result: .validation_result} }"
         }
       }
     },
@@ -37,7 +43,7 @@
           "to": {
             "one": {
               "with": {
-                "id": "user_confirmation"
+                "id": "notification_ack"
               }
             }
           }
@@ -47,8 +53,9 @@
     {
       "N5_expose": {
         "set": {
-          "product_details": "${ .product_details }"
-        }
+          "validation_result": "${ .validation_result }"
+        },
+        "then": "end"
       }
     }
   ]

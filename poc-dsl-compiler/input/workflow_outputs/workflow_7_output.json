@@ -1,31 +1,19 @@
 {
   "nodes": [
     {
-      "id": "N6",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "validation_result",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N7",
+      "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "fetch_product",
+        "operation": "process_order",
         "inputs": {
-          "value": "user_email"
+          "value": "user_id"
         },
-        "output": "product_details"
+        "output": "order_status"
       }
     },
     {
-      "id": "N1",
-      "type": "START"
+      "id": "N10",
+      "type": "END"
     },
     {
       "id": "N8",
@@ -33,17 +21,27 @@
       "data": {
         "mode": "duration",
         "config": {
-          "seconds": 10
+          "minutes": 5
         }
       }
     },
     {
-      "id": "N9",
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "mode": "duration",
+        "config": {
+          "minutes": 5
+        }
+      }
+    },
+    {
+      "id": "N6",
       "type": "OUTPUT",
       "data": {
         "outputs": [
           {
-            "field": "product_details",
+            "field": "report",
             "type": "string"
           }
         ]
@@ -55,52 +53,54 @@
       "data": {
         "inputs": [
           {
-            "field": "product_id",
-            "store_as": "product_id",
+            "field": "user_id",
+            "store_as": "user_id",
             "type": "string"
           },
           {
-            "field": "email",
-            "store_as": "user_email",
+            "field": "city",
+            "store_as": "city",
             "type": "string"
           }
         ]
       }
     },
     {
-      "id": "N5",
-      "type": "ACTION",
+      "id": "N9",
+      "type": "OUTPUT",
       "data": {
-        "operation": "validate_email",
-        "inputs": {
-          "value": "report"
-        },
-        "output": "validation_result"
+        "outputs": [
+          {
+            "field": "location_data",
+            "type": "string"
+          }
+        ]
       }
     },
     {
-      "id": "N10",
-      "type": "END"
+      "id": "N1",
+      "type": "START"
     },
     {
-      "id": "N3",
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "lookup_location",
+        "inputs": {
+          "value": "city"
+        },
+        "output": "location_data"
+      }
+    },
+    {
+      "id": "N5",
       "type": "ACTION",
       "data": {
         "operation": "generate_report",
         "inputs": {
-          "value": "product_id"
+          "value": "order_status"
         },
         "output": "report"
-      }
-    },
-    {
-      "id": "N4",
-      "type": "WAIT",
-      "data": {
-        "mode": "duration",
-        "config": {
-          "seconds": 30
-        }
       }
     }
   ],

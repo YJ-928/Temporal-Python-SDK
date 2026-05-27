@@ -69,7 +69,7 @@ def main() -> None:
             print(f"  ✗ {f}")
         sys.exit(1)
     else:
-        print("All files are valid ✅")
+        print("All files are valid")
 
 
 if __name__ == "__main__":

@@ -4,13 +4,11 @@ import re
 from pathlib import Path
 
 # Paths
-
 BASE_DIR = Path(__file__).parent
 WORKFLOWS_DIR = BASE_DIR / "input" / "workflows"
 OUTPUTS_DIR = BASE_DIR / "input" / "workflow_outputs"
 
 # Vocabulary
-
 INPUT_VOCAB = [
     {"field": "name", "store_as": "user_name", "label": "user name"},
     {"field": "email", "store_as": "user_email", "label": "email address"},
@@ -331,7 +329,7 @@ def generate_mermaid(workflow):
 # Level Generators
 def generate_level_1():
     """
-    Level 1 — Linear
+    Level 1 - Linear
     START to INPUT to ACTION to OUTPUT to END
     5 nodes, 4 edges
     """
@@ -357,7 +355,7 @@ def generate_level_1():
 
 def generate_level_2():
     """
-    Level 2 — 2 branches from shared INPUT, merge at END
+    Level 2 - 2 branches from shared INPUT, merge at END
     START to INPUT(2 fields) to ACTION to OUTPUT to END
                             to ACTION to OUTPUT ↗
     7 nodes, 7 edges
@@ -389,7 +387,7 @@ def generate_level_2():
 
 def generate_level_3():
     """
-    Level 3 — 3 branches from shared INPUT, merge at END
+    Level 3 - 3 branches from shared INPUT, merge at END
     START to INPUT(3 fields) to ACTION to OUTPUT to END
                             to ACTION to OUTPUT ↗
                             to ACTION to OUTPUT ↗
@@ -427,7 +425,7 @@ def generate_level_3():
 
 def generate_level_4():
     """
-    Level 4 — 2 deep branches: each branch chains ACTION to ACTION to OUTPUT
+    Level 4 - 2 deep branches: each branch chains ACTION to ACTION to OUTPUT
     START to INPUT(2 fields) to ACTION to ACTION to OUTPUT to END
                             to ACTION to ACTION to OUTPUT ↗
     9 nodes, 9 edges
@@ -468,7 +466,7 @@ def generate_level_4():
 
 def generate_level_5():
     """
-    Level 5 — Mixed depth: branch 1 is shallow, branch 2 has its own INPUT and a 3-action chain
+    Level 5 - Mixed depth: branch 1 is shallow, branch 2 has its own INPUT and a 3-action chain
     START to INPUT to ACTION to OUTPUT to END
           to INPUT to ACTION to ACTION to ACTION to OUTPUT ↗
     10 nodes, 10 edges
@@ -518,7 +516,7 @@ def generate_level_5():
 
 def generate_level_6():
     """
-    Level 6 — Linear with WAIT(duration): ACTION output pauses before reaching OUTPUT
+    Level 6 - Linear with WAIT(duration): ACTION output pauses before reaching OUTPUT
     START to INPUT to ACTION to WAIT(duration) to OUTPUT to END
     6 nodes, 5 edges
     """
@@ -548,26 +546,26 @@ def generate_level_6():
 
 def generate_level_7():
     """
-    Level 7 — Two branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT
+    Level 7 - Two branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT
     START to INPUT(2 fields) to ACTION to WAIT(duration) to ACTION to OUTPUT to END
                             to ACTION to WAIT(duration) to OUTPUT ↗
     10 nodes, 10 edges
     """
     inputs = random.sample(INPUT_VOCAB, 2)
     actions = random.sample(ACTION_VOCAB, 4)
-    a1, a2, a3, a4 = actions
+    a1, a2, a3, _ = actions
     wait_b1 = random.choice(WAIT_VOCAB)
     wait_b2 = random.choice(WAIT_VOCAB)
 
     nodes = [
         make_start("N1"),
         make_input("N2", inputs),
-        # Branch 1: ACTION → WAIT(duration) → ACTION → OUTPUT
+        # Branch 1: ACTION -> WAIT(duration) -> ACTION -> OUTPUT
         make_action("N3", a1["operation"], inputs[0]["store_as"], a1["output"]),
         make_wait_duration("N4", wait_b1),
         make_action("N5", a2["operation"], a1["output"], a2["output"]),
         make_output("N6", [{"field": a2["output"], "type": "string"}]),
-        # Branch 2: ACTION → WAIT(duration) → OUTPUT
+        # Branch 2: ACTION -> WAIT(duration) -> OUTPUT
         make_action("N7", a3["operation"], inputs[1]["store_as"], a3["output"]),
         make_wait_duration("N8", wait_b2),
         make_output("N9", [{"field": a3["output"], "type": "string"}]),
@@ -594,7 +592,7 @@ def generate_level_7():
 
 def generate_level_8():
     """
-    Level 8 — Linear with WAIT(listen): waits for an external signal before proceeding
+    Level 8 - Linear with WAIT(listen): waits for an external signal before proceeding
     START to INPUT to ACTION to WAIT(listen) to OUTPUT to END
     6 nodes, 5 edges
     """
@@ -624,7 +622,7 @@ def generate_level_8():
 
 def generate_level_9():
     """
-    Level 9 — Two branches: branch A uses WAIT(duration), branch B uses WAIT(listen)
+    Level 9 - Two branches: branch A uses WAIT(duration), branch B uses WAIT(listen)
     START to INPUT(2 fields) to ACTION to WAIT(duration) to OUTPUT to END
                             to ACTION to WAIT(listen) to OUTPUT ↗
     9 nodes, 9 edges
@@ -638,11 +636,11 @@ def generate_level_9():
     nodes = [
         make_start("N1"),
         make_input("N2", inputs),
-        # Branch A: ACTION → WAIT(duration) → OUTPUT
+        # Branch A: ACTION -> WAIT(duration) -> OUTPUT
         make_action("N3", a1["operation"], inputs[0]["store_as"], a1["output"]),
         make_wait_duration("N4", wait_dur),
         make_output("N5", [{"field": a1["output"], "type": "string"}]),
-        # Branch B: ACTION → WAIT(listen) → OUTPUT
+        # Branch B: ACTION -> WAIT(listen) -> OUTPUT
         make_action("N6", a2["operation"], inputs[1]["store_as"], a2["output"]),
         make_wait_listen("N7", wait_lis),
         make_output("N8", [{"field": a2["output"], "type": "string"}]),
@@ -668,7 +666,7 @@ def generate_level_9():
 
 def generate_level_10():
     """
-    Level 10 — Linear IF: conditional branch on email presence
+    Level 10 - Linear IF: conditional branch on email presence
     START to INPUT(email) to IF(user_email != "") -[true]-> send_notification to OUTPUT(notification_status) to END
                                                    -[false]-> log_missing_email to OUTPUT(log_id) ↗
     8 nodes, 8 edges
@@ -706,7 +704,7 @@ def generate_level_10():
 
 def generate_level_11():
     """
-    Level 11 — Nested IF: outer guard on email presence, inner guard on verified status
+    Level 11 - Nested IF: outer guard on email presence, inner guard on verified status
     START to INPUT(email)
           to IF outer (user_email != "") -[true]-> lookup_user -> IF inner (email_verified == true)
                                                                      -[true]-> send_notification -> OUTPUT(notification_status)
@@ -728,9 +726,9 @@ def generate_level_11():
     nodes = [
         make_start("N1"),
         make_input("N2", [inp]),
-        make_if("N3", cond_outer),                                       # outer IF
-        make_action("N12", "lookup_user", "user_email", "email_verified"), # produces email_verified
-        make_if("N4", cond_inner),                                       # inner IF (in outer-true branch)
+        make_if("N3", cond_outer),
+        make_action("N12", "lookup_user", "user_email", "email_verified"),
+        make_if("N4", cond_inner),
         make_action("N5", "send_notification",  "user_email", "notification_status"),
         make_output("N6", [{"field": "notification_status", "type": "string"}]),
         make_action("N7", "send_email",         "user_email", "email_status"),
@@ -743,11 +741,11 @@ def generate_level_11():
     edges = [
         make_edge("E1",  "N1",  "N2"),
         make_edge("E2",  "N2",  "N3"),
-        make_edge("E3",  "N3",  "N12", control={"branch": "true"}),   # outer true  → lookup_user
-        make_edge("E4",  "N3",  "N9",  control={"branch": "false"}),  # outer false → log
-        make_edge("E13", "N12", "N4"),                                 # lookup_user → inner IF
-        make_edge("E5",  "N4",  "N5",  control={"branch": "true"}),   # inner true  → notify
-        make_edge("E6",  "N4",  "N7",  control={"branch": "false"}),  # inner false → send email
+        make_edge("E3",  "N3",  "N12", control={"branch": "true"}),
+        make_edge("E4",  "N3",  "N9",  control={"branch": "false"}),
+        make_edge("E13", "N12", "N4"),
+        make_edge("E5",  "N4",  "N5",  control={"branch": "true"}),
+        make_edge("E6",  "N4",  "N7",  control={"branch": "false"}),
         make_edge("E7",  "N5",  "N6"),
         make_edge("E8",  "N6",  "N11"),
         make_edge("E9",  "N7",  "N8"),
@@ -792,17 +790,17 @@ GENERATORS = {
 }
 
 DESCRIPTIONS = {
-    1: "Linear   — START to INPUT to ACTION to OUTPUT to END",
-    2: "Branches — 2 parallel branches from shared INPUT",
-    3: "Branches — 3 parallel branches from shared INPUT",
-    4: "Deep     — 2 branches with chained ACTIONs (INPUT to ACTION to ACTION to OUTPUT)",
-    5: "Mixed    — 2 branches of different depths, branch 2 has its own INPUT",
-    6: "Wait     — Linear with WAIT(duration) between ACTION and OUTPUT",
-    7: "Wait+    — 2 branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT",
-    8: "Listen   — Linear with WAIT(listen): waits for an external signal before OUTPUT",
-    9: "Mixed W  — 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)",
-    10: "IF       — Linear IF: email presence guard, true/false branches",
-    11: "Nested IF — Outer email-presence guard; inner email-verified check in true branch",
+    1: "Linear   - START to INPUT to ACTION to OUTPUT to END",
+    2: "Branches - 2 parallel branches from shared INPUT",
+    3: "Branches - 3 parallel branches from shared INPUT",
+    4: "Deep     - 2 branches with chained ACTIONs (INPUT to ACTION to ACTION to OUTPUT)",
+    5: "Mixed    - 2 branches of different depths, branch 2 has its own INPUT",
+    6: "Wait     - Linear with WAIT(duration) between ACTION and OUTPUT",
+    7: "Wait+    - 2 branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT",
+    8: "Listen   - Linear with WAIT(listen): waits for an external signal before OUTPUT",
+    9: "Mixed W  - 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)",
+    10: "IF       - Linear IF: email presence guard, true/false branches",
+    11: "Nested IF - Outer email-presence guard; inner email-verified check in true branch",
 }
 
 if __name__ == "__main__":
@@ -823,4 +821,4 @@ if __name__ == "__main__":
     mermaid = generate_mermaid(workflow)
     save_workflow(workflow, mermaid, index)
 
-    print(f"\nWorkflow {index} (Level {level} — {DESCRIPTIONS[level]}) generated.")
+    print(f"\nWorkflow {index} (Level {level} - {DESCRIPTIONS[level]}) generated.")

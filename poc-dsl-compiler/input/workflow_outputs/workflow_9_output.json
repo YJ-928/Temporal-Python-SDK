@@ -4,11 +4,21 @@
       "id": "N6",
       "type": "ACTION",
       "data": {
-        "operation": "process_order",
+        "operation": "calculate_age",
         "inputs": {
-          "value": "user_location"
+          "value": "order_id"
         },
-        "output": "order_status"
+        "output": "age"
+      }
+    },
+    {
+      "id": "N7",
+      "type": "WAIT",
+      "data": {
+        "mode": "listen",
+        "config": {
+          "signal": "notification_ack"
+        }
       }
     },
     {
@@ -17,13 +27,46 @@
       "data": {
         "inputs": [
           {
-            "field": "phone_number",
-            "store_as": "phone",
+            "field": "location",
+            "store_as": "user_location",
             "type": "string"
           },
           {
-            "field": "location",
-            "store_as": "user_location",
+            "field": "order_id",
+            "store_as": "order_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "mode": "duration",
+        "config": {
+          "minutes": 2
+        }
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "format_output",
+        "inputs": {
+          "value": "user_location"
+        },
+        "output": "formatted_output"
+      }
+    },
+    {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "formatted_output",
             "type": "string"
           }
         ]
@@ -38,58 +81,15 @@
       "type": "END"
     },
     {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "generate_report",
-        "inputs": {
-          "value": "phone"
-        },
-        "output": "report"
-      }
-    },
-    {
-      "id": "N5",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "report",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
       "id": "N8",
       "type": "OUTPUT",
       "data": {
         "outputs": [
           {
-            "field": "order_status",
+            "field": "age",
             "type": "string"
           }
         ]
-      }
-    },
-    {
-      "id": "N7",
-      "type": "WAIT",
-      "data": {
-        "mode": "listen",
-        "config": {
-          "signal": "payment_completed"
-        }
-      }
-    },
-    {
-      "id": "N4",
-      "type": "WAIT",
-      "data": {
-        "mode": "duration",
-        "config": {
-          "minutes": 15
-        }
       }
     }
   ],
