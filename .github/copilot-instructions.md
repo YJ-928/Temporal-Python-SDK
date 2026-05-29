@@ -777,6 +777,7 @@ TEMPORAL_UI_VERSION=x.x.x            # used by docker-compose files
 - **"Handle errors in Zigflow"** → Wrap tasks in `try`/`catch` with a `retry` block. Use `raise` to fault deliberately.
 - **"Run parallel tasks in Zigflow"** → Use `fork` task with `compete: false` (all results) or `compete: true` (first wins).
 - **"Debug a Zigflow workflow"** → Run `zigflow validate workflow.yaml`, then `zigflow run -f workflow.yaml --log-level debug`, then inspect with `temporal workflow show --workflow-id <id>`.
+- **"Add a PARALLEL node to the compiler"** → PARALLEL is implemented in V1. See `poc-dsl-compiler/builders/parallel_builder.py`. Convergence is detected via BFS-reachability intersection (`_find_parallel_convergence()` in `compiler.py`). Branches are `branch_0`, `branch_1`, … and MUST use named format `{branch_id: {"do": [...]}}`. Convergence OUTPUT nodes have `reads_from_context: True` in their `TraversalEntry`. PARALLEL must never appear in `NODE_BUILDERS` — it uses special dispatch in `generate_dsl()`.
 
 ---
 
@@ -1069,11 +1070,12 @@ These are the only node types implemented in V1. Do not add others without updat
 | `END` | None | Graph traversal terminal; emits no DSL task |
 | `INPUT` | `set` task + `export.as` | Captures external input fields into named workflow variables; exports all to `$context` |
 | `ACTION` | `call: http` task + `export.as` | Reads inputs from `$context`; exports output to `$context` |
-| `OUTPUT` | `set` task (expose) | Exposes named workflow variables as workflow output |
+| `OUTPUT` | `set` task (expose) | Exposes named workflow variables as workflow output; reads from `$context` when following a PARALLEL block (`reads_from_context: True` in TraversalEntry) |
 | `WAIT` | `wait` or `listen` task | Duration mode: durable timer. Listen mode: waits for a Temporal signal. |
 | `IF` | `switch` task | Conditional branching; true/false targets resolved by Phase A `traverse_graph()` |
+| `PARALLEL` | `fork` task | Parallel branches; `compete: false` = all complete; `compete: true` = race. Convergence detected via BFS-reachability intersection. Special dispatch in `dsl_generator.py` (not in `NODE_BUILDERS`). |
 
-**NOT implemented in V1** (deferred): `VARIABLE`, `WORKFLOW`, `PARALLEL`.
+**NOT implemented in V1** (deferred): `VARIABLE`, `WORKFLOW`.
 
 ### Node Data Contracts
 
@@ -1177,12 +1179,12 @@ These are the only node types implemented in V1. Do not add others without updat
 **File:** `poc-dsl-compiler/workflow_generator.py`
 **Full docs:** `.github/features/workflow_generator.md`
 
-The workflow generator produces random Workflow JSON documents and Mermaid diagrams for fuzz-testing the DSL compiler pipeline. 11 difficulty levels covering linear, branching, deep-chained, mixed-depth, WAIT-based, and IF-based topologies.
+The workflow generator produces random Workflow JSON documents and Mermaid diagrams for fuzz-testing the DSL compiler pipeline. 14 difficulty levels covering linear, branching, deep-chained, mixed-depth, WAIT-based, IF-based, and PARALLEL topologies.
 
 **How to run:**
 ```bash
 python3 poc-dsl-compiler/workflow_generator.py
-# Prompts: Difficulty Level (1-11)
+# Prompts: Difficulty Level (1-14)
 # Writes: poc-dsl-compiler/input/workflows/workflow_N.md
 #         poc-dsl-compiler/input/workflow_outputs/workflow_N_output.json
 ```
@@ -1199,8 +1201,11 @@ python3 poc-dsl-compiler/workflow_generator.py
 - Level 9: 2 branches; branch A uses WAIT(duration), branch B uses WAIT(listen) (9 nodes)
 - Level 10: Linear IF — IF gate on email presence; true/false branches each OUTPUT→END (8 nodes)
 - Level 11: Nested IF — outer IF gates on email presence, inner IF gates on email verification (12 nodes)
+- Level 12: Simple PARALLEL — 2 concurrent ACTION branches converge at OUTPUT (7 nodes)
+- Level 13: Advanced PARALLEL — IF in branch_0, ACTION chain in branch_1 (10 nodes)
+- Level 14: Convergence Ambiguity Test — OUTPUT + post-convergence ACTION + END all reachable from both branches; validates `_find_parallel_convergence()` selects shallowest root (8 nodes)
 
-**Supported node types:** `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`, `WAIT`, `IF`
+**Supported node types:** `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`, `WAIT`, `IF`, `PARALLEL`
 
 **Key design rules:**
 - `shuffle_nodes()` is always called — nodes array is randomized, compiler must not rely on array position
@@ -1210,6 +1215,7 @@ python3 poc-dsl-compiler/workflow_generator.py
 - WAIT node contract: `{"mode": "duration"|"listen", "config": {"<unit>": value | "signal": name}}` — `label` key never emitted
 - IF node contract: `condition` is a root-level key; never inside `data`
 - IF branch edges carry `{"control": {"branch": "true"|"false"}}` — non-IF edges carry no `control` key
+- PARALLEL node contract: `{"id": "N3", "type": "PARALLEL", "data": {"compete": false}}` — `make_parallel(nid, compete=False)` builder
 
 ---
 
@@ -1238,7 +1244,8 @@ python3 poc-dsl-compiler/workflow_generator.py
 5. **Do not use classes** in the compiler functions. All functions are module-level and pure.
 6. **Do not add templates or a registry** until the V1 pure-function approach is validated end-to-end.
 7. **Do not read `adjacency` or `node_map` inside a builder.** Builders receive pre-computed metadata via `traversal_entry`. If a builder needs graph data, pre-compute it in Phase A (`compiler.py`) and store it in `TraversalEntry`.
-8. `VARIABLE`, `WORKFLOW`, and `PARALLEL` nodes are **deferred until architecture expansion**. See `.github/features/current_state.md` for the current implemented set and deferred list.
+8. **Do not add PARALLEL to `NODE_BUILDERS`.** PARALLEL uses special dispatch in `dsl_generator.generate_dsl()` because building branches requires recursive `_build_do_list()` calls before builder invocation.
+9. `VARIABLE` and `WORKFLOW` nodes are **deferred until architecture expansion**. See `.github/features/current_state.md` for the current implemented set and deferred list.
 
 ---
 

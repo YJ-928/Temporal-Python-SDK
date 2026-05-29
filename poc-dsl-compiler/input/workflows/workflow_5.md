@@ -1,13 +1,13 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: email]
-    B[Input: email] -- {user_email} --> C[Generate user activity report]
-    C[Generate user activity report] -- {report} --> D[Output: report]
-    D[Output: report] --> J[End]
+    A[Start] --> B[Input: city]
+    B[Input: city] -- {city} --> C[Geocode location to coordinates]
+    C[Geocode location to coordinates] -- {coordinates} --> D[Output: coordinates]
+    D[Output: coordinates] --> J[End]
     A[Start] --> E[Input: country]
-    E[Input: country] -- {country} --> F[Geocode location to coordinates]
-    F[Geocode location to coordinates] -- {coordinates} --> G[Process order]
-    G[Process order] -- {order_status} --> H[Format output for response]
-    H[Format output for response] -- {formatted_output} --> I[Output: formatted output]
-    I[Output: formatted output] --> J[End]
+    E[Input: country] -- {country} --> F[Verify phone number]
+    F[Verify phone number] -- {phone_verified} --> G[Validate email address]
+    G[Validate email address] -- {validation_result} --> H[Fetch product details]
+    H[Fetch product details] -- {product_details} --> I[Output: product details]
+    I[Output: product details] --> J[End]
 ```

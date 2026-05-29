@@ -1,23 +1,15 @@
 {
   "nodes": [
     {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N3",
+      "id": "N7",
       "type": "ACTION",
       "data": {
-        "operation": "send_notification",
+        "operation": "log_activity",
         "inputs": {
-          "value": "product_id"
+          "value": "order_status"
         },
-        "output": "notification_status"
+        "output": "log_id"
       }
-    },
-    {
-      "id": "N7",
-      "type": "END"
     },
     {
       "id": "N6",
@@ -25,37 +17,7 @@
       "data": {
         "outputs": [
           {
-            "field": "report",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N5",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "notification_status",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "product_id",
-            "store_as": "product_id",
-            "type": "string"
-          },
-          {
-            "field": "name",
-            "store_as": "user_name",
+            "field": "order_status",
             "type": "string"
           }
         ]
@@ -65,11 +27,50 @@
       "id": "N4",
       "type": "ACTION",
       "data": {
-        "operation": "generate_report",
+        "operation": "process_order",
         "inputs": {
-          "value": "user_name"
+          "value": "order_id"
         },
-        "output": "report"
+        "output": "order_status"
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "order_id",
+            "store_as": "order_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_notification",
+        "inputs": {
+          "value": "order_id"
+        },
+        "output": "notification_status"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "END"
+    },
+    {
+      "id": "N3",
+      "type": "PARALLEL",
+      "data": {
+        "compete": false
       }
     }
   ],
@@ -86,7 +87,7 @@
     },
     {
       "id": "E3",
-      "source": "N2",
+      "source": "N3",
       "target": "N4"
     },
     {
@@ -102,12 +103,17 @@
     {
       "id": "E6",
       "source": "N5",
-      "target": "N7"
+      "target": "N6"
     },
     {
       "id": "E7",
       "source": "N6",
       "target": "N7"
+    },
+    {
+      "id": "E8",
+      "source": "N7",
+      "target": "N8"
     }
   ]
 }

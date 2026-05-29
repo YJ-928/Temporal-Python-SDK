@@ -10,45 +10,45 @@
     {
       "N2_capture": {
         "set": {
-          "user_location": "${ $input.location }",
-          "order_id": "${ $input.order_id }"
+          "user_name": "${ $input.name }",
+          "product_id": "${ $input.product_id }"
         },
         "export": {
-          "as": "${ $context + {user_location: .user_location, order_id: .order_id} }"
+          "as": "${ $context + {user_name: .user_name, product_id: .product_id} }"
         }
       }
     },
     {
-      "N3_fetch_product": {
+      "N3_generate_report": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/fetch_product",
+          "endpoint": "http://localhost:8080/generate_report",
           "body": {
-            "value": "${ $context.user_location }"
+            "value": "${ $context.user_name }"
           }
         },
         "output": {
           "as": {
-            "product_details": "${ . }"
+            "report": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {product_details: .product_details} }"
+          "as": "${ $context + {report: .report} }"
         }
       }
     },
     {
       "N4_wait": {
         "wait": {
-          "minutes": 5
+          "hours": 1
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "product_details": "${ .product_details }"
+          "report": "${ .report }"
         },
         "then": "end"
       }
@@ -60,7 +60,7 @@
           "method": "post",
           "endpoint": "http://localhost:8080/calculate_age",
           "body": {
-            "value": "${ $context.order_id }"
+            "value": "${ $context.product_id }"
           }
         },
         "output": {

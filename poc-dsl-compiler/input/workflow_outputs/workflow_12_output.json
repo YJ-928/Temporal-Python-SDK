@@ -2,35 +2,9 @@
   "nodes": [
     {
       "id": "N3",
-      "type": "IF",
-      "condition": {
-        "left": "user_email",
-        "operator": "!=",
-        "right": ""
-      }
-    },
-    {
-      "id": "N5",
-      "type": "OUTPUT",
+      "type": "PARALLEL",
       "data": {
-        "outputs": [
-          {
-            "field": "notification_status",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N7",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "log_id",
-            "type": "string"
-          }
-        ]
+        "compete": false
       }
     },
     {
@@ -45,19 +19,39 @@
       }
     },
     {
-      "id": "N6",
-      "type": "ACTION",
-      "data": {
-        "operation": "log_missing_email",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "log_id"
-      }
+      "id": "N7",
+      "type": "END"
     },
     {
       "id": "N1",
       "type": "START"
+    },
+    {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "notification_status",
+            "type": "string"
+          },
+          {
+            "field": "order_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "process_order",
+        "inputs": {
+          "value": "order_id"
+        },
+        "output": "order_status"
+      }
     },
     {
       "id": "N2",
@@ -68,13 +62,14 @@
             "field": "email",
             "store_as": "user_email",
             "type": "string"
+          },
+          {
+            "field": "order_id",
+            "store_as": "order_id",
+            "type": "string"
           }
         ]
       }
-    },
-    {
-      "id": "N8",
-      "type": "END"
     }
   ],
   "edges": [
@@ -91,38 +86,27 @@
     {
       "id": "E3",
       "source": "N3",
-      "target": "N4",
-      "control": {
-        "branch": "true"
-      }
+      "target": "N4"
     },
     {
       "id": "E4",
       "source": "N3",
-      "target": "N6",
-      "control": {
-        "branch": "false"
-      }
+      "target": "N5"
     },
     {
       "id": "E5",
       "source": "N4",
-      "target": "N5"
+      "target": "N6"
     },
     {
       "id": "E6",
       "source": "N5",
-      "target": "N8"
+      "target": "N6"
     },
     {
       "id": "E7",
       "source": "N6",
       "target": "N7"
-    },
-    {
-      "id": "E8",
-      "source": "N7",
-      "target": "N8"
     }
   ]
 }

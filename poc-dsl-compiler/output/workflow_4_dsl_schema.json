@@ -10,42 +10,22 @@
     {
       "N2_capture": {
         "set": {
-          "user_email": "${ $input.email }",
-          "country": "${ $input.country }"
+          "user_location": "${ $input.location }",
+          "user_id": "${ $input.user_id }"
         },
         "export": {
-          "as": "${ $context + {user_email: .user_email, country: .country} }"
+          "as": "${ $context + {user_location: .user_location, user_id: .user_id} }"
         }
       }
     },
     {
-      "N3_process_order": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/process_order",
-          "body": {
-            "value": "${ $context.user_email }"
-          }
-        },
-        "output": {
-          "as": {
-            "order_status": "${ . }"
-          }
-        },
-        "export": {
-          "as": "${ $context + {order_status: .order_status} }"
-        }
-      }
-    },
-    {
-      "N4_greet": {
+      "N3_greet": {
         "call": "http",
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8080/greet",
           "body": {
-            "value": "${ $context.order_status }"
+            "value": "${ $context.user_location }"
           }
         },
         "output": {
@@ -59,41 +39,13 @@
       }
     },
     {
-      "N5_expose": {
-        "set": {
-          "greeting": "${ .greeting }"
-        },
-        "then": "end"
-      }
-    },
-    {
-      "N6_format_output": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/format_output",
-          "body": {
-            "value": "${ $context.country }"
-          }
-        },
-        "output": {
-          "as": {
-            "formatted_output": "${ . }"
-          }
-        },
-        "export": {
-          "as": "${ $context + {formatted_output: .formatted_output} }"
-        }
-      }
-    },
-    {
-      "N7_geocode": {
+      "N4_geocode": {
         "call": "http",
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8080/geocode",
           "body": {
-            "value": "${ $context.formatted_output }"
+            "value": "${ $context.greeting }"
           }
         },
         "output": {
@@ -107,9 +59,57 @@
       }
     },
     {
-      "N8_expose": {
+      "N5_expose": {
         "set": {
           "coordinates": "${ .coordinates }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N6_enrich_profile": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/enrich_profile",
+          "body": {
+            "value": "${ $context.user_id }"
+          }
+        },
+        "output": {
+          "as": {
+            "enriched_profile": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {enriched_profile: .enriched_profile} }"
+        }
+      }
+    },
+    {
+      "N7_validate_email": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/validate_email",
+          "body": {
+            "value": "${ $context.enriched_profile }"
+          }
+        },
+        "output": {
+          "as": {
+            "validation_result": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {validation_result: .validation_result} }"
+        }
+      }
+    },
+    {
+      "N8_expose": {
+        "set": {
+          "validation_result": "${ .validation_result }"
         },
         "then": "end"
       }

@@ -17,6 +17,7 @@ V1 — POC complete. Pure-function pipeline validated end-to-end.
 | `OUTPUT` | `output_builder.build_output` | `set` | ✅ |
 | `WAIT` | `wait_builder.build_wait` | `wait` (duration mode) or `listen` (listen mode) | ✅ |
 | `IF` | `if_builder.build_if` | `switch` (case/when/then + default/then) | ✅ |
+| `PARALLEL` | `parallel_builder.build_parallel` | `fork` (compete:false all-complete; compete:true race) | ✅ |
 
 **IF node schema:** `condition` is a root-level key on the IF node (same level as `id`, `type`, `data`). `data` is optional — omitted for simple IF nodes; present when a nested IF receives parent-scoped values. Expression building is delegated to `builders/condition_builder.py → build_condition_expression(condition)`.
 
@@ -29,7 +30,7 @@ Nested IF with parent data:
 { "id": "N4", "type": "IF", "condition": { "left": "email_verified", "operator": "==", "right": true }, "data": { "parent_field": "..." } }
 ```
 
-**Shared utility:** `builders/condition_builder.py` — `build_condition_expression(condition: dict) -> str`. Converts a condition dict to a Zigflow jq expression string (e.g. `${ .user_email != "" }`). Reusable by any future node type that evaluates a condition (LOOP, etc.). Validates operator against `SUPPORTED_OPERATORS` frozenset.
+**Shared utility:** `builders/condition_builder.py` — `build_condition_expression(condition: dict) -> str`. Converts a condition dict to a Zigflow jq expression string (e.g. `${ $context.user_email != "" }`). Always reads from `$context` (not transient `.`) so conditions remain valid inside PARALLEL branches where a preceding ACTION replaces `.` with the HTTP response body. Reusable by any future node type that evaluates a condition (LOOP, etc.). Validates operator against `SUPPORTED_OPERATORS` frozenset.
 
 ---
 
@@ -37,7 +38,6 @@ Nested IF with parent data:
 
 | Node | Planned DSL task | Reason deferred |
 |---|---|---|
-| `PARALLEL` | `fork` | Parallel execution — V2 |
 | `VARIABLE` | `set` | Variable binding — V2 |
 | `WORKFLOW` | `run: workflow` | Sub-workflow invocation — V2 |
 
@@ -68,7 +68,7 @@ Nested IF with parent data:
 | Adjacency list | `generate_adjaceny_list()` | Phase A | ✅ (intentional typo — do not rename); tuples `(target_id, control)` — `control=None` for non-IF edges, `{"branch": "true"|"false"}` for IF branch edges |
 | Entrypoint detection | `find_entrypoint()` | Phase A | ✅ |
 | Graph structure | `generate_graph_structure()` | Phase A | ✅ node dicts are READ-ONLY after construction — shared refs in memoised DAG |
-| Traversal | `traverse_graph()` | Phase A | ✅ returns `list[TraversalEntry]`; computes `is_terminal`, `branch_map`, `successors`, `incoming_edge_control` |
+| Traversal | `traverse_graph()` | Phase A | ✅ returns `list[TraversalEntry]`; computes `is_terminal`, `branch_map`, `successors`, `incoming_edge_control`, `parallel_map` (PARALLEL nodes), `reads_from_context` (convergence OUTPUT nodes) |
 | DSL generation | `generate_dsl()` | Phase B | ✅ iterates `TraversalEntry` list; no graph reads |
 | Serialization | `save_dsl()` | Phase B | ✅ |
 | Batch validation | `validate_outputs.py` | — | ✅ |
@@ -83,7 +83,6 @@ Nested IF with parent data:
 - No API server — compiler runs as a CLI tool only
 - No sub-workflow support — `WORKFLOW` node type deferred
 - **Reconvergence (JOIN/diamond patterns) not supported:** when two branches converge on a shared node (one node with two incoming edges from different paths), `traverse_graph()` visits it from the first DFS path only. The second path sees it already in `visited` and skips it. The compiled DSL will be missing the reconvergent node for one branch. No JOIN semantics are implemented.
-- **PARALLEL not implemented:** no `fork` task generation. The `PARALLEL` node type is deferred to V2.
 - **LOOP/cycle not implemented:** no cycle detection beyond the `visited` set deduplication used for DAG shared-node memoisation. Cyclic graphs are not supported.
 - **`builder_context` deprecated:** `run_compiler()` returns `builder_context: {}` (empty dict) for call-site compatibility. No builder reads it. Reserved for future LOOP/PARALLEL work without breaking call sites.
 - **No input validation:** the compiler assumes well-formed generator output (one START, one END, no orphan nodes). Malformed JSON from untrusted sources (e.g., arbitrary UI input) will cause undefined traversal behaviour, not explicit errors.
@@ -93,9 +92,9 @@ Nested IF with parent data:
 ## Workflow Generator
 
 - **File:** `poc-dsl-compiler/workflow_generator.py`
-- **Status:** ✅ 11 difficulty levels implemented and validated
+- **Status:** ✅ 14 difficulty levels implemented and validated
 - **Run:** `python3 poc-dsl-compiler/workflow_generator.py`
-- Prompts for level 1–11; writes Mermaid to `poc-dsl-compiler/input/workflows/` and JSON to `poc-dsl-compiler/input/workflow_outputs/` (compiler's input directory — no manual copy needed)
+- Prompts for level 1–14; writes Mermaid to `poc-dsl-compiler/input/workflows/` and JSON to `poc-dsl-compiler/input/workflow_outputs/` (compiler's input directory — no manual copy needed)
 - Full documentation: `.github/features/workflow_generator.md`
 
 | Level | Shape | Nodes | Edges | WAIT mode |
@@ -111,6 +110,9 @@ Nested IF with parent data:
 | 9 | 2 branches: branch A duration, branch B listen | 9 | 9 | duration + listen |
 | 10 | Linear IF: email presence guard, true/false branches | 8 | 8 | — |
 | 11 | Nested IF: outer email-presence guard; inner email-verified check in true branch | 11 | 12 | — |
+| 12 | Simple PARALLEL: 2 ACTION branches converge at OUTPUT | 7 | 7 | — |
+| 13 | Advanced PARALLEL: IF in branch_0, ACTION chain in branch_1 | 10 | 11 | — |
+| 14 | Convergence ambiguity test: OUTPUT + post-convergence ACTION + END reachable from all branches | 8 | 8 | — |
 
 ---
 

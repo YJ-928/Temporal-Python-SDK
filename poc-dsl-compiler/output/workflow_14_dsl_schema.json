@@ -1,0 +1,110 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "order_id": "${ $input.order_id }"
+        },
+        "export": {
+          "as": "${ $context + {order_id: .order_id} }"
+        }
+      }
+    },
+    {
+      "N3_parallel": {
+        "fork": {
+          "compete": false,
+          "branches": [
+            {
+              "branch_0": {
+                "do": [
+                  {
+                    "N4_process_order": {
+                      "call": "http",
+                      "with": {
+                        "method": "post",
+                        "endpoint": "http://localhost:8080/process_order",
+                        "body": {
+                          "value": "${ $context.order_id }"
+                        }
+                      },
+                      "output": {
+                        "as": {
+                          "order_status": "${ . }"
+                        }
+                      },
+                      "export": {
+                        "as": "${ $context + {order_status: .order_status} }"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "branch_1": {
+                "do": [
+                  {
+                    "N5_send_notification": {
+                      "call": "http",
+                      "with": {
+                        "method": "post",
+                        "endpoint": "http://localhost:8080/send_notification",
+                        "body": {
+                          "value": "${ $context.order_id }"
+                        }
+                      },
+                      "output": {
+                        "as": {
+                          "notification_status": "${ . }"
+                        }
+                      },
+                      "export": {
+                        "as": "${ $context + {notification_status: .notification_status} }"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "N6_expose": {
+        "set": {
+          "order_status": "${ $context.order_status }"
+        }
+      }
+    },
+    {
+      "N7_log_activity": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/log_activity",
+          "body": {
+            "value": "${ $context.order_status }"
+          }
+        },
+        "output": {
+          "as": {
+            "log_id": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {log_id: .log_id} }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

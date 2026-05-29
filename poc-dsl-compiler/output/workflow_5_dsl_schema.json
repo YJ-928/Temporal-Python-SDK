@@ -10,37 +10,37 @@
     {
       "N2_capture": {
         "set": {
-          "user_email": "${ $input.email }"
+          "city": "${ $input.city }"
         },
         "export": {
-          "as": "${ $context + {user_email: .user_email} }"
+          "as": "${ $context + {city: .city} }"
         }
       }
     },
     {
-      "N3_generate_report": {
+      "N3_geocode": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/generate_report",
+          "endpoint": "http://localhost:8080/geocode",
           "body": {
-            "value": "${ $context.user_email }"
+            "value": "${ $context.city }"
           }
         },
         "output": {
           "as": {
-            "report": "${ . }"
+            "coordinates": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {report: .report} }"
+          "as": "${ $context + {coordinates: .coordinates} }"
         }
       }
     },
     {
       "N4_expose": {
         "set": {
-          "report": "${ .report }"
+          "coordinates": "${ .coordinates }"
         },
         "then": "end"
       }
@@ -56,69 +56,69 @@
       }
     },
     {
-      "N6_geocode": {
+      "N6_verify_phone": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/geocode",
+          "endpoint": "http://localhost:8080/verify_phone",
           "body": {
             "value": "${ $context.country }"
           }
         },
         "output": {
           "as": {
-            "coordinates": "${ . }"
+            "phone_verified": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {coordinates: .coordinates} }"
+          "as": "${ $context + {phone_verified: .phone_verified} }"
         }
       }
     },
     {
-      "N7_process_order": {
+      "N7_validate_email": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/process_order",
+          "endpoint": "http://localhost:8080/validate_email",
           "body": {
-            "value": "${ $context.coordinates }"
+            "value": "${ $context.phone_verified }"
           }
         },
         "output": {
           "as": {
-            "order_status": "${ . }"
+            "validation_result": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {order_status: .order_status} }"
+          "as": "${ $context + {validation_result: .validation_result} }"
         }
       }
     },
     {
-      "N8_format_output": {
+      "N8_fetch_product": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/format_output",
+          "endpoint": "http://localhost:8080/fetch_product",
           "body": {
-            "value": "${ $context.order_status }"
+            "value": "${ $context.validation_result }"
           }
         },
         "output": {
           "as": {
-            "formatted_output": "${ . }"
+            "product_details": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {formatted_output: .formatted_output} }"
+          "as": "${ $context + {product_details: .product_details} }"
         }
       }
     },
     {
       "N9_expose": {
         "set": {
-          "formatted_output": "${ .formatted_output }"
+          "product_details": "${ .product_details }"
         },
         "then": "end"
       }

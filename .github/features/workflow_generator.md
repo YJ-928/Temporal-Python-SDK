@@ -27,8 +27,11 @@ Difficulty Levels:
   9  Mixed W  — 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)
  10  Linear IF — Linear workflow with IF gate: true branch processes, false branch skips
  11  Nested IF — Outer IF gates on email presence; inner IF gates on email verification
+ 12  PARALLEL  — Simple PARALLEL: 2 concurrent ACTION branches converge at OUTPUT
+ 13  PARALLEL+ — Advanced PARALLEL: IF in branch_0, ACTION chain in branch_1
+ 14  PARALLEL? — Convergence ambiguity: OUTPUT + post-convergence ACTION + END all reachable from branches
 
-Difficulty Level (1-11):
+Difficulty Level (1-14):
 ```
 
 The generator prompts for a level, then writes two files:
@@ -249,6 +252,16 @@ Edges carry no business data — only `id`, `source`, `target`.
 ```
 **Rule:** `condition` is a root-level key (not inside `data`). `label` is never included in the output.
 
+### `make_parallel(nid, compete=False)`
+```json
+{
+  "id": "N3",
+  "type": "PARALLEL",
+  "data": { "compete": false }
+}
+```
+`compete=False` → all branches must complete. `compete=True` → first branch to finish wins (race). `data.compete` is the only property.
+
 ### `make_edge(eid, src, tgt, control=None)`
 Base edge with optional control metadata for IF branch edges:
 ```json
@@ -301,6 +314,9 @@ Scans `poc-dsl-compiler/input/workflows/` for files matching `workflow_N.md`. Re
 | 9 | Mixed W | 9 | 9 | Shared INPUT → branch A: ACTION→WAIT(duration)→OUTPUT; branch B: ACTION→WAIT(listen)→OUTPUT → END |
 | 10 | Linear IF | 8 | 8 | `START → INPUT → ACTION → IF → [true: OUTPUT→END] [false: OUTPUT→END]` |
 | 11 | Nested IF | 12 | 13 | `START → INPUT → outer IF [true: inner IF [true: ACTION→OUTPUT→END, false: ACTION→OUTPUT→END], false: ACTION→OUTPUT→END]` |
+| 12 | PARALLEL | 7 | 7 | `START → INPUT → PARALLEL → [ACTION, ACTION] → OUTPUT → END` |
+| 13 | PARALLEL+ | 10 | 11 | `START → INPUT → PARALLEL → [branch_0: IF→[ACTION,ACTION], branch_1: ACTION→ACTION] → OUTPUT → END` |
+| 14 | PARALLEL? | 8 | 8 | `START → INPUT → PARALLEL → [ACTION, ACTION] → OUTPUT → ACTION_post → END` (convergence ambiguity test) |
 
 ### Level 6 — exact structure
 ```
@@ -361,6 +377,43 @@ Edges: E1(N1→N2), E2(N2→N3)
        [E13 if N12 has self-edge; may vary]
 Total: 12 nodes, 13 edges
 ```
+
+### Level 12 — exact structure
+```
+START(N1) → INPUT(N2, user_email + order_id) → PARALLEL(N3, compete=False)
+  branch_0: ACTION(N4, send_notification, user_email → notification_status) → OUTPUT(N6)
+  branch_1: ACTION(N5, process_order, order_id → order_status) → OUTPUT(N6)
+OUTPUT(N6, [notification_status, order_status]) → END(N7)
+Edges: E1(N1→N2), E2(N2→N3), E3(N3→N4), E4(N3→N5), E5(N4→N6), E6(N5→N6), E7(N6→N7)
+Total: 7 nodes, 7 edges
+```
+
+### Level 13 — exact structure
+```
+START(N1) → INPUT(N2, user_email + order_id) → PARALLEL(N3, compete=False)
+  branch_0: IF(N4, user_email != "")
+    [true]  → ACTION(N5, send_notification, user_email → notification_status) → OUTPUT(N9)
+    [false] → ACTION(N6, log_activity, user_email → log_id) → OUTPUT(N9)
+  branch_1: ACTION(N7, process_order, order_id → order_status)
+            → ACTION(N8, generate_report, order_status → report) → OUTPUT(N9)
+OUTPUT(N9, [notification_status, report]) → END(N10)
+Edges: E1(N1→N2), E2(N2→N3), E3(N3→N4), E4(N3→N7)
+       E5(N4→N5, control={branch:true}), E6(N4→N6, control={branch:false})
+       E7(N5→N9), E8(N6→N9), E9(N7→N8), E10(N8→N9), E11(N9→N10)
+Total: 10 nodes, 11 edges
+```
+
+### Level 14 — exact structure (Convergence Ambiguity)
+```
+START(N1) → INPUT(N2, order_id) → PARALLEL(N3, compete=False)
+  branch_0: ACTION(N4, process_order, order_id → order_status) → OUTPUT(N6)
+  branch_1: ACTION(N5, send_notification, order_id → notification_status) → OUTPUT(N6)
+OUTPUT(N6, [order_status]) → ACTION(N7, log_activity, order_status → log_id) → END(N8)
+Edges: E1(N1→N2), E2(N2→N3), E3(N3→N4), E4(N3→N5)
+       E5(N4→N6), E6(N5→N6), E7(N6→N7), E8(N7→N8)
+Total: 8 nodes, 8 edges
+```
+**Purpose:** Convergence candidates = {N6, N7, N8} — all reachable from both branches. `_find_parallel_convergence()` must select N6 (shallowest root), because N7 and N8 are reachable FROM N6 (making them non-root candidates). N7 appears after the fork in the top-level `do` list with `"then": "end"`. ✅
 
 ---
 

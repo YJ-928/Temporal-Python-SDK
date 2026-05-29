@@ -10,30 +10,30 @@
     {
       "N2_capture": {
         "set": {
-          "user_id": "${ $input.user_id }"
+          "order_id": "${ $input.order_id }"
         },
         "export": {
-          "as": "${ $context + {user_id: .user_id} }"
+          "as": "${ $context + {order_id: .order_id} }"
         }
       }
     },
     {
-      "N3_format_output": {
+      "N3_geocode": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/format_output",
+          "endpoint": "http://localhost:8080/geocode",
           "body": {
-            "value": "${ $context.user_id }"
+            "value": "${ $context.order_id }"
           }
         },
         "output": {
           "as": {
-            "formatted_output": "${ . }"
+            "coordinates": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {formatted_output: .formatted_output} }"
+          "as": "${ $context + {coordinates: .coordinates} }"
         }
       }
     },
@@ -43,7 +43,7 @@
           "to": {
             "one": {
               "with": {
-                "id": "payment_completed"
+                "id": "user_confirmation"
               }
             }
           }
@@ -53,7 +53,7 @@
     {
       "N5_expose": {
         "set": {
-          "formatted_output": "${ .formatted_output }"
+          "coordinates": "${ .coordinates }"
         },
         "then": "end"
       }

@@ -10,66 +10,66 @@
     {
       "N2_capture": {
         "set": {
-          "user_id": "${ $input.user_id }",
-          "dob": "${ $input.date_of_birth }"
+          "product_id": "${ $input.product_id }",
+          "user_name": "${ $input.name }"
         },
         "export": {
-          "as": "${ $context + {user_id: .user_id, dob: .dob} }"
+          "as": "${ $context + {product_id: .product_id, user_name: .user_name} }"
         }
       }
     },
     {
-      "N3_process_order": {
+      "N3_send_notification": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/process_order",
+          "endpoint": "http://localhost:8080/send_notification",
           "body": {
-            "value": "${ $context.user_id }"
+            "value": "${ $context.product_id }"
           }
         },
         "output": {
           "as": {
-            "order_status": "${ . }"
+            "notification_status": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {order_status: .order_status} }"
+          "as": "${ $context + {notification_status: .notification_status} }"
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "order_status": "${ .order_status }"
+          "notification_status": "${ .notification_status }"
         },
         "then": "end"
       }
     },
     {
-      "N4_greet": {
+      "N4_generate_report": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/greet",
+          "endpoint": "http://localhost:8080/generate_report",
           "body": {
-            "value": "${ $context.dob }"
+            "value": "${ $context.user_name }"
           }
         },
         "output": {
           "as": {
-            "greeting": "${ . }"
+            "report": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {greeting: .greeting} }"
+          "as": "${ $context + {report: .report} }"
         }
       }
     },
     {
       "N6_expose": {
         "set": {
-          "greeting": "${ .greeting }"
+          "report": "${ .report }"
         },
         "then": "end"
       }

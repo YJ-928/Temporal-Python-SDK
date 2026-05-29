@@ -1,31 +1,6 @@
 {
   "nodes": [
     {
-      "id": "N4",
-      "type": "WAIT",
-      "data": {
-        "mode": "duration",
-        "config": {
-          "minutes": 5
-        }
-      }
-    },
-    {
-      "id": "N9",
-      "type": "END"
-    },
-    {
-      "id": "N6",
-      "type": "ACTION",
-      "data": {
-        "operation": "calculate_age",
-        "inputs": {
-          "value": "order_id"
-        },
-        "output": "age"
-      }
-    },
-    {
       "id": "N7",
       "type": "WAIT",
       "data": {
@@ -33,17 +8,6 @@
         "config": {
           "signal": "approval_received"
         }
-      }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "fetch_product",
-        "inputs": {
-          "value": "user_location"
-        },
-        "output": "product_details"
       }
     },
     {
@@ -59,21 +23,14 @@
       }
     },
     {
-      "id": "N2",
-      "type": "INPUT",
+      "id": "N3",
+      "type": "ACTION",
       "data": {
-        "inputs": [
-          {
-            "field": "location",
-            "store_as": "user_location",
-            "type": "string"
-          },
-          {
-            "field": "order_id",
-            "store_as": "order_id",
-            "type": "string"
-          }
-        ]
+        "operation": "generate_report",
+        "inputs": {
+          "value": "user_name"
+        },
+        "output": "report"
       }
     },
     {
@@ -81,12 +38,55 @@
       "type": "START"
     },
     {
+      "id": "N9",
+      "type": "END"
+    },
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "calculate_age",
+        "inputs": {
+          "value": "product_id"
+        },
+        "output": "age"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "mode": "duration",
+        "config": {
+          "hours": 1
+        }
+      }
+    },
+    {
       "id": "N5",
       "type": "OUTPUT",
       "data": {
         "outputs": [
           {
-            "field": "product_details",
+            "field": "report",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "name",
+            "store_as": "user_name",
+            "type": "string"
+          },
+          {
+            "field": "product_id",
+            "store_as": "product_id",
             "type": "string"
           }
         ]

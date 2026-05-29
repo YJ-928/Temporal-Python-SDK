@@ -1,13 +1,13 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: country and name]
-    B[Input: country and name] -- {country} --> C[Format output for response]
-    C[Format output for response] -- {formatted_output} --> D[Wait: 15 minutes]
-    D[Wait: 15 minutes] --> E[Validate email address]
-    E[Validate email address] -- {validation_result} --> F[Output: validation result]
-    F[Output: validation result] --> J[End]
-    B[Input: country and name] -- {user_name} --> G[Generate user activity report]
-    G[Generate user activity report] -- {report} --> H[Wait: 10 minutes]
-    H[Wait: 10 minutes] --> I[Output: report]
-    I[Output: report] --> J[End]
+    A[Start] --> B[Input: country and order id]
+    B[Input: country and order id] -- {country} --> C[Enrich user profile]
+    C[Enrich user profile] -- {enriched_profile} --> D[Wait: 1 minute]
+    D[Wait: 1 minute] --> E[Look up location data]
+    E[Look up location data] -- {location_data} --> F[Output: location data]
+    F[Output: location data] --> J[End]
+    B[Input: country and order id] -- {order_id} --> G[Process order]
+    G[Process order] -- {order_status} --> H[Wait: 5 minutes]
+    H[Wait: 5 minutes] --> I[Output: order status]
+    I[Output: order status] --> J[End]
 ```

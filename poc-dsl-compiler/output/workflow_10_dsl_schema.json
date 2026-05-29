@@ -22,7 +22,7 @@
         "switch": [
           {
             "case": {
-              "when": "${ .user_email != \"\" }",
+              "when": "${ $context.user_email != \"\" }",
               "then": "N4_send_notification"
             }
           },

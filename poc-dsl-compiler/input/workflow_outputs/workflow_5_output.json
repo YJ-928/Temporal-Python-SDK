@@ -1,6 +1,73 @@
 {
   "nodes": [
     {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N10",
+      "type": "END"
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "validate_email",
+        "inputs": {
+          "value": "phone_verified"
+        },
+        "output": "validation_result"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "verify_phone",
+        "inputs": {
+          "value": "country"
+        },
+        "output": "phone_verified"
+      }
+    },
+    {
+      "id": "N9",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "product_details",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "coordinates",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "city",
+            "store_as": "city",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
       "id": "N5",
       "type": "INPUT",
       "data": {
@@ -14,92 +81,25 @@
       }
     },
     {
-      "id": "N7",
-      "type": "ACTION",
-      "data": {
-        "operation": "process_order",
-        "inputs": {
-          "value": "coordinates"
-        },
-        "output": "order_status"
-      }
-    },
-    {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "email",
-            "store_as": "user_email",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
       "id": "N8",
       "type": "ACTION",
       "data": {
-        "operation": "format_output",
+        "operation": "fetch_product",
         "inputs": {
-          "value": "order_status"
+          "value": "validation_result"
         },
-        "output": "formatted_output"
-      }
-    },
-    {
-      "id": "N6",
-      "type": "ACTION",
-      "data": {
-        "operation": "geocode",
-        "inputs": {
-          "value": "country"
-        },
-        "output": "coordinates"
-      }
-    },
-    {
-      "id": "N4",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "report",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N10",
-      "type": "END"
-    },
-    {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N9",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "formatted_output",
-            "type": "string"
-          }
-        ]
+        "output": "product_details"
       }
     },
     {
       "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "generate_report",
+        "operation": "geocode",
         "inputs": {
-          "value": "user_email"
+          "value": "city"
         },
-        "output": "report"
+        "output": "coordinates"
       }
     }
   ],

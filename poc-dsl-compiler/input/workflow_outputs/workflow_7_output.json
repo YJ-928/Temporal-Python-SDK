@@ -6,17 +6,7 @@
       "data": {
         "mode": "duration",
         "config": {
-          "minutes": 10
-        }
-      }
-    },
-    {
-      "id": "N4",
-      "type": "WAIT",
-      "data": {
-        "mode": "duration",
-        "config": {
-          "minutes": 15
+          "minutes": 5
         }
       }
     },
@@ -24,11 +14,25 @@
       "id": "N7",
       "type": "ACTION",
       "data": {
-        "operation": "generate_report",
+        "operation": "process_order",
         "inputs": {
-          "value": "user_name"
+          "value": "order_id"
         },
-        "output": "report"
+        "output": "order_status"
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "mode": "duration",
+        "config": {
+          "minutes": 1
+        }
       }
     },
     {
@@ -42,8 +46,20 @@
             "type": "string"
           },
           {
-            "field": "name",
-            "store_as": "user_name",
+            "field": "order_id",
+            "store_as": "order_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N9",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "order_status",
             "type": "string"
           }
         ]
@@ -53,24 +69,27 @@
       "id": "N5",
       "type": "ACTION",
       "data": {
-        "operation": "validate_email",
+        "operation": "lookup_location",
         "inputs": {
-          "value": "formatted_output"
+          "value": "enriched_profile"
         },
-        "output": "validation_result"
+        "output": "location_data"
       }
     },
     {
-      "id": "N9",
-      "type": "OUTPUT",
+      "id": "N3",
+      "type": "ACTION",
       "data": {
-        "outputs": [
-          {
-            "field": "report",
-            "type": "string"
-          }
-        ]
+        "operation": "enrich_profile",
+        "inputs": {
+          "value": "country"
+        },
+        "output": "enriched_profile"
       }
+    },
+    {
+      "id": "N10",
+      "type": "END"
     },
     {
       "id": "N6",
@@ -78,30 +97,11 @@
       "data": {
         "outputs": [
           {
-            "field": "validation_result",
+            "field": "location_data",
             "type": "string"
           }
         ]
       }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "format_output",
-        "inputs": {
-          "value": "country"
-        },
-        "output": "formatted_output"
-      }
-    },
-    {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N10",
-      "type": "END"
     }
   ],
   "edges": [

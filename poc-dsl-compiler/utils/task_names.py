@@ -1,9 +1,10 @@
 TASK_NAME_RESOLVERS: dict[str, object] = {
-    "ACTION": lambda node: f"{node['id']}_{node['data']['operation']}",
-    "INPUT":  lambda node: f"{node['id']}_capture",
-    "OUTPUT": lambda node: f"{node['id']}_expose",
-    "WAIT":   lambda node: f"{node['id']}_wait",
-    "IF":     lambda node: f"{node['id']}_if",
+    "ACTION":   lambda node: f"{node['id']}_{node['data']['operation']}",
+    "INPUT":    lambda node: f"{node['id']}_capture",
+    "OUTPUT":   lambda node: f"{node['id']}_expose",
+    "WAIT":     lambda node: f"{node['id']}_wait",
+    "IF":       lambda node: f"{node['id']}_if",
+    "PARALLEL": lambda node: f"{node['id']}_parallel",
 }
 
 def resolve_task_name(node: dict) -> str:

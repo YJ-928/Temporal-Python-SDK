@@ -17,9 +17,13 @@ from builders.action_builder import build_action
 from builders.output_builder import build_output
 from builders.wait_builder import build_wait
 from builders.if_builder import build_if
+from builders.parallel_builder import build_parallel
 
 
 # Dispatch table: node type -> builder function
+# PARALLEL is handled via a special dispatch path in generate_dsl() because it
+# requires pre-built branch do-lists (recursive _build_do_list calls) before
+# the builder is invoked.  All other types route through this table.
 NODE_BUILDERS = {
     "START": build_terminal,
     "INPUT": build_input,
@@ -29,6 +33,55 @@ NODE_BUILDERS = {
     "IF": build_if,
     "END": build_terminal,
 }
+
+def _build_do_list(branch_traversal: list, compiler_context=None) -> list:
+    """
+    Build a flat DSL do-list from a pre-computed branch traversal.
+
+    This is the recursive counterpart of generate_dsl() used to produce
+    the ``branches[n].do`` lists inside a fork task.  It handles nested
+    PARALLEL nodes by calling itself recursively.
+
+    Args:
+        branch_traversal: Ordered list of TraversalEntry dicts for one branch.
+        compiler_context:  Deprecated pass-through; forwarded to builders.
+
+    Returns:
+        List of DSL task dicts in traversal order (None entries excluded).
+    """
+    result: list = []
+    for entry in branch_traversal:
+        node = entry["node"]
+        node_type = entry["node_type"]
+
+        if node_type == "PARALLEL":
+            # Nested PARALLEL: recursively build branch do-lists first.
+            parallel_map = entry.get("parallel_map") or {}
+            branch_do_lists = {
+                bid: _build_do_list(branch_entry["traversal"], compiler_context)
+                for bid, branch_entry in parallel_map.items()
+            }
+            fragment = build_parallel(
+                node,
+                traversal_entry=entry,
+                compiler_context=compiler_context,
+                branch_do_lists=branch_do_lists,
+            )
+        else:
+            builder = NODE_BUILDERS.get(node_type)
+            if builder is None:
+                print(
+                    f"[WARNING] No builder for node type '{node_type}' "
+                    f"(id={entry['node_id']}) inside branch. Skipped."
+                )
+                continue
+            fragment = builder(node, traversal_entry=entry, compiler_context=compiler_context)
+
+        if fragment is not None:
+            result.append(fragment)
+
+    return result
+
 
 def generate_dsl(
     traversal: list,
@@ -64,17 +117,32 @@ def generate_dsl(
     for entry in traversal:
         node = entry["node"]
         node_type = entry["node_type"]
-        builder = NODE_BUILDERS.get(node_type)
 
-        if builder is None:
-            # Unknown node type — skip with a warning instead of crashing.
-            print(f"[WARNING] No builder for node type '{node_type}' (id={entry['node_id']}). Skipped.")
-            continue
-
-        # traversal_entry carries all compiler-computed metadata (is_terminal,
-        # branch_map, incoming_edge_control). Builders use it directly.
-        # Phase B owns no graph reasoning — that all lives in Phase A.
-        fragment = builder(node, traversal_entry=entry, compiler_context=compiler_context)
+        if node_type == "PARALLEL":
+            # Special dispatch: branch do-lists must be pre-built here because
+            # _build_do_list() lives in this module and builders must not import
+            # from dsl_generator.py.  Build them, then hand off to build_parallel().
+            parallel_map = entry.get("parallel_map") or {}
+            branch_do_lists = {
+                bid: _build_do_list(branch_entry["traversal"], compiler_context)
+                for bid, branch_entry in parallel_map.items()
+            }
+            fragment = build_parallel(
+                node,
+                traversal_entry=entry,
+                compiler_context=compiler_context,
+                branch_do_lists=branch_do_lists,
+            )
+        else:
+            builder = NODE_BUILDERS.get(node_type)
+            if builder is None:
+                # Unknown node type — skip with a warning instead of crashing.
+                print(f"[WARNING] No builder for node type '{node_type}' (id={entry['node_id']}). Skipped.")
+                continue
+            # traversal_entry carries all compiler-computed metadata (is_terminal,
+            # branch_map, incoming_edge_control). Builders use it directly.
+            # Phase B owns no graph reasoning — that all lives in Phase A.
+            fragment = builder(node, traversal_entry=entry, compiler_context=compiler_context)
 
         if fragment is None:
             # START and END emit no DSL.

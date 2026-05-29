@@ -22,7 +22,7 @@
         "switch": [
           {
             "case": {
-              "when": "${ .user_email != \"\" }",
+              "when": "${ $context.user_email != \"\" }",
               "then": "N12_lookup_user"
             }
           },
@@ -59,7 +59,7 @@
         "switch": [
           {
             "case": {
-              "when": "${ .email_verified == true }",
+              "when": "${ $context.email_verified == true }",
               "then": "N5_send_notification"
             }
           },

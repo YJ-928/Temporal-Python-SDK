@@ -10,37 +10,37 @@
     {
       "N2_capture": {
         "set": {
-          "city": "${ $input.city }"
+          "user_email": "${ $input.email }"
         },
         "export": {
-          "as": "${ $context + {city: .city} }"
+          "as": "${ $context + {user_email: .user_email} }"
         }
       }
     },
     {
-      "N3_geocode": {
+      "N3_lookup_location": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/geocode",
+          "endpoint": "http://localhost:8080/lookup_location",
           "body": {
-            "value": "${ $context.city }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
-            "coordinates": "${ . }"
+            "location_data": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {coordinates: .coordinates} }"
+          "as": "${ $context + {location_data: .location_data} }"
         }
       }
     },
     {
       "N4_expose": {
         "set": {
-          "coordinates": "${ .coordinates }"
+          "location_data": "${ .location_data }"
         },
         "then": "end"
       }

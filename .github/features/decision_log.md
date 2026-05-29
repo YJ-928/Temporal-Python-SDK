@@ -328,3 +328,112 @@ START → INPUT(email)
 **Risk:** Violations in the input JSON cause undefined traversal behavior (silent errors or wrong DSL), not explicit errors.
 
 **Consequence:** Explicit input validation should be added before the compiler is used with untrusted input (e.g., arbitrary user-submitted JSON from a UI).
+
+---
+
+## 2026-05 — PARALLEL node: convergence detection via BFS-reachability intersection
+
+**Decision:** Phase A detects PARALLEL convergence nodes using a BFS-reachability intersection algorithm, not post-dominator analysis or heuristic node inspection.
+
+**Algorithm:**
+1. For each branch start (direct successor of the PARALLEL node), compute the inclusive BFS-reachable set.
+2. Intersect all reachable sets → candidates (nodes reachable from ALL branches).
+3. Among candidates, the convergence root is the one that no other candidate can reach (i.e., no candidate is a strict ancestor of it within the candidate set).
+
+**Implementation:** `_find_parallel_convergence(parallel_node_id, adjacency)` in `compiler.py`. Returns the single convergence node ID or raises `ValueError` if no valid convergence is found.
+
+**Why BFS intersection:**
+- Correct for DAGs of arbitrary depth and branching structure.
+- Works for both symmetric (all branches same length) and asymmetric (branches of different lengths) topologies.
+- Works for nested PARALLEL (inner convergence is resolved before outer).
+- No need for a separate post-dominator tree computation.
+
+**Rejected:**
+- Post-dominator analysis — correct but significantly more complex to implement for a POC; BFS intersection achieves the same result for acyclic graphs.
+- Heuristic (find first node with in-degree > 1) — fails for nested PARALLEL and asymmetric topologies.
+
+---
+
+## 2026-05 — PARALLEL: special dispatch in dsl_generator, not NODE_BUILDERS
+
+**Decision:** PARALLEL is handled by a dedicated `if node_type == "PARALLEL":` block at the top of `generate_dsl()`'s inner loop, NOT via an entry in `NODE_BUILDERS`.
+
+**Reason:** `build_parallel()` requires pre-built `branch_do_lists` — a recursive call to `_build_do_list()` for each branch. This recursive call must happen in `dsl_generator.py`. If PARALLEL were in `NODE_BUILDERS` and dispatched normally, `build_parallel()` would need to call `_build_do_list()` itself, which would require importing `dsl_generator.py` inside `builders/parallel_builder.py` — creating a circular import.
+
+**Pattern (special dispatch):**
+```python
+if node_type == "PARALLEL":
+    parallel_map = entry.get("parallel_map") or {}
+    branch_do_lists = {
+        bid: _build_do_list(branch_entry["traversal"], compiler_context)
+        for bid, branch_entry in parallel_map.items()
+    }
+    fragment = build_parallel(node, traversal_entry=entry, compiler_context=compiler_context, branch_do_lists=branch_do_lists)
+else:
+    builder = NODE_BUILDERS.get(node_type)
+    ...
+```
+
+**`_build_do_list()` helper:** Internal to `dsl_generator.py`. Accepts a branch traversal list, mirrors `generate_dsl()`'s inner loop, returns a flat list of task dicts. Handles nested PARALLEL by calling itself recursively.
+
+**Consequence:** Every future node type that requires recursive pre-building (hypothetical: LOOP with body traversal) should use the same special dispatch pattern rather than being added to `NODE_BUILDERS`.
+
+**Rejected:** Adding `branch_do_lists` to `TraversalEntry` in Phase A — would make Phase A (graph compiler) responsible for DSL construction, violating the Phase A/B boundary.
+
+---
+
+## 2026-05 — PARALLEL convergence OUTPUT reads from `$context`
+
+**Decision:** When an OUTPUT node is the convergence point after a PARALLEL block, `output_builder` emits `${ $context.<field> }` instead of `${ .<field> }`. Phase A sets `reads_from_context: True` on the OUTPUT node's `TraversalEntry` to signal this.
+
+**Why:** Zigflow `fork` branches run in isolated data contexts. When branches complete, their transient data is not merged back into the parent data stream. Only values explicitly exported to `$context` via `export.as` survive. Parallel branch ACTIONs export their outputs to `$context`; therefore the convergence OUTPUT must read from `$context`, not from `${ . }` (transient data).
+
+**How Phase A sets it:** In `traverse_graph()`, when building the top-level traversal, any node ID in `convergence_nodes` (the set of convergence nodes detected across all PARALLEL nodes in the graph) gets `reads_from_context: True` in its `TraversalEntry`.
+
+**Rejected:** Emitting `${ . }` unconditionally — produces wrong/empty values at runtime because fork branch results are not in transient data after parallel execution.
+
+---
+
+## 2026-05 — PARALLEL branch format: named branches `{branch_id: {do: [...]}}`
+
+**Decision:** Each branch in a Zigflow `fork` task is a named object: `{branch_id: {"do": [...]}}`. Anonymous `{"do": [...]}` format is rejected.
+
+**Why:** This is what the Zigflow schema requires. Discovered via `zigflow validate` failure when the first implementation used anonymous `{"do": [...]}` format. The parallel_task.yaml example in this repo (`zigflow/Yaml/parallel_task.yaml`) confirms the named format: `- task1: {do: [...]}`.
+
+**Consequence:** `build_parallel()` emits:
+```python
+branches = [
+    {bid: {"do": branch_do_lists[bid]}}
+    for bid in sorted(branch_do_lists.keys())
+]
+```
+**branch_ids** are `branch_0`, `branch_1`, … assigned by Phase A `_traverse_branch()` in outgoing-edge declaration order.
+
+**Validation result:** After applying this format, all 15 workflow DSL outputs pass `zigflow validate`. 15/15 ✅.
+
+---
+
+## 2026-05 — Condition expressions use `$context.{left}` not `.{left}`
+
+**Decision:** `build_condition_expression()` in `condition_builder.py` now emits `${ $context.<left> <op> <right> }` instead of `${ .<left> <op> <right> }`.
+
+**Why:** `.{left}` reads from transient flowing data (the output of the immediately preceding task). Inside a PARALLEL branch, when an ACTION node precedes an IF node, `.` becomes the full HTTP response body and all prior workflow variables are lost. `$context.{left}` always works because INPUT nodes always export all captured fields to `$context` via `export.as`, and that export is permanent across the entire workflow including inside fork branches.
+
+**Rejected:** Keeping `.{left}` — fails silently at runtime inside PARALLEL branches when any preceding ACTION replaces the transient data context. The bug is invisible in linear workflows (where `.` still contains the INPUT data) but surfaces in PARALLEL.
+
+**Affected builders:** Only `condition_builder.py`. `action_builder.py` already used `${ $context.{var} }` for body expressions. `output_builder.py` uses `reads_from_context` flag for post-PARALLEL convergence.
+
+---
+
+## 2026-05 — Workflow generator extended to Levels 12–14
+
+**Decision:** Three new levels added to `workflow_generator.py` covering PARALLEL topologies.
+
+- **Level 12 — Simple PARALLEL:** `START → INPUT → PARALLEL → [ACTION, ACTION] → OUTPUT → END`. Minimal fork: 7 nodes, 7 edges, exactly one `fork` in compiled DSL. Convergence candidates = {OUTPUT} only. No ambiguity.
+
+- **Level 13 — Advanced PARALLEL:** PARALLEL with an IF in branch_0 (two sub-paths) and an ACTION chain in branch_1. Exercises `_traverse_branch()` handling IF-inside-PARALLEL and verifies BFS convergence detection works when one branch has more reachable nodes than another. 10 nodes, 11 edges.
+
+- **Level 14 — Convergence Ambiguity Test:** `START → INPUT → PARALLEL → [ACTION, ACTION] → OUTPUT → ACTION_post → END`. Specifically tests that `_find_parallel_convergence()` selects OUTPUT as the convergence node, NOT the post-convergence ACTION or END, even though all three are reachable from every branch. The BFS root-candidate algorithm correctly identifies OUTPUT because the post-convergence nodes are reachable FROM OUTPUT (making them non-root candidates). 8 nodes, 8 edges.
+
+**Validation result:** All 14 levels pass `zigflow validate`. 14/14 ✅.
+

@@ -1,0 +1,149 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "zigflow",
+    "workflowType": "compiled-workflow",
+    "version": "1.0.0",
+    "metadata": {}
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "user_email": "${ $input.email }",
+          "order_id": "${ $input.order_id }"
+        },
+        "export": {
+          "as": "${ $context + {user_email: .user_email, order_id: .order_id} }"
+        }
+      }
+    },
+    {
+      "N3_parallel": {
+        "fork": {
+          "compete": false,
+          "branches": [
+            {
+              "branch_0": {
+                "do": [
+                  {
+                    "N4_if": {
+                      "switch": [
+                        {
+                          "case": {
+                            "when": "${ $context.user_email != \"\" }",
+                            "then": "N5_send_notification"
+                          }
+                        },
+                        {
+                          "default": {
+                            "then": "N6_log_activity"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "N5_send_notification": {
+                      "call": "http",
+                      "with": {
+                        "method": "post",
+                        "endpoint": "http://localhost:8080/send_notification",
+                        "body": {
+                          "value": "${ $context.user_email }"
+                        }
+                      },
+                      "output": {
+                        "as": {
+                          "notification_status": "${ . }"
+                        }
+                      },
+                      "export": {
+                        "as": "${ $context + {notification_status: .notification_status} }"
+                      }
+                    }
+                  },
+                  {
+                    "N6_log_activity": {
+                      "call": "http",
+                      "with": {
+                        "method": "post",
+                        "endpoint": "http://localhost:8080/log_activity",
+                        "body": {
+                          "value": "${ $context.user_email }"
+                        }
+                      },
+                      "output": {
+                        "as": {
+                          "log_id": "${ . }"
+                        }
+                      },
+                      "export": {
+                        "as": "${ $context + {log_id: .log_id} }"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "branch_1": {
+                "do": [
+                  {
+                    "N7_process_order": {
+                      "call": "http",
+                      "with": {
+                        "method": "post",
+                        "endpoint": "http://localhost:8080/process_order",
+                        "body": {
+                          "value": "${ $context.order_id }"
+                        }
+                      },
+                      "output": {
+                        "as": {
+                          "order_status": "${ . }"
+                        }
+                      },
+                      "export": {
+                        "as": "${ $context + {order_status: .order_status} }"
+                      }
+                    }
+                  },
+                  {
+                    "N8_generate_report": {
+                      "call": "http",
+                      "with": {
+                        "method": "post",
+                        "endpoint": "http://localhost:8080/generate_report",
+                        "body": {
+                          "value": "${ $context.order_status }"
+                        }
+                      },
+                      "output": {
+                        "as": {
+                          "report": "${ . }"
+                        }
+                      },
+                      "export": {
+                        "as": "${ $context + {report: .report} }"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "N9_expose": {
+        "set": {
+          "notification_status": "${ $context.notification_status }",
+          "report": "${ $context.report }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

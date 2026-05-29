@@ -6,16 +6,12 @@
       "data": {
         "inputs": [
           {
-            "field": "user_id",
-            "store_as": "user_id",
+            "field": "order_id",
+            "store_as": "order_id",
             "type": "string"
           }
         ]
       }
-    },
-    {
-      "id": "N6",
-      "type": "END"
     },
     {
       "id": "N4",
@@ -23,13 +19,9 @@
       "data": {
         "mode": "listen",
         "config": {
-          "signal": "payment_completed"
+          "signal": "user_confirmation"
         }
       }
-    },
-    {
-      "id": "N1",
-      "type": "START"
     },
     {
       "id": "N5",
@@ -37,7 +29,7 @@
       "data": {
         "outputs": [
           {
-            "field": "formatted_output",
+            "field": "coordinates",
             "type": "string"
           }
         ]
@@ -47,12 +39,20 @@
       "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "format_output",
+        "operation": "geocode",
         "inputs": {
-          "value": "user_id"
+          "value": "order_id"
         },
-        "output": "formatted_output"
+        "output": "coordinates"
       }
+    },
+    {
+      "id": "N6",
+      "type": "END"
+    },
+    {
+      "id": "N1",
+      "type": "START"
     }
   ],
   "edges": [

@@ -4,15 +4,21 @@ def build_condition_expression(condition: dict) -> str:
     """
     Format a condition dict into a Zigflow jq expression string.
 
+    Always reads from $context (not transient data .) for reliability.
+    Variables captured by INPUT are always exported to $context via export.as,
+    so $context.{field} is always populated. Using . would break silently
+    inside PARALLEL branches where a preceding call: http task replaces .
+    with the HTTP response body, losing all previous workflow variables.
+
     Examples:
         {"left": "user_email", "operator": "!=", "right": ""}
-            -> '${ .user_email != "" }'
+            -> '${ $context.user_email != "" }'
 
         {"left": "country", "operator": "==", "right": "US"}
-            -> '${ .country == "US" }'
+            -> '${ $context.country == "US" }'
 
         {"left": "retry_count", "operator": ">", "right": 3}
-            -> '${ .retry_count > 3 }'
+            -> '${ $context.retry_count > 3 }'
 
     Raises:
         ValueError: if the operator is not in SUPPORTED_OPERATORS.
@@ -34,4 +40,4 @@ def build_condition_expression(condition: dict) -> str:
         right_expr = f'"{right}"'
     else:
         right_expr = right
-    return f"${{ .{left} {operator} {right_expr} }}"
+    return f"${{ $context.{left} {operator} {right_expr} }}"

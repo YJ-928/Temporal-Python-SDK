@@ -1,13 +1,13 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: location and user id and email]
-    B[Input: location and user id and email] -- {user_location} --> C[Validate email address]
-    C[Validate email address] -- {validation_result} --> D[Output: validation result]
-    D[Output: validation result] --> I[End]
-    B[Input: location and user id and email] -- {user_id} --> E[Generate user activity report]
-    E[Generate user activity report] -- {report} --> F[Output: report]
-    F[Output: report] --> I[End]
-    B[Input: location and user id and email] -- {user_email} --> G[Process order]
-    G[Process order] -- {order_status} --> H[Output: order status]
-    H[Output: order status] --> I[End]
+    A[Start] --> B[Input: country and user id and name]
+    B[Input: country and user id and name] -- {country} --> C[Format output for response]
+    C[Format output for response] -- {formatted_output} --> D[Output: formatted output]
+    D[Output: formatted output] --> I[End]
+    B[Input: country and user id and name] -- {user_id} --> E[Look up location data]
+    E[Look up location data] -- {location_data} --> F[Output: location data]
+    F[Output: location data] --> I[End]
+    B[Input: country and user id and name] -- {user_name} --> G[Fetch product details]
+    G[Fetch product details] -- {product_details} --> H[Output: product details]
+    H[Output: product details] --> I[End]
 ```

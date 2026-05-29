@@ -159,7 +159,7 @@ def build_terminal(node: dict, *, traversal_entry=None, compiler_context=None) -
 
 **Task name:** `{node_id}_expose`
 
-**DSL output:**
+**DSL output (normal — no preceding PARALLEL):**
 ```json
 {
   "N5_expose": {
@@ -171,11 +171,28 @@ def build_terminal(node: dict, *, traversal_entry=None, compiler_context=None) -
 }
 ```
 
+**DSL output (convergence — follows a PARALLEL block):**
+```json
+{
+  "N5_expose": {
+    "set": {
+      "email_status":   "${ $context.email_status }",
+      "profile_status": "${ $context.profile_status }"
+    },
+    "then": "end"
+  }
+}
+```
+
 **With `is_terminal`:** adds `"then": "end"` inside the task body.
 
-**Logic:** Reads `node["data"]["outputs"]`. For each entry: key = `field`, value = `${ .<field> }`. Multiple fields in one `set` task.
+**Logic:** Reads `node["data"]["outputs"]`. For each entry: key = `field`. Value expression depends on `traversal_entry.get("reads_from_context")`:
+- `reads_from_context = False` (normal): `${ .<field> }` — reads from transient flowing data.
+- `reads_from_context = True` (post-PARALLEL convergence): `${ $context.<field> }` — reads from persisted context, because parallel branch ACTIONs write results to `$context`, not to transient data.
 
-**DSL semantics:** `set` with `${ .<field> }` reads named fields from the current data context and shapes the workflow output.
+Multiple fields share one `set` task.
+
+**DSL semantics:** `set` shapes the workflow output. The `reads_from_context` distinction is required because `fork` branches run in isolated data contexts; their results only survive in `$context`.
 
 ---
 
@@ -272,6 +289,62 @@ def generate_dsl_boilerplate(dsl_version, version, workflow_type, task_queue) ->
 
 ---
 
+### `parallel_builder.py` — PARALLEL node
+
+**Node data contract:**
+```json
+{
+  "id": "N3",
+  "type": "PARALLEL",
+  "data": { "compete": false }
+}
+```
+
+- `compete: false` — all branches must complete; results from all are available afterward.
+- `compete: true` — race; first branch to complete wins; others are cancelled.
+- `data.compete` defaults to `false` when absent.
+
+**Task name:** `{node_id}_parallel`
+
+**DSL output:**
+```json
+{
+  "N3_parallel": {
+    "fork": {
+      "compete": false,
+      "branches": [
+        { "branch_0": { "do": [ { "N4_send_email": { "call": "http", ... } } ] } },
+        { "branch_1": { "do": [ { "N5_create_profile": { "call": "http", ... } } ] } }
+      ]
+    }
+  }
+}
+```
+
+**Branches are named:** each branch is `{branch_id: {"do": [...]}}` — NOT anonymous `{"do": [...]}`. This is required by the Zigflow `fork` schema.
+
+**Branch order:** sorted by `branch_id` key (`branch_0`, `branch_1`, …), which Phase A assigns in outgoing-edge declaration order.
+
+**With `is_terminal`:** PARALLEL is **never terminal**. The convergence OUTPUT node after the fork handles `then: end`. Never inject `then: end` into a PARALLEL node.
+
+**Function signature:**
+```python
+def build_parallel(
+    node: dict,
+    *,
+    traversal_entry=None,
+    compiler_context=None,
+    branch_do_lists: dict | None = None,
+) -> dict
+```
+
+- `branch_do_lists`: `{branch_id: list[task_dict]}` — pre-built by `dsl_generator._build_do_list()` before this function is called. The builder never computes branch content itself.
+- PARALLEL is **not in `NODE_BUILDERS`** in `dsl_generator.py`. It uses a special dispatch block at the top of `generate_dsl()`'s inner loop. See `dsl_generator.md` for the dispatch pattern.
+
+**DSL semantics:** `fork` emits parallel Zigflow/Temporal branches. `compete: false` waits for all; `compete: true` cancels all but the first to finish.
+
+---
+
 ### `if_builder.py` — IF node
 
 **Node data contract:**
@@ -299,7 +372,7 @@ def generate_dsl_boilerplate(dsl_version, version, workflow_type, task_queue) ->
 {
   "N4_if": {
     "switch": [
-      { "case":    { "when": "${ .user_email != \"\" }", "then": "N5_greet" } },
+      { "case":    { "when": "${ $context.user_email != \"\" }", "then": "N5_greet" } },
       { "default": { "then": "N6_skip" } }
     ]
   }
@@ -336,13 +409,13 @@ def build_condition_expression(condition: dict) -> str
 **Example outputs:**
 ```python
 build_condition_expression({"left": "user_email",  "operator": "!=", "right": ""})
-    # returns: '${ .user_email != "" }'
+    # returns: '${ $context.user_email != "" }'
 
 build_condition_expression({"left": "country",     "operator": "==", "right": "US"})
-    # returns: '${ .country == "US" }'
+    # returns: '${ $context.country == "US" }'
 
 build_condition_expression({"left": "retry_count", "operator": ">",  "right": 3})
-    # returns: '${ .retry_count > 3 }'
+    # returns: '${ $context.retry_count > 3 }'
 ```
 
 **Type handling:** `bool` right values become `true`/`false`. `str` values are wrapped in `""`. Numeric values are rendered as-is.
@@ -366,7 +439,7 @@ Files in `poc-dsl-compiler/templates/` are **not used at runtime**. They documen
 | `if_switch.json` | `if_builder` | ✅ matches builder output |
 | `action_script.json` | no builder yet | ❌ deferred |
 | `action_shell.json` | no builder yet | ❌ deferred |
-| `parallel.json` | no builder yet | ❌ deferred |
+| `parallel.json` | `parallel_builder` | ✅ matches builder output |
 | `variable.json` | no builder yet | ❌ deferred |
 | `workflow.json` | no builder yet | ❌ deferred |
 

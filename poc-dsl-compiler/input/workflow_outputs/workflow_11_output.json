@@ -1,61 +1,6 @@
 {
   "nodes": [
     {
-      "id": "N5",
-      "type": "ACTION",
-      "data": {
-        "operation": "send_notification",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "notification_status"
-      }
-    },
-    {
-      "id": "N6",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "notification_status",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N8",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "email_status",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N4",
-      "type": "IF",
-      "condition": {
-        "left": "email_verified",
-        "operator": "==",
-        "right": true
-      }
-    },
-    {
-      "id": "N9",
-      "type": "ACTION",
-      "data": {
-        "operation": "log_missing_email",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "log_id"
-      }
-    },
-    {
       "id": "N2",
       "type": "INPUT",
       "data": {
@@ -69,34 +14,12 @@
       }
     },
     {
-      "id": "N12",
-      "type": "ACTION",
-      "data": {
-        "operation": "lookup_user",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "email_verified"
-      }
-    },
-    {
       "id": "N3",
       "type": "IF",
       "condition": {
         "left": "user_email",
         "operator": "!=",
         "right": ""
-      }
-    },
-    {
-      "id": "N7",
-      "type": "ACTION",
-      "data": {
-        "operation": "send_email",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "email_status"
       }
     },
     {
@@ -116,8 +39,85 @@
       }
     },
     {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "notification_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N4",
+      "type": "IF",
+      "condition": {
+        "left": "email_verified",
+        "operator": "==",
+        "right": true
+      }
+    },
+    {
+      "id": "N12",
+      "type": "ACTION",
+      "data": {
+        "operation": "lookup_user",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "email_verified"
+      }
+    },
+    {
       "id": "N11",
       "type": "END"
+    },
+    {
+      "id": "N9",
+      "type": "ACTION",
+      "data": {
+        "operation": "log_missing_email",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "log_id"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "email_status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_notification",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "notification_status"
+      }
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_email",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "email_status"
+      }
     }
   ],
   "edges": [

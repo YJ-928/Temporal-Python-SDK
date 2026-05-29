@@ -1,12 +1,12 @@
 {
   "nodes": [
     {
-      "id": "N4",
+      "id": "N6",
       "type": "OUTPUT",
       "data": {
         "outputs": [
           {
-            "field": "validation_result",
+            "field": "location_data",
             "type": "string"
           }
         ]
@@ -17,69 +17,23 @@
       "type": "START"
     },
     {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "location",
-            "store_as": "user_location",
-            "type": "string"
-          },
-          {
-            "field": "user_id",
-            "store_as": "user_id",
-            "type": "string"
-          },
-          {
-            "field": "email",
-            "store_as": "user_email",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N7",
-      "type": "ACTION",
-      "data": {
-        "operation": "process_order",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "order_status"
-      }
-    },
-    {
-      "id": "N6",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "report",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
       "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "validate_email",
+        "operation": "format_output",
         "inputs": {
-          "value": "user_location"
+          "value": "country"
         },
-        "output": "validation_result"
+        "output": "formatted_output"
       }
     },
     {
-      "id": "N8",
+      "id": "N4",
       "type": "OUTPUT",
       "data": {
         "outputs": [
           {
-            "field": "order_status",
+            "field": "formatted_output",
             "type": "string"
           }
         ]
@@ -90,14 +44,60 @@
       "type": "END"
     },
     {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "product_details",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
       "id": "N5",
       "type": "ACTION",
       "data": {
-        "operation": "generate_report",
+        "operation": "lookup_location",
         "inputs": {
           "value": "user_id"
         },
-        "output": "report"
+        "output": "location_data"
+      }
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "fetch_product",
+        "inputs": {
+          "value": "user_name"
+        },
+        "output": "product_details"
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "country",
+            "store_as": "country",
+            "type": "string"
+          },
+          {
+            "field": "user_id",
+            "store_as": "user_id",
+            "type": "string"
+          },
+          {
+            "field": "name",
+            "store_as": "user_name",
+            "type": "string"
+          }
+        ]
       }
     }
   ],

@@ -1,6 +1,29 @@
 {
   "nodes": [
     {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "location_data",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "lookup_location",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "location_data"
+      }
+    },
+    {
       "id": "N1",
       "type": "START"
     },
@@ -9,36 +32,13 @@
       "type": "END"
     },
     {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "geocode",
-        "inputs": {
-          "value": "city"
-        },
-        "output": "coordinates"
-      }
-    },
-    {
-      "id": "N4",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "coordinates",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
       "id": "N2",
       "type": "INPUT",
       "data": {
         "inputs": [
           {
-            "field": "city",
-            "store_as": "city",
+            "field": "email",
+            "store_as": "user_email",
             "type": "string"
           }
         ]

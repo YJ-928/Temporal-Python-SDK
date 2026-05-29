@@ -1,7 +1,7 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: city]
-    B[Input: city] -- {city} --> C[Geocode location to coordinates]
-    C[Geocode location to coordinates] -- {coordinates} --> D[Output: coordinates]
-    D[Output: coordinates] --> E[End]
+    A[Start] --> B[Input: email]
+    B[Input: email] -- {user_email} --> C[Look up location data]
+    C[Look up location data] -- {location_data} --> D[Output: location data]
+    D[Output: location data] --> E[End]
 ```

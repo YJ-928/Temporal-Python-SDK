@@ -41,6 +41,7 @@ poc-dsl-compiler/
 │   ├── wait_builder.py          # WAIT → wait (duration) or listen (signal) task
 │   ├── if_builder.py            # IF → switch task; reads branch_map from traversal_entry
 │   ├── condition_builder.py     # Utility — build_condition_expression(); shared by IF and future nodes
+│   ├── parallel_builder.py      # PARALLEL → fork task; branch_do_lists pre-built by dsl_generator
 │   └── dsl_boilerplate_builder.py  # DSL document header
 ├── utils/
 │   ├── traversal_types.py       # TypedDicts: BranchTarget, BranchMap, TraversalEntry
@@ -65,8 +66,9 @@ poc-dsl-compiler/
     { "id": "N3", "type": "ACTION", "data": { ... } },
     { "id": "N4", "type": "WAIT",   "data": { "mode": "duration|listen", "config": { ... } } },
     { "id": "N5", "type": "OUTPUT", "data": { ... } },
-    { "id": "N6", "type": "IF",     "condition": { "left": "field", "operator": "!=", "right": "" } },
-    { "id": "N7", "type": "END" }
+    { "id": "N6", "type": "IF",       "condition": { "left": "field", "operator": "!=", "right": "" } },
+    { "id": "N7", "type": "PARALLEL", "data": { "compete": false } },
+    { "id": "N8", "type": "END" }
   ],
   "edges": [
     { "id": "E1", "source": "N1", "target": "N2" },
@@ -119,6 +121,9 @@ class TraversalEntry(TypedDict):
     successors:            list[str] # direct successor node IDs
     incoming_edge_control: dict | None  # control dict from parent edge; None for START
     branch_map:            BranchMap | None  # IF nodes only; None for all others
+    # PARALLEL-specific (NotRequired — absent for all non-PARALLEL nodes)
+    parallel_map:          dict | None  # PARALLEL nodes only; maps branch_id → ParallelBranchEntry
+    reads_from_context:    bool        # True on OUTPUT nodes that follow a PARALLEL block
 ```
 
 ---
@@ -184,11 +189,16 @@ Only these type names are schema-valid in Zigflow DSL v1.0.0:
 | `OUTPUT` | ✅ | `set` | `output_builder.build_output` |
 | `WAIT` | ✅ | `wait` (duration) or `listen` (signal) | `wait_builder.build_wait` |
 | `IF` | ✅ | `switch` | `if_builder.build_if` |
-| `PARALLEL` | ❌ deferred | `fork` | not implemented — V2 |
+| `PARALLEL` | ✅ | `fork` | `parallel_builder.build_parallel` |
 | `VARIABLE` | ❌ deferred | `set` | not implemented — V2 |
 | `WORKFLOW` | ❌ deferred | `run: {workflow}` | not implemented — V2 |
 
-**Known limitation:** reconvergence (diamond/JOIN patterns where two branches converge on one node) is not supported. See `current_state.md` Known Limitations.
+**PARALLEL-specific notes:**
+- PARALLEL nodes carry `"data": {"compete": bool}` — `false` = all branches must complete; `true` = race, first wins.
+- Each outgoing edge from PARALLEL is a standard non-control edge. Phase A's `_find_parallel_convergence()` detects the convergence node using BFS-reachability intersection.
+- The convergence OUTPUT node has `reads_from_context: true` in its `TraversalEntry`. This makes `output_builder` read `${ $context.<field> }` instead of `${ .<field> }` (since branch ACTIONs export to `$context`, not transient data).
+- `parallel_map` on a PARALLEL node's `TraversalEntry` maps `branch_0`, `branch_1`, … → `ParallelBranchEntry` dicts containing the pre-traversed branch `traversal` list.
+- PARALLEL uses a **special dispatch** in `dsl_generator.generate_dsl()` (not in `NODE_BUILDERS`) because it requires recursive `_build_do_list()` calls before builder invocation.
 
 ---
 

@@ -10,44 +10,44 @@
     {
       "N2_capture": {
         "set": {
-          "order_id": "${ $input.order_id }"
+          "dob": "${ $input.date_of_birth }"
         },
         "export": {
-          "as": "${ $context + {order_id: .order_id} }"
+          "as": "${ $context + {dob: .dob} }"
         }
       }
     },
     {
-      "N3_fetch_product": {
+      "N3_log_activity": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/fetch_product",
+          "endpoint": "http://localhost:8080/log_activity",
           "body": {
-            "value": "${ $context.order_id }"
+            "value": "${ $context.dob }"
           }
         },
         "output": {
           "as": {
-            "product_details": "${ . }"
+            "log_id": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {product_details: .product_details} }"
+          "as": "${ $context + {log_id: .log_id} }"
         }
       }
     },
     {
       "N4_wait": {
         "wait": {
-          "minutes": 5
+          "seconds": 60
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "product_details": "${ .product_details }"
+          "log_id": "${ .log_id }"
         },
         "then": "end"
       }

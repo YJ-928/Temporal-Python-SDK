@@ -209,6 +209,10 @@ def make_if(nid, cond):
         },
     }
 
+def make_parallel(nid, compete=False):
+    """PARALLEL node: fork into concurrent branches."""
+    return {"id": nid, "type": "PARALLEL", "data": {"compete": compete}}
+
 # Edge Builder
 def make_edge(eid, src, tgt, control=None):
     edge = {"id": eid, "source": src, "target": tgt}
@@ -275,6 +279,9 @@ def _node_label(node):
     if t == "IF":
         cond = node["condition"]
         return f"IF: {cond['left']} {cond['operator']} {cond['right']}"
+    if t == "PARALLEL":
+        compete = node.get("data", {}).get("compete", False)
+        return "Fork (race)" if compete else "Fork"
     return t
 
 def _edge_label(src_node, tgt_node, edge=None):
@@ -757,6 +764,142 @@ def generate_level_11():
     return {"nodes": nodes, "edges": edges}
 
 
+def generate_level_12():
+    """
+    Level 12 - Simple PARALLEL
+    START → INPUT(user_email + order_id) → PARALLEL → [ACTION, ACTION] → OUTPUT → END
+    7 nodes, 7 edges. Exactly one fork in the compiled DSL.
+    Convergence candidates = {OUTPUT}. No ambiguity.
+    """
+    inp1 = next(i for i in INPUT_VOCAB if i["store_as"] == "user_email")
+    inp2 = next(i for i in INPUT_VOCAB if i["store_as"] == "order_id")
+    act_a = next(a for a in ACTION_VOCAB if a["operation"] == "send_notification")
+    act_b = next(a for a in ACTION_VOCAB if a["operation"] == "process_order")
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", [inp1, inp2]),
+        make_parallel("N3"),
+        make_action("N4", act_a["operation"], inp1["store_as"], act_a["output"]),
+        make_action("N5", act_b["operation"], inp2["store_as"], act_b["output"]),
+        make_output("N6", [
+            {"field": act_a["output"], "type": "string"},
+            {"field": act_b["output"], "type": "string"},
+        ]),
+        make_end("N7"),
+    ]
+
+    edges = [
+        make_edge("E1", "N1", "N2"),
+        make_edge("E2", "N2", "N3"),
+        make_edge("E3", "N3", "N4"),   # branch_0
+        make_edge("E4", "N3", "N5"),   # branch_1
+        make_edge("E5", "N4", "N6"),
+        make_edge("E6", "N5", "N6"),
+        make_edge("E7", "N6", "N7"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
+def generate_level_13():
+    """
+    Level 13 - Advanced PARALLEL: IF in one branch, ACTION chain in another.
+    START → INPUT(user_email + order_id) → PARALLEL → [
+        branch_0: IF(user_email != "") -[true]→ ACTION(send_notification)
+                                        -[false]→ ACTION(log_activity)
+        branch_1: ACTION(process_order) → ACTION(generate_report)
+    ] → OUTPUT → END
+    10 nodes, 11 edges.
+    """
+    inp1 = next(i for i in INPUT_VOCAB if i["store_as"] == "user_email")
+    inp2 = next(i for i in INPUT_VOCAB if i["store_as"] == "order_id")
+    cond = next(c for c in IF_VOCAB if c["left"] == "user_email")
+    act_true = next(a for a in ACTION_VOCAB if a["operation"] == "send_notification")
+    act_false = next(a for a in ACTION_VOCAB if a["operation"] == "log_activity")
+    act_c1 = next(a for a in ACTION_VOCAB if a["operation"] == "process_order")
+    act_c2 = next(a for a in ACTION_VOCAB if a["operation"] == "generate_report")
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", [inp1, inp2]),
+        make_parallel("N3"),
+        # branch_0: IF → true/false ACTION paths
+        make_if("N4", cond),
+        make_action("N5", act_true["operation"], inp1["store_as"], act_true["output"]),
+        make_action("N6", act_false["operation"], inp1["store_as"], act_false["output"]),
+        # branch_1: chained ACTIONs
+        make_action("N7", act_c1["operation"], inp2["store_as"], act_c1["output"]),
+        make_action("N8", act_c2["operation"], act_c1["output"], act_c2["output"]),
+        make_output("N9", [
+            {"field": act_true["output"], "type": "string"},
+            {"field": act_c2["output"], "type": "string"},
+        ]),
+        make_end("N10"),
+    ]
+
+    edges = [
+        make_edge("E1",  "N1",  "N2"),
+        make_edge("E2",  "N2",  "N3"),
+        make_edge("E3",  "N3",  "N4"),                         # branch_0 start (IF)
+        make_edge("E4",  "N3",  "N7"),                         # branch_1 start (ACTION chain)
+        make_edge("E5",  "N4",  "N5", control={"branch": "true"}),   # IF true
+        make_edge("E6",  "N4",  "N6", control={"branch": "false"}),  # IF false
+        make_edge("E7",  "N5",  "N9"),                         # true ACTION → convergence
+        make_edge("E8",  "N6",  "N9"),                         # false ACTION → convergence
+        make_edge("E9",  "N7",  "N8"),                         # ACTION chain
+        make_edge("E10", "N8",  "N9"),                         # chain end → convergence
+        make_edge("E11", "N9",  "N10"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
+def generate_level_14():
+    """
+    Level 14 - Convergence Ambiguity Test
+    START → INPUT(order_id) → PARALLEL → [ACTION(process_order), ACTION(send_notification)]
+    → OUTPUT → ACTION(log_activity) → END
+
+    Purpose: validate that _find_parallel_convergence() selects OUTPUT (N6) as the
+    convergence node, NOT the post-convergence ACTION(N7) or END(N8).
+
+    All three nodes {OUTPUT(N6), ACTION_post(N7), END(N8)} are reachable from EVERY
+    branch. The BFS root-candidate algorithm must pick N6 because N7 and N8 are
+    reachable FROM N6 — they are not root candidates.
+
+    8 nodes, 8 edges.
+    """
+    inp = next(i for i in INPUT_VOCAB if i["store_as"] == "order_id")
+    act_a = next(a for a in ACTION_VOCAB if a["operation"] == "process_order")
+    act_b = next(a for a in ACTION_VOCAB if a["operation"] == "send_notification")
+    act_post = next(a for a in ACTION_VOCAB if a["operation"] == "log_activity")
+
+    nodes = [
+        make_start("N1"),
+        make_input("N2", [inp]),
+        make_parallel("N3"),
+        make_action("N4", act_a["operation"], inp["store_as"], act_a["output"]),   # branch_0
+        make_action("N5", act_b["operation"], inp["store_as"], act_b["output"]),   # branch_1
+        make_output("N6", [{"field": act_a["output"], "type": "string"}]),         # convergence
+        make_action("N7", act_post["operation"], act_a["output"], act_post["output"]),  # post-convergence
+        make_end("N8"),
+    ]
+
+    edges = [
+        make_edge("E1", "N1", "N2"),
+        make_edge("E2", "N2", "N3"),
+        make_edge("E3", "N3", "N4"),   # branch_0
+        make_edge("E4", "N3", "N5"),   # branch_1
+        make_edge("E5", "N4", "N6"),   # → convergence (OUTPUT)
+        make_edge("E6", "N5", "N6"),   # → convergence (OUTPUT)
+        make_edge("E7", "N6", "N7"),   # post-convergence action
+        make_edge("E8", "N7", "N8"),
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
 # Save
 def save_workflow(workflow, mermaid_str, index):
     WORKFLOWS_DIR.mkdir(parents=True, exist_ok=True)
@@ -787,20 +930,26 @@ GENERATORS = {
     9: generate_level_9,
     10: generate_level_10,
     11: generate_level_11,
+    12: generate_level_12,
+    13: generate_level_13,
+    14: generate_level_14,
 }
 
 DESCRIPTIONS = {
-    1: "Linear   - START to INPUT to ACTION to OUTPUT to END",
-    2: "Branches - 2 parallel branches from shared INPUT",
-    3: "Branches - 3 parallel branches from shared INPUT",
-    4: "Deep     - 2 branches with chained ACTIONs (INPUT to ACTION to ACTION to OUTPUT)",
-    5: "Mixed    - 2 branches of different depths, branch 2 has its own INPUT",
-    6: "Wait     - Linear with WAIT(duration) between ACTION and OUTPUT",
-    7: "Wait+    - 2 branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT",
-    8: "Listen   - Linear with WAIT(listen): waits for an external signal before OUTPUT",
-    9: "Mixed W  - 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)",
+    1:  "Linear   - START to INPUT to ACTION to OUTPUT to END",
+    2:  "Branches - 2 parallel branches from shared INPUT",
+    3:  "Branches - 3 parallel branches from shared INPUT",
+    4:  "Deep     - 2 branches with chained ACTIONs (INPUT to ACTION to ACTION to OUTPUT)",
+    5:  "Mixed    - 2 branches of different depths, branch 2 has its own INPUT",
+    6:  "Wait     - Linear with WAIT(duration) between ACTION and OUTPUT",
+    7:  "Wait+    - 2 branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT",
+    8:  "Listen   - Linear with WAIT(listen): waits for an external signal before OUTPUT",
+    9:  "Mixed W  - 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)",
     10: "IF       - Linear IF: email presence guard, true/false branches",
     11: "Nested IF - Outer email-presence guard; inner email-verified check in true branch",
+    12: "PARALLEL  - Simple PARALLEL: 2 concurrent ACTION branches converge at OUTPUT",
+    13: "PARALLEL+ - Advanced PARALLEL: IF in branch_0, ACTION chain in branch_1",
+    14: "PARALLEL? - Convergence ambiguity: OUTPUT + post-convergence ACTION + END all reachable from branches",
 }
 
 if __name__ == "__main__":
@@ -808,10 +957,10 @@ if __name__ == "__main__":
     for k, v in DESCRIPTIONS.items():
         print(f"  {k}  {v}")
 
-    level = int(input("\nDifficulty Level (1-11): "))
+    level = int(input("\nDifficulty Level (1-14): "))
 
     if level not in GENERATORS:
-        print("Invalid level. Choose 1-11.")
+        print("Invalid level. Choose 1-14.")
         raise SystemExit(1)
 
     workflow = GENERATORS[level]()

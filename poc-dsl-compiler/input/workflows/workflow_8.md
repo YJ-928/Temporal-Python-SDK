@@ -1,8 +1,8 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: user id]
-    B[Input: user id] -- {user_id} --> C[Format output for response]
-    C[Format output for response] -- {formatted_output} --> D[Listen: payment completed]
-    D[Listen: payment completed] --> E[Output: formatted output]
-    E[Output: formatted output] --> F[End]
+    A[Start] --> B[Input: order id]
+    B[Input: order id] -- {order_id} --> C[Geocode location to coordinates]
+    C[Geocode location to coordinates] -- {coordinates} --> D[Listen: user confirmation]
+    D[Listen: user confirmation] --> E[Output: coordinates]
+    E[Output: coordinates] --> F[End]
 ```

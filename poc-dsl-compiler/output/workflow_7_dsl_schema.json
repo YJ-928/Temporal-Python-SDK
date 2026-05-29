@@ -11,99 +11,99 @@
       "N2_capture": {
         "set": {
           "country": "${ $input.country }",
-          "user_name": "${ $input.name }"
+          "order_id": "${ $input.order_id }"
         },
         "export": {
-          "as": "${ $context + {country: .country, user_name: .user_name} }"
+          "as": "${ $context + {country: .country, order_id: .order_id} }"
         }
       }
     },
     {
-      "N3_format_output": {
+      "N3_enrich_profile": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/format_output",
+          "endpoint": "http://localhost:8080/enrich_profile",
           "body": {
             "value": "${ $context.country }"
           }
         },
         "output": {
           "as": {
-            "formatted_output": "${ . }"
+            "enriched_profile": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {formatted_output: .formatted_output} }"
+          "as": "${ $context + {enriched_profile: .enriched_profile} }"
         }
       }
     },
     {
       "N4_wait": {
         "wait": {
-          "minutes": 15
+          "minutes": 1
         }
       }
     },
     {
-      "N5_validate_email": {
+      "N5_lookup_location": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/validate_email",
+          "endpoint": "http://localhost:8080/lookup_location",
           "body": {
-            "value": "${ $context.formatted_output }"
+            "value": "${ $context.enriched_profile }"
           }
         },
         "output": {
           "as": {
-            "validation_result": "${ . }"
+            "location_data": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {validation_result: .validation_result} }"
+          "as": "${ $context + {location_data: .location_data} }"
         }
       }
     },
     {
       "N6_expose": {
         "set": {
-          "validation_result": "${ .validation_result }"
+          "location_data": "${ .location_data }"
         },
         "then": "end"
       }
     },
     {
-      "N7_generate_report": {
+      "N7_process_order": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/generate_report",
+          "endpoint": "http://localhost:8080/process_order",
           "body": {
-            "value": "${ $context.user_name }"
+            "value": "${ $context.order_id }"
           }
         },
         "output": {
           "as": {
-            "report": "${ . }"
+            "order_status": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {report: .report} }"
+          "as": "${ $context + {order_status: .order_status} }"
         }
       }
     },
     {
       "N8_wait": {
         "wait": {
-          "minutes": 10
+          "minutes": 5
         }
       }
     },
     {
       "N9_expose": {
         "set": {
-          "report": "${ .report }"
+          "order_status": "${ .order_status }"
         },
         "then": "end"
       }

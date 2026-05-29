@@ -22,6 +22,26 @@ class BranchMap(TypedDict):
     false: BranchTarget
 
 
+class ParallelBranchEntry(TypedDict):
+    """
+    Metadata for one branch of a PARALLEL node.
+
+    branch_id
+        Stable identifier for this branch (e.g. "branch_0", "branch_1").
+        Assigned by Phase A in declaration order of the outgoing edges.
+    entry_node_id
+        Node ID of the first node in this branch (the direct successor of
+        the PARALLEL node along this edge).
+    traversal
+        Ordered list of TraversalEntry dicts for the nodes inside this branch,
+        in DFS preorder. Does NOT include the PARALLEL node itself or the
+        convergence node. May itself contain nested PARALLEL entries.
+    """
+    branch_id: str
+    entry_node_id: str
+    traversal: list  # list[TraversalEntry] — forward reference avoids circular TypedDict
+
+
 class TraversalEntry(TypedDict):
     """
     Compiler-computed metadata wrapper for a single traversal step.
@@ -60,7 +80,17 @@ class TraversalEntry(TypedDict):
     branch_map
         For IF nodes only — pre-resolved true/false branch routing.
         None for all other node types.
-        Phase 2: PARALLEL will add fork_branches here or as a sibling key.
+    parallel_map
+        For PARALLEL nodes only — pre-resolved branch traversals.
+        Keys are branch IDs ("branch_0", "branch_1", ...) in declaration
+        order of outgoing edges from the PARALLEL node.
+        None for all other node types.
+    reads_from_context
+        Set to True on the convergence node of a PARALLEL (the node
+        immediately after the branches rejoin). Signals output_builder
+        and any other builder that reads accumulated data to source field
+        values from ``$context`` rather than the transient flowing data.
+        False for all other nodes (including the default when absent).
     """
     node_id: str
     node_type: str
@@ -69,3 +99,5 @@ class TraversalEntry(TypedDict):
     successors: list[str]
     incoming_edge_control: NotRequired[dict | None]
     branch_map: NotRequired[BranchMap | None]
+    parallel_map: NotRequired[dict | None]  # dict[str, ParallelBranchEntry] | None
+    reads_from_context: NotRequired[bool]
