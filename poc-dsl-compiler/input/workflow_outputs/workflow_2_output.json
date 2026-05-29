@@ -1,18 +1,14 @@
 {
   "nodes": [
     {
-      "id": "N1",
-      "type": "START"
-    },
-    {
       "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "log_activity",
+        "operation": "process_order",
         "inputs": {
-          "value": "phone"
+          "value": "user_id"
         },
-        "output": "log_id"
+        "output": "order_status"
       }
     },
     {
@@ -21,16 +17,35 @@
       "data": {
         "inputs": [
           {
-            "field": "phone_number",
-            "store_as": "phone",
+            "field": "user_id",
+            "store_as": "user_id",
             "type": "string"
           },
           {
-            "field": "order_id",
-            "store_as": "order_id",
+            "field": "date_of_birth",
+            "store_as": "dob",
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "N7",
+      "type": "END"
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "greet",
+        "inputs": {
+          "value": "dob"
+        },
+        "output": "greeting"
       }
     },
     {
@@ -39,21 +54,10 @@
       "data": {
         "outputs": [
           {
-            "field": "log_id",
+            "field": "order_status",
             "type": "string"
           }
         ]
-      }
-    },
-    {
-      "id": "N4",
-      "type": "ACTION",
-      "data": {
-        "operation": "greet",
-        "inputs": {
-          "value": "order_id"
-        },
-        "output": "greeting"
       }
     },
     {
@@ -67,10 +71,6 @@
           }
         ]
       }
-    },
-    {
-      "id": "N7",
-      "type": "END"
     }
   ],
   "edges": [

@@ -1,6 +1,20 @@
 {
   "nodes": [
     {
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "mode": "duration",
+        "config": {
+          "minutes": 5
+        }
+      }
+    },
+    {
+      "id": "N9",
+      "type": "END"
+    },
+    {
       "id": "N6",
       "type": "ACTION",
       "data": {
@@ -17,8 +31,31 @@
       "data": {
         "mode": "listen",
         "config": {
-          "signal": "notification_ack"
+          "signal": "approval_received"
         }
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "fetch_product",
+        "inputs": {
+          "value": "user_location"
+        },
+        "output": "product_details"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "age",
+            "type": "string"
+          }
+        ]
       }
     },
     {
@@ -40,25 +77,8 @@
       }
     },
     {
-      "id": "N4",
-      "type": "WAIT",
-      "data": {
-        "mode": "duration",
-        "config": {
-          "minutes": 2
-        }
-      }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "format_output",
-        "inputs": {
-          "value": "user_location"
-        },
-        "output": "formatted_output"
-      }
+      "id": "N1",
+      "type": "START"
     },
     {
       "id": "N5",
@@ -66,27 +86,7 @@
       "data": {
         "outputs": [
           {
-            "field": "formatted_output",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N9",
-      "type": "END"
-    },
-    {
-      "id": "N8",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "age",
+            "field": "product_details",
             "type": "string"
           }
         ]

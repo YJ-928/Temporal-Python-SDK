@@ -156,23 +156,44 @@ Output:
 
 ```python
 {
-"node_map":{},
-"adjacency":{},   # {source_id: [(target_id, control), ...]}; control=None for non-IF edges
-"graph":{},
-"traversal":[],
-"builder_context": {"adjacency": ..., "node_map": ...}  # passed to generate_dsl()
+  "node_map": {},
+  "adjacency": {},   # {source_id: [(target_id, control), ...]}; control=None for non-IF edges
+  "graph":    {},
+  "traversal": [],   # list[TraversalEntry] — see Phase A/B boundary below
+  "builder_context": {}  # deprecated; formerly {adjacency, node_map}; now always empty dict
 }
 ```
+
+TraversalEntry shape (from `utils/traversal_types.py`):
+
+```python
+class TraversalEntry(TypedDict):
+    node_id:               str
+    node_type:             str
+    node:                  dict          # READ-ONLY — shared reference from memoised DAG
+    is_terminal:           bool          # True when any direct successor is END
+    successors:            list[str]     # direct successor node IDs
+    incoming_edge_control: dict | None   # control dict from parent edge; None for START
+    branch_map:            BranchMap | None  # IF nodes only; pre-computed by traverse_graph()
+```
+
+## Phase A / Phase B Boundary
+
+| Concern | Owner | File |
+|---|---|---|
+| node_map, adjacency, graph structure | Phase A | `compiler.py` |
+| DFS traversal, is_terminal, branch_map, task name resolution | Phase A | `compiler.py` |
+| Builder dispatch, DSL fragment collection | Phase B | `dsl_generator.py` |
+| DSL fragment construction | Phase B | `builders/*.py` |
+| Document header assembly | Phase B | `dsl_boilerplate_builder.py` |
+
+The ONLY thing that crosses the Phase A/B boundary is `list[TraversalEntry]`. No builder reads adjacency, node_map, or graph internals.
 
 Compiler NEVER emits DSL.
 
 Compiler owns graph understanding.
 
-Traversal:
-
-DFS preorder.
-
-Shared nodes deduplicated.
+Traversal: DFS preorder. Shared nodes deduplicated.
 
 ---
 
@@ -193,7 +214,9 @@ Responsibilities:
 
 Generator NEVER traverses graph.
 
-Generator receives traversal.
+Generator receives `list[TraversalEntry]` from Phase A.
+
+Generator passes `traversal_entry=entry` to each builder call so builders can read `is_terminal`, `branch_map`, etc.
 
 Generator is assembler.
 
@@ -221,17 +244,27 @@ Builders:
 
 START → None
 
-INPUT → set
+INPUT → set (reads `$input.*`, exports to `$context` via `export.as`)
 
-ACTION → call:http
+ACTION → call:http (reads inputs from `$context`, exports output to `$context`)
 
 WAIT → wait (duration mode) or listen (listen mode)
 
 OUTPUT → set
 
-IF → switch (case/when/then + default/then)
+IF → switch (case/when/then + default/then); routing via `traversal_entry["branch_map"]`
 
 END → None
+
+All builders have signature:
+
+```python
+def build_<type>(node: dict, *, traversal_entry=None, compiler_context=None) -> dict | None
+```
+
+`compiler_context` is deprecated. Always `None` or `{}`. Not read by any builder.
+
+`then: end` injection: each builder (except terminal_builder and if_builder) checks `traversal_entry["is_terminal"]` and adds `"then": "end"` to its fragment. This is the builder's responsibility.
 
 Builders never:
 
@@ -239,6 +272,7 @@ Builders never:
 * validate
 * execute
 * import compiler
+* read adjacency or node_map
 
 ---
 
@@ -333,6 +367,32 @@ Compiler consumes.
 Current:
 
 Difficulty-based generation.
+
+---
+
+# $context Persistence
+
+INPUT and ACTION builders export captured variables into Zigflow `$context` so they survive across subsequent `call: http` tasks that replace the flowing data context.
+
+* INPUT: `export.as: ${ $context + {var1: .var1, var2: .var2} }`
+* ACTION body reads: `${ $context.ctx_var }` (not `${ .<var> }`)
+* ACTION: `export.as: ${ $context + {output_var: .output_var} }`
+
+This ensures chained ACTION nodes and parallel branches can always access previously captured variables regardless of how many prior HTTP tasks have replaced the flowing data.
+
+---
+
+# Known Limitations (V1)
+
+| Limitation | Detail |
+|---|---|
+| Reconvergence (JOIN/diamond) | DFS visits a shared convergence node from the first branch only. No JOIN semantics. Produces incorrect DSL for diamond patterns. |
+| PARALLEL | No `fork` task generation. Deferred to V2. |
+| LOOP/cycle | No cycle detection beyond `visited` set deduplication. Infinite loops would cycle in DFS. |
+| `builder_context` | Deprecated. Retained as `{}`. No builder reads it. |
+| ACTION host | Hardcoded to `http://localhost:8080/{operation}`. No service registry. |
+| ACTION method | Always `post` in V1. |
+| IF data field | Optional. Simple IF nodes have no `data`. Condition is a root-level key. |
 
 ---
 
@@ -540,33 +600,11 @@ Compiler-generated execution
 
 # Current Milestone
 
-Workflow JSON
+All 11 difficulty levels compiled and validated:
 
-↓
-
-Compiler
-
-↓
-
-Traversal
-
-↓
-
-DSL
-
-↓
-
-Validation
-
-Complete.
-
-Next milestone:
-
-Nested IF (Level 11)
-
-↓
-
-Validated ✅
+```
+python3 validate_outputs.py   →   11/11 PASS
+```
 
 Next:
 

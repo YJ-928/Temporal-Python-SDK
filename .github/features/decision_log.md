@@ -141,50 +141,113 @@ Architectural decisions for the DSL compiler. Each entry records what was decide
 
 ---
 
-## 2026-05 — IF node: switch DSL, tuple adjacency, compiler_context threading
+## 2026-05 — IF node: switch DSL, enriched traversal entries, Phase A branch pre-computation
 
-**Decision:** IF node emits a Zigflow `switch` task. Branch routing uses tuple adjacency `(target_id, control)`. The IF builder receives graph context via `compiler_context` threaded from `run_compiler()` through `generate_dsl()`.
+**Decision:** IF node emits a Zigflow `switch` task. Branch routing is pre-computed by Phase A (`traverse_graph()`) and stored in `traversal_entry["branch_map"]`. The IF builder reads only `traversal_entry["branch_map"]` — it never reads adjacency or node_map.
 
 **IF DSL shape:**
 ```json
 {
   "N3_if": {
     "switch": [
-      {"case":    {"when": "${ .field == \"value\" }", "then": "N4_task_name"}},
+      {"case":    {"when": "${ .user_email != \"\" }", "then": "N4_task_name"}},
       {"default": {"then": "N6_other_task"}}
     ]
   }
 }
 ```
 
-**Adjacency model change:**
-- Old: `adjacency[source].append(target_id)` — list of string IDs
-- New: `adjacency[source].append((target_id, control))` — list of tuples
+**Adjacency model:**
+- `adjacency[source].append((target_id, control))` — list of tuples (same as WAIT mode extension)
 - Non-IF edges: `control=None`
 - IF branch edges: `control={"branch": "true"}` or `control={"branch": "false"}`
-- Edges carry `"control"` key in JSON only when present (`make_edge(eid, src, tgt, control=None)`)
+- `make_edge(eid, src, tgt, control=None)` in workflow_generator emits `"control"` key only when not None
 
-**compiler_context threading:**
-- `run_compiler()` returns `"builder_context": {"adjacency": adjacency, "node_map": node_map}`
-- `generate_dsl(traversal, compiler_context=None, ...)` accepts it as second positional arg
-- Every builder signature extended to `build_X(node: dict, compiler_context: dict | None = None)`
-- Only `if_builder.build_if` consumes `compiler_context`; all others ignore it
-- Generator (`dsl_generator.py`) stays a pure assembler — no graph logic added
+**Phase A pre-computation:** `traverse_graph()` computes `branch_map` for each IF node:
+```python
+traversal_entry["branch_map"] == {
+    "true":  {"node_id": "N4", "task_name": "N4_greet"},
+    "false": {"node_id": "N6", "task_name": "N6_skip"},
+}
+```
+`resolve_task_name(node_map[target_id])` resolves each branch target's task name. The result is stored in the `TraversalEntry` before `dsl_generator.py` or any builder is called.
+
+**`compiler_context` (deprecated):**
+- `run_compiler()` returns `"builder_context": {}` (empty dict). Previously this contained adjacency + node_map for IF builder lookup.
+- `generate_dsl(traversal, compiler_context=None, ...)` still accepts it for call-site compatibility.
+- No builder reads `compiler_context`. It is retained as `{}` for future LOOP/PARALLEL work without breaking call sites.
 
 **Rejected:**
-- Injecting `_branch_children` directly into traversal node dicts — violates compiler/generator boundary; traversal output must not carry graph metadata
-- Passing `graph=compiler_output` to `generate_dsl()` — makes the assembler graph-aware; generator must only see traversal + optional opaque context
-- Separate `TRUE_BRANCH` / `FALSE_BRANCH` node types — unnecessary node-type proliferation; one IF node is correct
+- Re-reading adjacency in the IF builder at build time (old approach) — violated the Phase A/B boundary; created hidden coupling where builders understood graph structure
+- Injecting `_branch_children` into traversal node dicts — would mutate shared READ-ONLY graph node dicts
+- Separate `TRUE_BRANCH` / `FALSE_BRANCH` node types — unnecessary node-type proliferation
 
-**Known limitation (V1):** `generate_graph_structure()` mutates `child_graph["control"]` on the shared graph entry for IF branch children. If the same node were an IF-branch child of two different IFs, the control metadata would be clobbered. This topology does not arise in Level 10/11 and is acceptable for V1.
-
-**Level 11 (nested IF):** Deferred until Level 10 switch goto semantics are validated end-to-end with the Zigflow runtime.
+**Known limitation resolved:** The V1 concern about `generate_graph_structure()` mutating shared graph node dicts is eliminated. Graph node dicts are now READ-ONLY after construction; all traversal metadata lives in `TraversalEntry` objects which are new allocations per traversal step.
 
 ---
 
-## 2026-05 — IF condition schema: condition at root level
+## 2026-05 — Enriched traversal entries (Option B)
 
-**Decision:** `condition` is a root-level key on IF nodes — same level as `id`, `type`, and `data` — not nested inside `data`.
+**Decision:** `traverse_graph()` returns `list[TraversalEntry]` (enriched dicts), not `list[node_dict]` (raw nodes). Each `TraversalEntry` wraps the original graph node with pre-computed execution metadata: `is_terminal`, `branch_map`, `successors`, `incoming_edge_control`.
+
+**Typed contract** (`utils/traversal_types.py`):
+```python
+class TraversalEntry(TypedDict):
+    node_id:               str
+    node_type:             str
+    node:                  dict          # READ-ONLY — shared ref from memoised DAG
+    is_terminal:           bool          # True when any direct successor is END
+    successors:            list[str]     # direct successor node IDs
+    incoming_edge_control: dict | None   # control dict from parent edge; None for START
+    branch_map:            BranchMap | None  # IF nodes only
+```
+
+**Why:** The original `list[node_dict]` design caused three hacks that violated the Phase A/B boundary:
+1. `dsl_generator.py` re-read `adjacency` to detect END neighbors (for `then: end` injection)
+2. `if_builder.py` re-read `adjacency` and `node_map` to find branch target task names
+3. `dsl_generator.py` called `next(iter(fragment))` to mutate the fragment after the builder returned it
+
+All three hacks are eliminated by pre-computing the needed metadata in Phase A.
+
+**Option A (rejected):** Thread `adjacency` and `node_map` into builders via `compiler_context`. Rejected because it makes builders graph-aware, violating the Phase A/B boundary more deeply than the hacks it replaced.
+
+**Option B (chosen):** Phase A computes all needed execution metadata. Builders receive exactly what they need via `traversal_entry`. The Phase A/B boundary is clean: the only thing that crosses it is `list[TraversalEntry]`.
+
+**Consequence:** `compiler.py` is more responsible. It now computes `is_terminal`, `branch_map`, `successors`, and `incoming_edge_control`. All graph topology decisions happen before `dsl_generator.py` is called.
+
+---
+
+## 2026-05 — `then: end` injection owned by builders
+
+**Decision:** Each builder is responsible for adding `"then": "end"` to its DSL fragment when `traversal_entry["is_terminal"]` is True. `dsl_generator.py` does not perform this injection.
+
+**Why:** Originally, `dsl_generator.py` detected END neighbors via adjacency lookup and then mutated the returned fragment using `next(iter(fragment))`. This broke the Phase A/B boundary (generator read graph data) and mutated builder output (unexpected side effect).
+
+**Consequence:** Every builder (except `terminal_builder` which returns None) contains:
+```python
+if traversal_entry and traversal_entry["is_terminal"]:
+    fragment[task_name]["then"] = "end"
+```
+**IF builder exception:** IF nodes are never terminal (they always route to branch targets, which eventually lead to END). `if_builder` does not inject `then: end`.
+
+---
+
+## 2026-05 — `$context` persistence via `export.as` in INPUT and ACTION
+
+**Decision:** INPUT builder exports all captured variables into `$context` via `export.as`. ACTION builder reads inputs from `$context` (not transient flowing data) and also exports its output into `$context`.
+
+**Pattern:**
+- INPUT: `export.as: ${ $context + {var1: .var1, var2: .var2} }`
+- ACTION body: `{param: "${ $context.ctx_var }"}`
+- ACTION: `export.as: ${ $context + {output_var: .output_var} }`
+
+**Why:** Zigflow `call: http` tasks replace the current flowing data context with the HTTP response via `output.as`. Without `export.as`, variables captured by INPUT (or previous ACTION) would be lost after the first HTTP call. Reading inputs from `$context` ensures they remain accessible regardless of how many prior ACTION tasks have replaced the data context.
+
+**Consequence:** Chained ACTION nodes and parallel branches can always access all previously captured variables from `$context`, not just those in the immediate prior task's output.
+
+**Rejected:** Reading inputs from `${ .<var> }` (transient data) — would silently produce empty values after any preceding `call: http` task.
+
+---
 
 **Schema:**
 ```json
@@ -243,10 +306,11 @@ START → INPUT(email)
 ```
 
 **What this validates:**
-- Nested switch tasks in flat Zigflow DSL (goto routing handles nesting implicitly)
-- `compiler_context` adjacency lookup for nested IF branch resolution
+- Nested switch tasks in flat Zigflow DSL (goto routing handles nesting implicitly via task-name references)
+- Branch map pre-computation by Phase A `traverse_graph()` for nested IF nodes (both outer and inner IF have their `branch_map` resolved before any builder is called)
 - DFS preorder traversal correctly orders: outer IF → inner IF → true branch → false branch → outer false branch
-- `task_names.resolve_task_name()` resolves IF-to-IF goto correctly (`N4_if`)
+- `resolve_task_name()` resolves IF-to-IF goto correctly (`N4_if`)
+- All 11 difficulty levels validated: `python3 validate_outputs.py` — all pass `zigflow validate`
 
 **Zigflow validation result:** ✅ `workflow_11_dsl_schema.json` passes `zigflow validate`
 

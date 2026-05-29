@@ -42,7 +42,7 @@ def _build_wait_listen(node_id: str, config: dict) -> dict:
         }
     }
 
-def build_wait(node: dict, compiler_context: dict | None = None) -> dict:
+def build_wait(node: dict, *, traversal_entry=None, compiler_context=None) -> dict:
     """
     Convert a WAIT node into a wait or listen DSL fragment.
 
@@ -63,6 +63,12 @@ def build_wait(node: dict, compiler_context: dict | None = None) -> dict:
     mode = data["mode"]
     config = data["config"]
     if mode == "listen":
-        return _build_wait_listen(node_id, config)
-    # mode == "duration"
-    return _build_wait_duration(node_id, config)
+        fragment = _build_wait_listen(node_id, config)
+    else:
+        # mode == "duration"
+        fragment = _build_wait_duration(node_id, config)
+
+    task_name = f"{node_id}_wait"
+    if traversal_entry and traversal_entry["is_terminal"]:
+        fragment[task_name]["then"] = "end"
+    return fragment

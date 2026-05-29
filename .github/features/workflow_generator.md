@@ -25,8 +25,10 @@ Difficulty Levels:
   7  Wait+    — 2 branches with WAIT(duration); branch 1 has an extra ACTION after the WAIT
   8  Listen   — Linear with WAIT(listen): waits for an external signal before OUTPUT
   9  Mixed W  — 2 branches: branch A uses WAIT(duration), branch B uses WAIT(listen)
+ 10  Linear IF — Linear workflow with IF gate: true branch processes, false branch skips
+ 11  Nested IF — Outer IF gates on email presence; inner IF gates on email verification
 
-Difficulty Level (1-9):
+Difficulty Level (1-11):
 ```
 
 The generator prompts for a level, then writes two files:
@@ -112,6 +114,21 @@ Each entry has exactly one time-unit key plus a `label` key (human display only;
 | `minutes` | 15 | 15 minutes |
 | `hours` | 1 | 1 hour |
 | `hours` | 2 | 2 hours |
+
+### IF_VOCAB (6 entries)
+
+Each entry has `left`, `operator`, `right`, and `label`. The `label` key is for human display in Mermaid only; it is never emitted to the JSON node.
+
+| `left` | `operator` | `right` | `label` |
+|---|---|---|---|
+| `user_email` | `!=` | `""` | email present |
+| `email_verified` | `==` | `"true"` | email verified |
+| `country` | `==` | `"US"` | country is US |
+| `age` | `>=` | `18` | age at least 18 |
+| `risk_score` | `<` | `0.5` | low risk |
+| `retry_count` | `>` | `3` | retries exceeded |
+
+---
 
 ### LISTEN_VOCAB (4 entries)
 
@@ -217,6 +234,33 @@ Multiple fields are supported — all become entries in the `inputs` array.
 ```
 Edges carry no business data — only `id`, `source`, `target`.
 
+### `make_if(nid, cond)`
+`cond`: one entry from `IF_VOCAB`. The `label` key is stripped from the emitted JSON.
+```json
+{
+  "id": "N4",
+  "type": "IF",
+  "condition": {
+    "left":     "user_email",
+    "operator": "!=",
+    "right":    ""
+  }
+}
+```
+**Rule:** `condition` is a root-level key (not inside `data`). `label` is never included in the output.
+
+### `make_edge(eid, src, tgt, control=None)`
+Base edge with optional control metadata for IF branch edges:
+```json
+{ "id": "E1", "source": "N1", "target": "N2" }
+```
+With control (IF branch edges only):
+```json
+{ "id": "E5", "source": "N4", "target": "N5", "control": { "branch": "true" } }
+{ "id": "E6", "source": "N4", "target": "N7", "control": { "branch": "false" } }
+```
+**Rule:** The `control` key is only emitted when `control` is not `None`. Non-IF edges call `make_edge(eid, src, tgt)` with no `control` argument.
+
 ---
 
 ## Node ID Convention
@@ -255,6 +299,8 @@ Scans `poc-dsl-compiler/input/workflows/` for files matching `workflow_N.md`. Re
 | 7 | Wait+ | 10 | 10 | Shared INPUT → branch1: ACTION→WAIT(duration)→ACTION→OUTPUT; branch2: ACTION→WAIT(duration)→OUTPUT → END |
 | 8 | Listen | 6 | 5 | `START → INPUT → ACTION → WAIT(listen) → OUTPUT → END` |
 | 9 | Mixed W | 9 | 9 | Shared INPUT → branch A: ACTION→WAIT(duration)→OUTPUT; branch B: ACTION→WAIT(listen)→OUTPUT → END |
+| 10 | Linear IF | 8 | 8 | `START → INPUT → ACTION → IF → [true: OUTPUT→END] [false: OUTPUT→END]` |
+| 11 | Nested IF | 12 | 13 | `START → INPUT → outer IF [true: inner IF [true: ACTION→OUTPUT→END, false: ACTION→OUTPUT→END], false: ACTION→OUTPUT→END]` |
 
 ### Level 6 — exact structure
 ```
@@ -284,6 +330,36 @@ START(N1) → INPUT(N2) with 2 fields
   Branch B: INPUT(N2)→ACTION(N6)→WAIT(listen)(N7)→OUTPUT(N8)→END(N9)
 Edges: E1(N1→N2), E2(N2→N3), E3(N3→N4), E4(N4→N5), E5(N5→N9)
         E6(N2→N6), E7(N6→N7), E8(N7→N8), E9(N8→N9)
+```
+
+### Level 10 — exact structure
+```
+START(N1) → INPUT(N2, email) → ACTION(N3, validate_email) → IF(N4, user_email != "")
+  [true]  → OUTPUT(N5) → END(N8)
+  [false] → OUTPUT(N6) → END(N8)
+  (+ ACTION(N7) in true branch between IF and OUTPUT(N5) — exact variant may vary)
+Edges: E1(N1→N2), E2(N2→N3), E3(N3→N4)
+       E4(N4→N5, control={branch:true}), E5(N5→N8)
+       E6(N4→N6, control={branch:false}), E7(N6→N8)
+       [E8 connects any additional node]
+Total: 8 nodes, 8 edges
+```
+
+### Level 11 — exact structure
+```
+START(N1) → INPUT(N2, email)
+  → outer IF(N3, user_email != "")
+      [true]  → inner IF(N4, email_verified == "true")
+                   [true]  → ACTION(N5, send_notification) → OUTPUT(N6) → END(N12)
+                   [false] → ACTION(N7, send_email)         → OUTPUT(N8) → END(N12)
+      [false] → ACTION(N9, log_activity) → OUTPUT(N10) → END(N12)
+Edges: E1(N1→N2), E2(N2→N3)
+       E3(N3→N4, control={branch:true}), E4(N4→N5, control={branch:true})
+       E5(N5→N6), E6(N6→N12)
+       E7(N4→N7, control={branch:false}), E8(N7→N8), E9(N8→N12)
+       E10(N3→N9, control={branch:false}), E11(N9→N10), E12(N10→N12)
+       [E13 if N12 has self-edge; may vary]
+Total: 12 nodes, 13 edges
 ```
 
 ---
@@ -317,8 +393,9 @@ graph TD
 | `OUTPUT` | `"Output: {field}"` (single); `"Output: {f1} and {f2}"` (multiple) |
 | `WAIT` (duration) | `"Wait: N hours/minutes"` (plural if N≠1); `"Wait: N seconds"` |
 | `WAIT` (listen) | `"Listen: {signal_name}"` (underscores replaced with spaces, title-cased) |
+| `IF` | `f"IF: {cond['left']} {cond['operator']} {cond['right']}"` (e.g., `"IF: user_email != """`) |
 
-### Edge labels — `_edge_label(src_node, tgt_node)`
+### Edge labels — `_edge_label(src_node, tgt_node, edge=None)`
 
 | Source type | Label |
 |---|---|
@@ -326,6 +403,7 @@ graph TD
 | `END` | `""` (no label) |
 | `OUTPUT` | `""` (no label) |
 | `WAIT` | `""` (no label) |
+| `IF` | `"[true]"` if `edge["control"]["branch"] == "true"`; `"[false]"` if `"false"`. Reads `edge["control"]` when provided. |
 | `INPUT` (→ACTION) | `{var1, var2}` — variables the target ACTION actually uses |
 | `INPUT` (→other) | `""` |
 | `ACTION` | `{output_var}` — the ACTION's output variable name |
@@ -381,7 +459,7 @@ zigflow validate poc-dsl-compiler/output/workflow_N_output_dsl_schema.json
 3. Add the entry to the `GENERATORS` dict.
 4. Add a human-readable description to the `DESCRIPTIONS` dict.
 5. Update the prompt validation: `if level not in GENERATORS: print("Invalid level. Choose 1-N.")`.
-6. Update this doc: topology table + level descriptions.
+6. Update this doc: topology table + level descriptions + prompt output block.
 
 ## Adding a New Node Type to the Generator
 

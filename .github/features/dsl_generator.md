@@ -2,11 +2,11 @@
 
 ## What it is
 
-`poc-dsl-compiler/dsl_generator.py` is the **DSL assembler**. It receives the pre-computed traversal from the compiler, dispatches each node to its typed builder function, and assembles the final Zigflow DSL document.
+`poc-dsl-compiler/dsl_generator.py` is the **Phase B DSL assembler**. It receives a pre-computed `list[TraversalEntry]` from Phase A (`compiler.py`), dispatches each entry to its typed builder function, and assembles the final Zigflow DSL document.
 
 It is not a builder itself — it orchestrates builders. The distinction matters: builders produce individual DSL fragments; the assembler composes them into the complete `do` list.
 
-It does **not** know about graph structure, adjacency, or traversal logic — those belong entirely to `compiler.py`.
+It does **not** read graph structure, adjacency, node_map, or any graph internals. Everything it needs is pre-computed in the `TraversalEntry` dicts produced by `compiler.py`. The Phase A / Phase B boundary is the `list[TraversalEntry]`.
 
 ---
 
@@ -21,6 +21,7 @@ from builders.input_builder import build_input
 from builders.action_builder import build_action
 from builders.output_builder import build_output
 from builders.wait_builder import build_wait
+from builders.if_builder import build_if
 
 NODE_BUILDERS = {
     "START":  build_terminal,
@@ -28,17 +29,23 @@ NODE_BUILDERS = {
     "ACTION": build_action,
     "OUTPUT": build_output,
     "WAIT":   build_wait,
+    "IF":     build_if,
     "END":    build_terminal,
 }
 ```
 
 **When adding a new node type:** add import + entry here. That is the only required change in this file.
 
-### `generate_dsl(traversal, dsl_version, version, workflow_type, task_queue) -> dict`
+### `generate_dsl(traversal, compiler_context=None, dsl_version="1.0.0", version="1.0.0", workflow_type="compiled-workflow", task_queue="zigflow") -> dict`
 
-- Takes the traversal list from `run_compiler()`.
+- Takes the `list[TraversalEntry]` from `run_compiler()["traversal"]`.
+- `compiler_context`: **deprecated**. Always `None` or `{}`. Accepted for call-site compatibility; not read by any builder. Do not remove it.
 - Calls `generate_dsl_boilerplate(...)` to create the document header with empty `do` list.
-- Iterates traversal; for each node looks up `NODE_BUILDERS[node_type]`.
+- Iterates the `TraversalEntry` list; for each entry:
+  - Reads `entry["node_type"]` to look up the builder in `NODE_BUILDERS`.
+  - Calls `builder(entry["node"], traversal_entry=entry, compiler_context=compiler_context)`.
+  - Builders use `entry["is_terminal"]` to self-inject `then: end`.
+  - IF builder uses `entry["branch_map"]` for goto routing.
 - Unknown type → prints `[WARNING]` and skips (does not crash).
 - Builder returns `None` (START/END) → skipped silently.
 - Builder returns a dict → appended to `dsl["do"]`.
@@ -46,10 +53,11 @@ NODE_BUILDERS = {
 
 **Default parameter values** (passed through from `main.py`, overridable):
 ```python
-dsl_version   = "1.0.0"
-version       = "1.0.0"
-workflow_type = "compiled-workflow"
-task_queue    = "zigflow"
+compiler_context = None   # deprecated
+dsl_version      = "1.0.0"
+version          = "1.0.0"
+workflow_type    = "compiled-workflow"
+task_queue       = "zigflow"
 ```
 
 ### `save_dsl(dsl, output_path) -> None`

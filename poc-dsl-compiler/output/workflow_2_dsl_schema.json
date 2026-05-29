@@ -10,38 +10,38 @@
     {
       "N2_capture": {
         "set": {
-          "phone": "${ $input.phone_number }",
-          "order_id": "${ $input.order_id }"
+          "user_id": "${ $input.user_id }",
+          "dob": "${ $input.date_of_birth }"
         },
         "export": {
-          "as": "${ $context + {phone: .phone, order_id: .order_id} }"
+          "as": "${ $context + {user_id: .user_id, dob: .dob} }"
         }
       }
     },
     {
-      "N3_log_activity": {
+      "N3_process_order": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/log_activity",
+          "endpoint": "http://localhost:8080/process_order",
           "body": {
-            "value": "${ $context.phone }"
+            "value": "${ $context.user_id }"
           }
         },
         "output": {
           "as": {
-            "log_id": "${ . }"
+            "order_status": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {log_id: .log_id} }"
+          "as": "${ $context + {order_status: .order_status} }"
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "log_id": "${ .log_id }"
+          "order_status": "${ .order_status }"
         },
         "then": "end"
       }
@@ -53,7 +53,7 @@
           "method": "post",
           "endpoint": "http://localhost:8080/greet",
           "body": {
-            "value": "${ $context.order_id }"
+            "value": "${ $context.dob }"
           }
         },
         "output": {

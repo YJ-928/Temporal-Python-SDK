@@ -10,37 +10,37 @@
     {
       "N2_capture": {
         "set": {
-          "phone": "${ $input.phone_number }"
+          "city": "${ $input.city }"
         },
         "export": {
-          "as": "${ $context + {phone: .phone} }"
+          "as": "${ $context + {city: .city} }"
         }
       }
     },
     {
-      "N3_log_activity": {
+      "N3_geocode": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/log_activity",
+          "endpoint": "http://localhost:8080/geocode",
           "body": {
-            "value": "${ $context.phone }"
+            "value": "${ $context.city }"
           }
         },
         "output": {
           "as": {
-            "log_id": "${ . }"
+            "coordinates": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {log_id: .log_id} }"
+          "as": "${ $context + {coordinates: .coordinates} }"
         }
       }
     },
     {
       "N4_expose": {
         "set": {
-          "log_id": "${ .log_id }"
+          "coordinates": "${ .coordinates }"
         },
         "then": "end"
       }

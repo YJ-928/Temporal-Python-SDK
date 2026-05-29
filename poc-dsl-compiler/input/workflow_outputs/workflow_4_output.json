@@ -1,12 +1,86 @@
 {
   "nodes": [
     {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "geocode",
+        "inputs": {
+          "value": "formatted_output"
+        },
+        "output": "coordinates"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "coordinates",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "greet",
+        "inputs": {
+          "value": "order_status"
+        },
+        "output": "greeting"
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          },
+          {
+            "field": "country",
+            "store_as": "country",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "process_order",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "order_status"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "format_output",
+        "inputs": {
+          "value": "country"
+        },
+        "output": "formatted_output"
+      }
+    },
+    {
       "id": "N5",
       "type": "OUTPUT",
       "data": {
         "outputs": [
           {
-            "field": "report",
+            "field": "greeting",
             "type": "string"
           }
         ]
@@ -17,82 +91,8 @@
       "type": "START"
     },
     {
-      "id": "N4",
-      "type": "ACTION",
-      "data": {
-        "operation": "generate_report",
-        "inputs": {
-          "value": "phone_verified"
-        },
-        "output": "report"
-      }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "verify_phone",
-        "inputs": {
-          "value": "user_location"
-        },
-        "output": "phone_verified"
-      }
-    },
-    {
-      "id": "N8",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "age",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
       "id": "N9",
       "type": "END"
-    },
-    {
-      "id": "N6",
-      "type": "ACTION",
-      "data": {
-        "operation": "fetch_product",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "product_details"
-      }
-    },
-    {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "location",
-            "store_as": "user_location",
-            "type": "string"
-          },
-          {
-            "field": "email",
-            "store_as": "user_email",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N7",
-      "type": "ACTION",
-      "data": {
-        "operation": "calculate_age",
-        "inputs": {
-          "value": "product_details"
-        },
-        "output": "age"
-      }
     }
   ],
   "edges": [

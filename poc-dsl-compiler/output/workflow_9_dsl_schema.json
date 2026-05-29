@@ -19,36 +19,36 @@
       }
     },
     {
-      "N3_format_output": {
+      "N3_fetch_product": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/format_output",
+          "endpoint": "http://localhost:8080/fetch_product",
           "body": {
             "value": "${ $context.user_location }"
           }
         },
         "output": {
           "as": {
-            "formatted_output": "${ . }"
+            "product_details": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {formatted_output: .formatted_output} }"
+          "as": "${ $context + {product_details: .product_details} }"
         }
       }
     },
     {
       "N4_wait": {
         "wait": {
-          "minutes": 2
+          "minutes": 5
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "formatted_output": "${ .formatted_output }"
+          "product_details": "${ .product_details }"
         },
         "then": "end"
       }
@@ -79,7 +79,7 @@
           "to": {
             "one": {
               "with": {
-                "id": "notification_ack"
+                "id": "approval_received"
               }
             }
           }

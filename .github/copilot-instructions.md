@@ -1067,12 +1067,13 @@ These are the only node types implemented in V1. Do not add others without updat
 |---|---|---|
 | `START` | None | Graph traversal entry point; emits no DSL task |
 | `END` | None | Graph traversal terminal; emits no DSL task |
-| `INPUT` | `set` task | Captures external input fields into named workflow variables |
-| `ACTION` | `call: http` task | Transforms runtime variables; models an HTTP service call |
+| `INPUT` | `set` task + `export.as` | Captures external input fields into named workflow variables; exports all to `$context` |
+| `ACTION` | `call: http` task + `export.as` | Reads inputs from `$context`; exports output to `$context` |
 | `OUTPUT` | `set` task (expose) | Exposes named workflow variables as workflow output |
-| `WAIT` | `wait` task | Durable pause for a fixed duration (`seconds`, `minutes`, or `hours`) |
+| `WAIT` | `wait` or `listen` task | Duration mode: durable timer. Listen mode: waits for a Temporal signal. |
+| `IF` | `switch` task | Conditional branching; true/false targets resolved by Phase A `traverse_graph()` |
 
-**NOT implemented in V1** (deferred): `IF`, `VARIABLE`, `WORKFLOW`, `PARALLEL`.
+**NOT implemented in V1** (deferred): `VARIABLE`, `WORKFLOW`, `PARALLEL`.
 
 ### Node Data Contracts
 
@@ -1112,6 +1113,32 @@ These are the only node types implemented in V1. Do not add others without updat
 }
 ```
 
+**WAIT node (duration mode):**
+```json
+{
+  "type": "WAIT",
+  "data": { "mode": "duration", "config": { "seconds": 30 } }
+}
+```
+
+**WAIT node (listen mode):**
+```json
+{
+  "type": "WAIT",
+  "data": { "mode": "listen", "config": { "signal": "approval" } }
+}
+```
+
+**IF node:**
+```json
+{
+  "id": "N4",
+  "type": "IF",
+  "condition": { "left": "user_email", "operator": "!=", "right": "" }
+}
+```
+`condition` is a **root-level key** (same level as `id`, `type`), not inside `data`. `data` is optional on IF nodes.
+
 ---
 
 ## 35. DSL Compiler — Input JSON Contract (Frozen)
@@ -1136,12 +1163,12 @@ These are the only node types implemented in V1. Do not add others without updat
 
 **Invariants:**
 - `nodes` and `edges` are the only top-level keys required.
-- Every edge has exactly `{id, source, target}`. Edges carry no business data.
+- Standard edges have exactly `{id, source, target}`. IF branch edges also have `{control: {branch: "true"|"false"}}`.
 - Node IDs must be unique across the graph.
 - Edge source and target must reference valid node IDs.
 - The graph must have exactly one `START` node and one `END` node.
 
-**Sample inputs:** `poc-dsl-compiler/examples/workflow_1_output.json`, `workflow_2_output.json`
+**Sample inputs:** `poc-dsl-compiler/input/workflow_outputs/workflow_N_output.json` (N = 1–11)
 
 ---
 
@@ -1150,14 +1177,14 @@ These are the only node types implemented in V1. Do not add others without updat
 **File:** `poc-dsl-compiler/workflow_generator.py`
 **Full docs:** `.github/features/workflow_generator.md`
 
-The workflow generator produces random Workflow JSON documents and Mermaid diagrams for fuzz-testing the DSL compiler pipeline. 7 difficulty levels covering linear, branching, deep-chained, mixed-depth, and WAIT-based topologies.
+The workflow generator produces random Workflow JSON documents and Mermaid diagrams for fuzz-testing the DSL compiler pipeline. 11 difficulty levels covering linear, branching, deep-chained, mixed-depth, WAIT-based, and IF-based topologies.
 
 **How to run:**
 ```bash
 python3 poc-dsl-compiler/workflow_generator.py
-# Prompts: Difficulty Level (1-7)
-# Writes: poc-dsl-compiler/workflows/workflow_N.md
-#         poc-dsl-compiler/workflow_outputs/workflow_N_output.json
+# Prompts: Difficulty Level (1-11)
+# Writes: poc-dsl-compiler/input/workflows/workflow_N.md
+#         poc-dsl-compiler/input/workflow_outputs/workflow_N_output.json
 ```
 
 **Difficulty levels:**
@@ -1166,42 +1193,52 @@ python3 poc-dsl-compiler/workflow_generator.py
 - Level 3: 3 parallel branches from shared INPUT (9 nodes)
 - Level 4: 2 deep-chained branches with ACTION→ACTION (9 nodes)
 - Level 5: Mixed depth; branch 2 has its own INPUT and a 3-action chain (10 nodes)
-- Level 6: Linear with WAIT between ACTION and OUTPUT (6 nodes)
-- Level 7: 2 branches each with a WAIT; branch 1 has an extra ACTION after WAIT (10 nodes)
+- Level 6: Linear with WAIT(duration) between ACTION and OUTPUT (6 nodes)
+- Level 7: 2 branches each with WAIT(duration); branch 1 has an extra ACTION after WAIT (10 nodes)
+- Level 8: Linear with WAIT(listen) — waits for a Temporal signal before OUTPUT (6 nodes)
+- Level 9: 2 branches; branch A uses WAIT(duration), branch B uses WAIT(listen) (9 nodes)
+- Level 10: Linear IF — IF gate on email presence; true/false branches each OUTPUT→END (8 nodes)
+- Level 11: Nested IF — outer IF gates on email presence, inner IF gates on email verification (12 nodes)
 
-**Supported node types:** `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`, `WAIT`
+**Supported node types:** `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`, `WAIT`, `IF`
 
 **Key design rules:**
 - `shuffle_nodes()` is always called — nodes array is randomized, compiler must not rely on array position
-- `get_next_index()` auto-increments file names by scanning `workflows/` for existing `workflow_N.md` files
-- Generator output (`workflow_outputs/`) is separate from compiler input (`input/workflow_outputs/`) — copy manually to compile
-- Vocabulary (`INPUT_VOCAB`, `ACTION_VOCAB`, `WAIT_VOCAB`) provides semantically realistic randomized content
-- WAIT data contract: `{"duration": {"<unit>": <value>}}` — exactly one time key (`seconds`/`minutes`/`hours`), no `label` key
+- `get_next_index()` auto-increments file names by scanning `input/workflows/` for existing `workflow_N.md` files
+- Generator writes directly to `input/workflow_outputs/` — no manual copy step needed
+- Vocabulary (`INPUT_VOCAB`, `ACTION_VOCAB`, `WAIT_VOCAB`, `LISTEN_VOCAB`, `IF_VOCAB`) provides semantically realistic randomized content
+- WAIT node contract: `{"mode": "duration"|"listen", "config": {"<unit>": value | "signal": name}}` — `label` key never emitted
+- IF node contract: `condition` is a root-level key; never inside `data`
+- IF branch edges carry `{"control": {"branch": "true"|"false"}}` — non-IF edges carry no `control` key
 
 ---
 
 ## 37. DSL Compiler — How to Orient When Asked About the Compiler
 
-- **"Add a new node type to the compiler"** → First update `poc-dsl-compiler/docs/workflow_json_contract.md` and `compiler_context.md` to document the contract. Then add a builder function in `workflow_compiler.py`. Do not add node types that are in the NOT IMPLEMENTING list.
-- **"What nodes are supported?"** → V1 frozen set: `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`. See section 34.
-- **"What does an edge look like?"** → Always `{id, source, target}` only. No business logic in edges.
-- **"How does traversal work?"** → DFS preorder from the `START` node. Do not iterate the raw node array. See `traverse_graph()` in `workflow_compiler.py`.
-- **"Where is the compiler code?"** → `poc-dsl-compiler/examples/workflow_compiler.py`
+- **"Add a new node type to the compiler"** → Follow the 11-step checklist in section 39. Read `.github/features/dsl_compiler.md` first.
+- **"What nodes are supported?"** → V1 implemented: `START`, `END`, `INPUT`, `ACTION`, `OUTPUT`, `WAIT`, `IF`. See section 34.
+- **"What does an edge look like?"** → Standard: `{id, source, target}`. IF branch edges also include `{control: {branch: "true"|"false"}}`.
+- **"How does traversal work?"** → DFS preorder from the `START` node. Returns `list[TraversalEntry]`. Do not iterate the raw node array. `traverse_graph()` pre-computes `is_terminal`, `branch_map`, and `successors` for each node.
+- **"What is a TraversalEntry?"** → A typed dict from `utils/traversal_types.py` with: `node_id`, `node_type`, `node`, `is_terminal`, `successors`, `incoming_edge_control`, `branch_map`. It is the only thing that crosses the Phase A/B boundary.
+- **"Where is the compiler code?"** → `poc-dsl-compiler/compiler.py` (Phase A), `poc-dsl-compiler/dsl_generator.py` (Phase B), `poc-dsl-compiler/builders/` (individual node builders).
+- **"What is `compiler_context`?"** → Deprecated. Always `{}`. Accepted by all builder signatures for backward compatibility; never read. Phase A branch data now flows through `TraversalEntry.branch_map`.
 - **"Where is the V0 prototype?"** → `poc-react-flow/` — agent-routing specific, not generic. Key reference: `poc-react-flow/node_conversion.py` for builder function patterns.
-- **"Generate a test workflow"** → `python3 poc-dsl-compiler/workflow_generator.py` (prompts for difficulty level 1–7)
-- **"What is the three-tier architecture?"** → See `Documents/workflow_builder_architecture.md`. Tier 1 = UI (V2), Tier 2 = Compiler + API (V1), Tier 3 = Zigflow + Temporal execution.
+- **"Generate a test workflow"** → `python3 poc-dsl-compiler/workflow_generator.py` (prompts for difficulty level 1–11)
+- **"Validate all outputs"** → `python3 poc-dsl-compiler/validate_outputs.py` — all 11 levels must pass.
+- **"What is the three-tier architecture?"** → See `documents/workflow_builder_architecture.md`. Tier 1 = UI (V2), Tier 2 = Compiler + API (V1), Tier 3 = Zigflow + Temporal execution.
 
 ---
 
 ## 38. DSL Compiler — What NOT to Do
 
 1. **Do not add Temporal Python Workflow code for the compiler output.** The compiler generates Zigflow DSL only.
-2. **Do not put business logic in edges.** Edges are `{id, source, target}` only.
+2. **Do not put business logic in standard edges.** Standard edges are `{id, source, target}`. Only IF branch edges carry `control`.
 3. **Do not iterate the node array for execution order.** Always use graph traversal.
-4. **Do not duplicate shared nodes** in the traversal output. The graph structure handles them with a `visited` set.
+4. **Do not duplicate shared nodes** in the traversal output. The `visited` set in `traverse_graph()` handles this.
 5. **Do not use classes** in the compiler functions. All functions are module-level and pure.
 6. **Do not add templates or a registry** until the V1 pure-function approach is validated end-to-end.
-7. `IF`, `VARIABLE`, `WORKFLOW`, and `PARALLEL` nodes are **deferred until architecture expansion**. See `.github/features/current_state.md` for the current implemented set and deferred list.
+7. **Do not read `adjacency` or `node_map` inside a builder.** Builders receive pre-computed metadata via `traversal_entry`. If a builder needs graph data, pre-compute it in Phase A (`compiler.py`) and store it in `TraversalEntry`.
+8. `VARIABLE`, `WORKFLOW`, and `PARALLEL` nodes are **deferred until architecture expansion**. See `.github/features/current_state.md` for the current implemented set and deferred list.
 
 ---
 
@@ -1210,25 +1247,29 @@ python3 poc-dsl-compiler/workflow_generator.py
 Whenever a prompt references any of these terms:
 
 - `dsl`, `compiler`, `builders`, `dsl_generator`, `node_builder`
-- `traversal`, `graph`, `node_map`, `adjacency`
+- `traversal`, `graph`, `node_map`, `adjacency`, `TraversalEntry`, `branch_map`, `is_terminal`
 - `zigflow`, `workflow_outputs`, `dsl_schema`
-- `build_input`, `build_action`, `build_output`, `build_wait`, `build_terminal`
+- `build_input`, `build_action`, `build_output`, `build_wait`, `build_terminal`, `build_if`, `build_condition_expression`
 
 **Read these files first before making any edit or suggestion:**
 
 1. `.github/features/dsl_compiler.md` — pipeline, architecture constraints, input contract, node types, how to add a new node
-2. `.github/features/dsl_generator.md` — dispatch table, `generate_dsl()`, `save_dsl()`, output shape
-3. `.github/features/builders.md` — all builder contracts, exact DSL output, f-string escaping, template rules
+2. `.github/features/dsl_generator.md` — dispatch table, `generate_dsl()`, `save_dsl()`, TraversalEntry boundary, output shape
+3. `.github/features/builders.md` — all builder contracts, exact DSL output, f-string escaping, `export.as` rules, template table
 4. `.github/features/current_state.md` — implementation status, validation status, what is deferred
 
 Whenever a prompt references any of these terms related to workflow generation:
 
 - `workflow_generator`, `difficulty level`, `random workflow`, `fuzz`, `mermaid diagram`
-- `WAIT_VOCAB`, `INPUT_VOCAB`, `ACTION_VOCAB`, `make_wait`, `generate_level_`, `shuffle_nodes`
+- `WAIT_VOCAB`, `INPUT_VOCAB`, `ACTION_VOCAB`, `IF_VOCAB`, `LISTEN_VOCAB`, `make_wait`, `make_if`, `make_edge`, `generate_level_`, `shuffle_nodes`
 
 **Read this file first before making any edit or suggestion:**
 
-5. `.github/features/workflow_generator.md` — vocabulary tables, node builders, mermaid rules, difficulty level topologies, constraint rules, output directories
+5. `.github/features/workflow_generator.md` — vocabulary tables (including `IF_VOCAB`), node builders (including `make_if`, `make_edge` with `control`), mermaid rules (including IF edge labels), difficulty level topologies (levels 1–11), constraint rules, output directories
+
+**Also relevant for IF and condition logic:**
+
+6. `.github/features/builders.md` — `if_builder` and `condition_builder` sections
 
 **Then execute.** Prefer feature docs over repository-wide conventions when compiler files are involved. Temporal SDK patterns (sections 1–25) still apply to any Python worker or client code in this repo, but do not apply to the compiler pipeline itself.
 
@@ -1240,6 +1281,8 @@ Whenever a prompt references any of these terms related to workflow generation:
 | Dispatch table only | `NODE_BUILDERS` dict in `dsl_generator.py` is the only dispatch mechanism |
 | Compiler separation | `compiler.py` owns graph; never imports from `builders/` |
 | Builder separation | Each builder owns exactly one node type; never imports from `compiler.py` |
+| Phase A/B boundary | Only `list[TraversalEntry]` crosses from `compiler.py` to `dsl_generator.py` |
+| `traversal_entry` kwarg | Every builder signature accepts `traversal_entry=None, compiler_context=None` |
 | Templates are docs | `templates/` files are never imported, loaded, or executed at runtime |
 | No registry | Do not add a factory, registry, or plugin system |
 | Zigflow task types | Only: `set`, `call`, `do`, `fork`, `for`, `listen`, `raise`, `run`, `switch`, `try`, `wait` |

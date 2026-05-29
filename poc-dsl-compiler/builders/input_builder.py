@@ -1,4 +1,4 @@
-def build_input(node: dict, compiler_context: dict | None = None) -> dict:
+def build_input(node: dict, *, traversal_entry=None, compiler_context=None) -> dict:
     """
     Convert an INPUT node into a set DSL fragment.
 
@@ -33,7 +33,7 @@ def build_input(node: dict, compiler_context: dict | None = None) -> dict:
 
     task_name = f"{node_id}_capture"
 
-    return {
+    fragment = {
         task_name: {
             "set": set_map,
             "export": {
@@ -41,3 +41,6 @@ def build_input(node: dict, compiler_context: dict | None = None) -> dict:
             },
         }
     }
+    if traversal_entry and traversal_entry["is_terminal"]:
+        fragment[task_name]["then"] = "end"
+    return fragment

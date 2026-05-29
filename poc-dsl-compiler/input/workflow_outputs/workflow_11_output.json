@@ -1,30 +1,15 @@
 {
   "nodes": [
     {
-      "id": "N2",
-      "type": "INPUT",
+      "id": "N5",
+      "type": "ACTION",
       "data": {
-        "inputs": [
-          {
-            "field": "email",
-            "store_as": "user_email",
-            "type": "string"
-          }
-        ]
+        "operation": "send_notification",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "notification_status"
       }
-    },
-    {
-      "id": "N3",
-      "type": "IF",
-      "condition": {
-        "left": "user_email",
-        "operator": "!=",
-        "right": ""
-      }
-    },
-    {
-      "id": "N11",
-      "type": "END"
     },
     {
       "id": "N6",
@@ -33,38 +18,6 @@
         "outputs": [
           {
             "field": "notification_status",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N4",
-      "type": "IF",
-      "condition": {
-        "left": "email_verified",
-        "operator": "==",
-        "right": true
-      }
-    },
-    {
-      "id": "N7",
-      "type": "ACTION",
-      "data": {
-        "operation": "send_email",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "email_status"
-      }
-    },
-    {
-      "id": "N10",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "log_id",
             "type": "string"
           }
         ]
@@ -83,18 +36,12 @@
       }
     },
     {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N5",
-      "type": "ACTION",
-      "data": {
-        "operation": "send_notification",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "notification_status"
+      "id": "N4",
+      "type": "IF",
+      "condition": {
+        "left": "email_verified",
+        "operator": "==",
+        "right": true
       }
     },
     {
@@ -109,6 +56,19 @@
       }
     },
     {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
       "id": "N12",
       "type": "ACTION",
       "data": {
@@ -118,6 +78,46 @@
         },
         "output": "email_verified"
       }
+    },
+    {
+      "id": "N3",
+      "type": "IF",
+      "condition": {
+        "left": "user_email",
+        "operator": "!=",
+        "right": ""
+      }
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_email",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "email_status"
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N10",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "log_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N11",
+      "type": "END"
     }
   ],
   "edges": [

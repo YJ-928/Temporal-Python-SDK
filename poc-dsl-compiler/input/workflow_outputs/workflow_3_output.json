@@ -1,46 +1,57 @@
 {
   "nodes": [
     {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "validation_result",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "location",
+            "store_as": "user_location",
+            "type": "string"
+          },
+          {
+            "field": "user_id",
+            "store_as": "user_id",
+            "type": "string"
+          },
+          {
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
       "id": "N7",
       "type": "ACTION",
       "data": {
-        "operation": "greet",
+        "operation": "process_order",
         "inputs": {
-          "value": "product_id"
+          "value": "user_email"
         },
-        "output": "greeting"
+        "output": "order_status"
       }
     },
     {
       "id": "N6",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "location_data",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N8",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "greeting",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N9",
-      "type": "END"
-    },
-    {
-      "id": "N4",
       "type": "OUTPUT",
       "data": {
         "outputs": [
@@ -52,53 +63,42 @@
       }
     },
     {
-      "id": "N2",
-      "type": "INPUT",
+      "id": "N3",
+      "type": "ACTION",
       "data": {
-        "inputs": [
+        "operation": "validate_email",
+        "inputs": {
+          "value": "user_location"
+        },
+        "output": "validation_result"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
           {
-            "field": "email",
-            "store_as": "user_email",
-            "type": "string"
-          },
-          {
-            "field": "user_id",
-            "store_as": "user_id",
-            "type": "string"
-          },
-          {
-            "field": "product_id",
-            "store_as": "product_id",
+            "field": "order_status",
             "type": "string"
           }
         ]
       }
     },
     {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "generate_report",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "report"
-      }
+      "id": "N9",
+      "type": "END"
     },
     {
       "id": "N5",
       "type": "ACTION",
       "data": {
-        "operation": "lookup_location",
+        "operation": "generate_report",
         "inputs": {
           "value": "user_id"
         },
-        "output": "location_data"
+        "output": "report"
       }
-    },
-    {
-      "id": "N1",
-      "type": "START"
     }
   ],
   "edges": [

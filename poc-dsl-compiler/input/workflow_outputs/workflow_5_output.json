@@ -1,37 +1,16 @@
 {
   "nodes": [
     {
-      "id": "N6",
-      "type": "ACTION",
+      "id": "N5",
+      "type": "INPUT",
       "data": {
-        "operation": "generate_report",
-        "inputs": {
-          "value": "city"
-        },
-        "output": "report"
-      }
-    },
-    {
-      "id": "N9",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
+        "inputs": [
           {
-            "field": "email_status",
+            "field": "country",
+            "store_as": "country",
             "type": "string"
           }
         ]
-      }
-    },
-    {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "verify_phone",
-        "inputs": {
-          "value": "product_id"
-        },
-        "output": "phone_verified"
       }
     },
     {
@@ -40,38 +19,9 @@
       "data": {
         "operation": "process_order",
         "inputs": {
-          "value": "report"
+          "value": "coordinates"
         },
         "output": "order_status"
-      }
-    },
-    {
-      "id": "N4",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "phone_verified",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N5",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "city",
-            "store_as": "city",
-            "type": "string"
-          }
-        ]
       }
     },
     {
@@ -80,8 +30,42 @@
       "data": {
         "inputs": [
           {
-            "field": "product_id",
-            "store_as": "product_id",
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N8",
+      "type": "ACTION",
+      "data": {
+        "operation": "format_output",
+        "inputs": {
+          "value": "order_status"
+        },
+        "output": "formatted_output"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "geocode",
+        "inputs": {
+          "value": "country"
+        },
+        "output": "coordinates"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "report",
             "type": "string"
           }
         ]
@@ -92,14 +76,30 @@
       "type": "END"
     },
     {
-      "id": "N8",
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N9",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "formatted_output",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "send_email",
+        "operation": "generate_report",
         "inputs": {
-          "value": "order_status"
+          "value": "user_email"
         },
-        "output": "email_status"
+        "output": "report"
       }
     }
   ],

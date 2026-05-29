@@ -1,13 +1,16 @@
 {
   "nodes": [
     {
-      "id": "N4",
-      "type": "WAIT",
+      "id": "N2",
+      "type": "INPUT",
       "data": {
-        "mode": "listen",
-        "config": {
-          "signal": "notification_ack"
-        }
+        "inputs": [
+          {
+            "field": "user_id",
+            "store_as": "user_id",
+            "type": "string"
+          }
+        ]
       }
     },
     {
@@ -15,15 +18,13 @@
       "type": "END"
     },
     {
-      "id": "N5",
-      "type": "OUTPUT",
+      "id": "N4",
+      "type": "WAIT",
       "data": {
-        "outputs": [
-          {
-            "field": "validation_result",
-            "type": "string"
-          }
-        ]
+        "mode": "listen",
+        "config": {
+          "signal": "payment_completed"
+        }
       }
     },
     {
@@ -31,13 +32,12 @@
       "type": "START"
     },
     {
-      "id": "N2",
-      "type": "INPUT",
+      "id": "N5",
+      "type": "OUTPUT",
       "data": {
-        "inputs": [
+        "outputs": [
           {
-            "field": "order_id",
-            "store_as": "order_id",
+            "field": "formatted_output",
             "type": "string"
           }
         ]
@@ -47,11 +47,11 @@
       "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "validate_email",
+        "operation": "format_output",
         "inputs": {
-          "value": "order_id"
+          "value": "user_id"
         },
-        "output": "validation_result"
+        "output": "formatted_output"
       }
     }
   ],

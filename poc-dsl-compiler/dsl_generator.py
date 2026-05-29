@@ -1,3 +1,13 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE B — DSL ASSEMBLY
+#
+# Ownership: builder dispatch and DSL fragment collection.
+#
+# This module must not read adjacency, node_map, or any other graph internals.
+# All execution semantics (is_terminal, branch routing, incoming_edge_control)
+# arrive pre-computed inside TraversalEntry dicts produced by Phase A (compiler.py).
+# ─────────────────────────────────────────────────────────────────────────────
+
 import json
 import os
 from builders.dsl_boilerplate_builder import generate_dsl_boilerplate
@@ -32,9 +42,10 @@ def generate_dsl(
     Build a Zigflow-compatible DSL dict from a pre-computed traversal.
 
     Args:
-        traversal:        Ordered list of node dicts from traverse_graph()
-        compiler_context: Optional {"adjacency": ..., "node_map": ...} from run_compiler().
-                          Passed to every builder; only IF builder consumes it.
+        traversal:        Ordered list of TraversalEntry dicts from traverse_graph()
+        compiler_context: Deprecated. Retained for call-site compatibility while
+                          LOOP/PARALLEL stabilise. Builders now receive all needed
+                          metadata via traversal_entry. Pass None or {} safely.
         dsl_version:      DSL spec version string
         version:          Workflow definition version string
         workflow_type:    Temporal workflow type name
@@ -50,36 +61,25 @@ def generate_dsl(
         task_queue=task_queue,
     )
 
-    for node in traversal:
-        node_type = node["type"]
+    for entry in traversal:
+        node = entry["node"]
+        node_type = entry["node_type"]
         builder = NODE_BUILDERS.get(node_type)
 
         if builder is None:
-            # Unknown node type skip with a warning instead of crashing.
-            print(f"[WARNING] No builder for node type '{node_type}' (id={node['id']}). Skipped.")
+            # Unknown node type — skip with a warning instead of crashing.
+            print(f"[WARNING] No builder for node type '{node_type}' (id={entry['node_id']}). Skipped.")
             continue
 
-        fragment = builder(node, compiler_context=compiler_context)
+        # traversal_entry carries all compiler-computed metadata (is_terminal,
+        # branch_map, incoming_edge_control). Builders use it directly.
+        # Phase B owns no graph reasoning — that all lives in Phase A.
+        fragment = builder(node, traversal_entry=entry, compiler_context=compiler_context)
 
         if fragment is None:
             # START and END emit no DSL.
             # Traversal already deduplicates shared nodes.
-            # Safe to continue iteration.
             continue
-
-        # If this node leads directly to END, the branch must terminate here
-        # rather than falling through to the next task in the flat do list.
-        # This is a graph property (direct successor is END), not a heuristic.
-        if compiler_context:
-            _adjacency = compiler_context["adjacency"]
-            _node_map = compiler_context["node_map"]
-            leads_to_end = any(
-                _node_map.get(succ_id, {}).get("type") == "END"
-                for succ_id, _ in _adjacency.get(node["id"], [])
-            )
-            if leads_to_end:
-                task_name = next(iter(fragment))
-                fragment[task_name]["then"] = "end"
 
         dsl["do"].append(fragment)
 

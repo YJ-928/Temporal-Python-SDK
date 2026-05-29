@@ -5,31 +5,31 @@
       "type": "START"
     },
     {
-      "id": "N4",
-      "type": "OUTPUT",
-      "data": {
-        "outputs": [
-          {
-            "field": "log_id",
-            "type": "string"
-          }
-        ]
-      }
+      "id": "N5",
+      "type": "END"
     },
     {
       "id": "N3",
       "type": "ACTION",
       "data": {
-        "operation": "log_activity",
+        "operation": "geocode",
         "inputs": {
-          "value": "phone"
+          "value": "city"
         },
-        "output": "log_id"
+        "output": "coordinates"
       }
     },
     {
-      "id": "N5",
-      "type": "END"
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "coordinates",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "N2",
@@ -37,8 +37,8 @@
       "data": {
         "inputs": [
           {
-            "field": "phone_number",
-            "store_as": "phone",
+            "field": "city",
+            "store_as": "city",
             "type": "string"
           }
         ]

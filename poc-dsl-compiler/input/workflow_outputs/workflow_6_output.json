@@ -1,45 +1,18 @@
 {
   "nodes": [
     {
-      "id": "N3",
-      "type": "ACTION",
-      "data": {
-        "operation": "send_email",
-        "inputs": {
-          "value": "country"
-        },
-        "output": "email_status"
-      }
-    },
-    {
-      "id": "N4",
-      "type": "WAIT",
-      "data": {
-        "mode": "duration",
-        "config": {
-          "minutes": 1
-        }
-      }
-    },
-    {
-      "id": "N1",
-      "type": "START"
-    },
-    {
       "id": "N6",
       "type": "END"
     },
     {
-      "id": "N2",
-      "type": "INPUT",
+      "id": "N3",
+      "type": "ACTION",
       "data": {
-        "inputs": [
-          {
-            "field": "country",
-            "store_as": "country",
-            "type": "string"
-          }
-        ]
+        "operation": "fetch_product",
+        "inputs": {
+          "value": "order_id"
+        },
+        "output": "product_details"
       }
     },
     {
@@ -48,10 +21,37 @@
       "data": {
         "outputs": [
           {
-            "field": "email_status",
+            "field": "product_details",
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "order_id",
+            "store_as": "order_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
+    },
+    {
+      "id": "N4",
+      "type": "WAIT",
+      "data": {
+        "mode": "duration",
+        "config": {
+          "minutes": 5
+        }
       }
     }
   ],

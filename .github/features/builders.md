@@ -3,14 +3,19 @@
 ## Rules (apply to every builder)
 
 - One file per node type in `poc-dsl-compiler/builders/`.
-- One public function per file: `build_<type>(node: dict) -> dict | None`.
-- Pure functions — no side effects, no imports, no global state.
+- One public function per file: `build_<type>(node: dict, *, traversal_entry=None, compiler_context=None) -> dict | None`.
+  - `traversal_entry`: a `TraversalEntry` dict (see `utils/traversal_types.py`). Passed by `dsl_generator.generate_dsl()` for every call. **Always accept it; never omit it.**
+  - `compiler_context`: **deprecated**. Always `None` or `{}`. Accept it for signature consistency but never read it.
+- Pure functions — no side effects, no global state.
+- **`then: end` injection:** if `traversal_entry and traversal_entry["is_terminal"]` is True, add `"then": "end"` to the top-level task body dict. This is done by the builder, not by `dsl_generator.py`.
 - Task name is always derived from `node["id"]` + a fixed suffix (see each builder).
 - The returned dict is a **single-key dict** where the key is the task name and the value is the task body. This is what `dsl_generator.py` appends to `dsl["do"]`.
+- `terminal_builder` (START, END) returns `None`. `dsl_generator.py` silently skips `None` returns.
 - All Zigflow expressions use `${ }` syntax. In Python f-strings, braces are escaped as `{{` and `}}`:
   ```python
-  f"${{ $input.{field} }}"   # produces:  ${ $input.location }
-  f"${{ .{ctx_var} }}"       # produces:  ${ .user_location }
+  f"${{ $input.{field} }}"    # produces:  ${ $input.location }
+  f"${{ $context.{var} }}"    # produces:  ${ $context.user_location }
+  f"${{ .{field} }}"          # produces:  ${ .notification_status }
   ```
 
 ---
@@ -20,7 +25,7 @@
 ### `terminal_builder.py` — START and END
 
 ```python
-def build_terminal(node: dict) -> None
+def build_terminal(node: dict, *, traversal_entry=None, compiler_context=None) -> None
 ```
 
 - Returns `None`. Both START and END emit no DSL tasks.
@@ -53,14 +58,28 @@ def build_terminal(node: dict) -> None
     "set": {
       "user_location": "${ $input.location }",
       "dob":           "${ $input.date_of_birth }"
+    },
+    "export": {
+      "as": "${ $context + {user_location: .user_location, dob: .dob} }"
     }
   }
 }
 ```
 
-**Logic:** Reads `node["data"]["inputs"]`. For each entry: key = `store_as`, value = `${ $input.<field> }`. Multiple fields in one `set` task.
+**With `is_terminal` (INPUT is the last node before END):**
+```json
+{
+  "N2_capture": {
+    "set": { ... },
+    "export": { "as": "..." },
+    "then": "end"
+  }
+}
+```
 
-**DSL semantics:** `set` with `${ $input.* }` emits a Zigflow set task that reads named fields from the workflow input. The runtime resolves the expression at execution time — the builder only constructs the DSL fragment.
+**Logic:** Reads `node["data"]["inputs"]`. For each entry: `set` key = `store_as`, value = `${ $input.<field> }`. The `export.as` expression merges all captured variables into `$context` using `${ $context + {var: .var, ...} }` syntax, so they persist across subsequent tasks and parallel branches.
+
+**DSL semantics:** `set` with `${ $input.* }` reads named fields from the workflow input. `export.as` persists those values into `$context` so they remain accessible even after a later `call: http` task replaces the flowing data context via `output.as`.
 
 ---
 
@@ -95,25 +114,31 @@ def build_terminal(node: dict) -> None
       "method": "post",
       "endpoint": "http://localhost:8080/send_notification",
       "body": {
-        "value": "${ .user_location }"
+        "value": "${ $context.user_location }"
       }
     },
     "output": {
       "as": {
         "notification_status": "${ . }"
       }
+    },
+    "export": {
+      "as": "${ $context + {notification_status: .notification_status} }"
     }
   }
 }
 ```
 
+**With `is_terminal`:** adds `"then": "end"` inside the task body (same level as `call`, `with`, `output`, `export`).
+
 **Logic:**
-- `body`: `{param: f"${{ .{ctx_var} }}"}` — reads each context variable from current workflow data.
-- `endpoint`: `http://localhost:8080/{operation}` — hardcoded host for V1.
+- `body`: `{param: f"${{ $context.{ctx_var} }}"}` — reads **from `$context`** (not from transient flowing data). This ensures inputs remain valid even if a previous ACTION's `output.as` has replaced the current data context.
+- `endpoint`: `http://localhost:8080/{operation}` — hardcoded host in V1.
 - `output.as`: `{output_var: "${ . }"}` — captures the full HTTP response body as the named variable.
+- `export.as`: `${ $context + {output_var: .output_var} }` — persists the output variable into `$context` so chained ACTION nodes and parallel branches can access it.
 - `method` is always `"post"` in V1.
 
-**DSL semantics:** `call: http` emits a Zigflow HTTP task. The runtime decides execution (scheduling, retries, timeouts — all Zigflow + Temporal concerns, not the builder's). `${ . }` in `output.as` expresses "capture the full response". `${ .<var> }` expresses "read this variable from the current data context".
+**DSL semantics:** `call: http` emits a Zigflow HTTP activity task. `${ $context.<var> }` reads from persisted context; `${ . }` captures the full response.
 
 ---
 
@@ -146,44 +171,78 @@ def build_terminal(node: dict) -> None
 }
 ```
 
+**With `is_terminal`:** adds `"then": "end"` inside the task body.
+
 **Logic:** Reads `node["data"]["outputs"]`. For each entry: key = `field`, value = `${ .<field> }`. Multiple fields in one `set` task.
 
-**DSL semantics:** `set` with `${ .<field> }` emits a Zigflow set task that reads named fields from the current data context. The runtime resolves context population — the builder only constructs the DSL fragment.
+**DSL semantics:** `set` with `${ .<field> }` reads named fields from the current data context and shapes the workflow output.
 
 ---
 
 ### `wait_builder.py` — WAIT node
 
 **Node data contract:**
+
+WAIT nodes use `mode` + `config` (not `duration` directly):
+
 ```json
 {
   "type": "WAIT",
   "data": {
-    "duration": {
-      "seconds": 30
-    }
+    "mode": "duration",
+    "config": { "seconds": 30 }
   }
 }
 ```
 
-Supported duration keys: `seconds`, `minutes`, `hours`. Exactly one key per node.
+or for signal-based waits:
+```json
+{
+  "type": "WAIT",
+  "data": {
+    "mode": "listen",
+    "config": { "signal": "approval" }
+  }
+}
+```
+
+- `mode`: `"duration"` or `"listen"`.
+- `config` for `duration`: one time-unit key — `seconds`, `minutes`, or `hours`, integer value.
+- `config` for `listen`: `{"signal": "<signal-name>"}` — the Temporal signal name to wait for.
 
 **Task name:** `{node_id}_wait`
 
-**DSL output:**
+**DSL output — duration mode:**
 ```json
 {
   "N4_wait": {
-    "wait": {
-      "seconds": 30
+    "wait": { "seconds": 30 }
+  }
+}
+```
+
+**DSL output — listen mode:**
+```json
+{
+  "N4_wait": {
+    "listen": {
+      "to": {
+        "one": {
+          "with": { "id": "approval" }
+        }
+      }
     }
   }
 }
 ```
 
-**Logic:** `node["data"]["duration"]` is passed directly into the `wait` task body — no transformation needed. The data contract already matches the Zigflow schema.
+**With `is_terminal`:** adds `"then": "end"` inside the task body in both modes.
 
-**DSL semantics:** `wait` emits a Zigflow wait task. The runtime decides execution (durable timer behavior, crash recovery — all Zigflow + Temporal concerns, not the builder's).
+**Logic:** Dispatches internally based on `node["data"]["mode"]`. Duration mode passes `config` dict directly to `wait`. Listen mode reads `config["signal"]` and wraps it in the Zigflow `listen.to.one.with.id` structure.
+
+**Internal helpers:** `_build_wait_duration(node_id, config)` and `_build_wait_listen(node_id, config)` — private, not registered in `NODE_BUILDERS`.
+
+**DSL semantics:** `wait` emits a durable Zigflow timer (Temporal-backed; survives Worker crash). `listen` emits a durable Zigflow signal handler (Temporal signal).
 
 ---
 
@@ -213,6 +272,85 @@ def generate_dsl_boilerplate(dsl_version, version, workflow_type, task_queue) ->
 
 ---
 
+### `if_builder.py` — IF node
+
+**Node data contract:**
+```json
+{
+  "id": "N4",
+  "type": "IF",
+  "condition": {
+    "left":     "user_email",
+    "operator": "!=",
+    "right":    ""
+  }
+}
+```
+
+- `condition` is a **root-level key** on the node (same level as `id`, `type`), not inside `data`.
+- `data` is optional and omitted for simple IF nodes.
+- `operator` must be one of: `==`, `!=`, `>`, `<`, `>=`, `<=`.
+- `right` can be a string (`""`), a number, or a boolean.
+
+**Task name:** `{node_id}_if`
+
+**DSL output:**
+```json
+{
+  "N4_if": {
+    "switch": [
+      { "case":    { "when": "${ .user_email != \"\" }", "then": "N5_greet" } },
+      { "default": { "then": "N6_skip" } }
+    ]
+  }
+}
+```
+
+- `when` expression is built by `condition_builder.build_condition_expression(node["condition"])`.
+- `then` values in `case` and `default` are **task names** of the branch target nodes, pre-resolved by `traverse_graph()` via `resolve_task_name()` and stored in `traversal_entry["branch_map"]`.
+- IF nodes are **never terminal** (they always have two branch targets). No `then: end` injection.
+
+**How branching works:** Phase A (`traverse_graph()`) computes `branch_map` for each IF node:
+```python
+traversal_entry["branch_map"] == {
+    "true":  {"node_id": "N5", "task_name": "N5_greet"},
+    "false": {"node_id": "N6", "task_name": "N6_skip"},
+}
+```
+The builder reads `traversal_entry["branch_map"]` directly. It never reads adjacency or node_map.
+
+**Error conditions:** Raises `ValueError` if `traversal_entry` is None, if `branch_map` is missing, or if either `true` or `false` branch is missing from `branch_map`.
+
+---
+
+### `condition_builder.py` — Condition expression utility
+
+Not a node builder. A leaf utility used by `if_builder.py` (and future conditional nodes).
+
+```python
+SUPPORTED_OPERATORS: frozenset[str]  # {"==", "!=", ">", "<", ">=", "<="}
+
+def build_condition_expression(condition: dict) -> str
+```
+
+**Example outputs:**
+```python
+build_condition_expression({"left": "user_email",  "operator": "!=", "right": ""})
+    # returns: '${ .user_email != "" }'
+
+build_condition_expression({"left": "country",     "operator": "==", "right": "US"})
+    # returns: '${ .country == "US" }'
+
+build_condition_expression({"left": "retry_count", "operator": ">",  "right": 3})
+    # returns: '${ .retry_count > 3 }'
+```
+
+**Type handling:** `bool` right values become `true`/`false`. `str` values are wrapped in `""`. Numeric values are rendered as-is.
+**Raises `ValueError`** if `operator` is not in `SUPPORTED_OPERATORS`.
+**Raises `KeyError`** if `left`, `operator`, or `right` is missing.
+
+---
+
 ## Templates (reference only)
 
 Files in `poc-dsl-compiler/templates/` are **not used at runtime**. They document what each active builder produces.
@@ -223,13 +361,13 @@ Files in `poc-dsl-compiler/templates/` are **not used at runtime**. They documen
 | `action_output.json` | `output_builder` | ✅ matches builder output |
 | `action_http.json` | `action_builder` | ✅ matches builder output |
 | `dsl_boilerplate.json` | `dsl_boilerplate_builder` | ✅ matches builder output |
-| `wait_timer.json` | `wait_builder` | ✅ matches builder output |
+| `wait_timer.json` | `wait_builder` (duration mode) | ✅ matches builder output |
+| `wait_signal.json` | `wait_builder` (listen mode) | ✅ matches builder output |
+| `if_switch.json` | `if_builder` | ✅ matches builder output |
 | `action_script.json` | no builder yet | ❌ deferred |
 | `action_shell.json` | no builder yet | ❌ deferred |
-| `if_switch.json` | no builder yet | ❌ deferred |
 | `parallel.json` | no builder yet | ❌ deferred |
 | `variable.json` | no builder yet | ❌ deferred |
-| `wait_signal.json` | `wait_builder` (listen mode) | ✅ matches builder output |
 | `workflow.json` | no builder yet | ❌ deferred |
 
 **Rule:** When adding a new builder, update the corresponding template to match the builder's exact output and mark it ✅ in this table.

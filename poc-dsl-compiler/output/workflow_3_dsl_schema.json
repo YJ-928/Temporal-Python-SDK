@@ -10,23 +10,51 @@
     {
       "N2_capture": {
         "set": {
-          "user_email": "${ $input.email }",
+          "user_location": "${ $input.location }",
           "user_id": "${ $input.user_id }",
-          "product_id": "${ $input.product_id }"
+          "user_email": "${ $input.email }"
         },
         "export": {
-          "as": "${ $context + {user_email: .user_email, user_id: .user_id, product_id: .product_id} }"
+          "as": "${ $context + {user_location: .user_location, user_id: .user_id, user_email: .user_email} }"
         }
       }
     },
     {
-      "N3_generate_report": {
+      "N3_validate_email": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/validate_email",
+          "body": {
+            "value": "${ $context.user_location }"
+          }
+        },
+        "output": {
+          "as": {
+            "validation_result": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {validation_result: .validation_result} }"
+        }
+      }
+    },
+    {
+      "N4_expose": {
+        "set": {
+          "validation_result": "${ .validation_result }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N5_generate_report": {
         "call": "http",
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8080/generate_report",
           "body": {
-            "value": "${ $context.user_email }"
+            "value": "${ $context.user_id }"
           }
         },
         "output": {
@@ -40,7 +68,7 @@
       }
     },
     {
-      "N4_expose": {
+      "N6_expose": {
         "set": {
           "report": "${ .report }"
         },
@@ -48,57 +76,29 @@
       }
     },
     {
-      "N5_lookup_location": {
+      "N7_process_order": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/lookup_location",
+          "endpoint": "http://localhost:8080/process_order",
           "body": {
-            "value": "${ $context.user_id }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
-            "location_data": "${ . }"
+            "order_status": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {location_data: .location_data} }"
-        }
-      }
-    },
-    {
-      "N6_expose": {
-        "set": {
-          "location_data": "${ .location_data }"
-        },
-        "then": "end"
-      }
-    },
-    {
-      "N7_greet": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/greet",
-          "body": {
-            "value": "${ $context.product_id }"
-          }
-        },
-        "output": {
-          "as": {
-            "greeting": "${ . }"
-          }
-        },
-        "export": {
-          "as": "${ $context + {greeting: .greeting} }"
+          "as": "${ $context + {order_status: .order_status} }"
         }
       }
     },
     {
       "N8_expose": {
         "set": {
-          "greeting": "${ .greeting }"
+          "order_status": "${ .order_status }"
         },
         "then": "end"
       }

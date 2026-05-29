@@ -1,8 +1,8 @@
 ```mermaid
 graph TD
-    A[Start] --> B[Input: country]
-    B[Input: country] -- {country} --> C[Send email to user]
-    C[Send email to user] -- {email_status} --> D[Wait: 1 minute]
-    D[Wait: 1 minute] --> E[Output: email status]
-    E[Output: email status] --> F[End]
+    A[Start] --> B[Input: order id]
+    B[Input: order id] -- {order_id} --> C[Fetch product details]
+    C[Fetch product details] -- {product_details} --> D[Wait: 5 minutes]
+    D[Wait: 5 minutes] --> E[Output: product details]
+    E[Output: product details] --> F[End]
 ```

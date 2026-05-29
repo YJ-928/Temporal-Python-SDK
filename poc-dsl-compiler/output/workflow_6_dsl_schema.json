@@ -10,44 +10,44 @@
     {
       "N2_capture": {
         "set": {
-          "country": "${ $input.country }"
+          "order_id": "${ $input.order_id }"
         },
         "export": {
-          "as": "${ $context + {country: .country} }"
+          "as": "${ $context + {order_id: .order_id} }"
         }
       }
     },
     {
-      "N3_send_email": {
+      "N3_fetch_product": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/send_email",
+          "endpoint": "http://localhost:8080/fetch_product",
           "body": {
-            "value": "${ $context.country }"
+            "value": "${ $context.order_id }"
           }
         },
         "output": {
           "as": {
-            "email_status": "${ . }"
+            "product_details": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {email_status: .email_status} }"
+          "as": "${ $context + {product_details: .product_details} }"
         }
       }
     },
     {
       "N4_wait": {
         "wait": {
-          "minutes": 1
+          "minutes": 5
         }
       }
     },
     {
       "N5_expose": {
         "set": {
-          "email_status": "${ .email_status }"
+          "product_details": "${ .product_details }"
         },
         "then": "end"
       }

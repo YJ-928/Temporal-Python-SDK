@@ -1,4 +1,4 @@
-def build_output(node: dict, compiler_context: dict | None = None) -> dict:
+def build_output(node: dict, *, traversal_entry=None, compiler_context=None) -> dict:
     """
     Convert an OUTPUT node into a set DSL fragment.
 
@@ -24,8 +24,11 @@ def build_output(node: dict, compiler_context: dict | None = None) -> dict:
 
     task_name = f"{node_id}_expose"
 
-    return {
+    fragment = {
         task_name: {
             "set": set_map,
         }
     }
+    if traversal_entry and traversal_entry["is_terminal"]:
+        fragment[task_name]["then"] = "end"
+    return fragment

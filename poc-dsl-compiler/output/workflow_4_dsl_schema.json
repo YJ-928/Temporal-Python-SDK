@@ -10,106 +10,106 @@
     {
       "N2_capture": {
         "set": {
-          "user_location": "${ $input.location }",
-          "user_email": "${ $input.email }"
+          "user_email": "${ $input.email }",
+          "country": "${ $input.country }"
         },
         "export": {
-          "as": "${ $context + {user_location: .user_location, user_email: .user_email} }"
+          "as": "${ $context + {user_email: .user_email, country: .country} }"
         }
       }
     },
     {
-      "N3_verify_phone": {
+      "N3_process_order": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/verify_phone",
-          "body": {
-            "value": "${ $context.user_location }"
-          }
-        },
-        "output": {
-          "as": {
-            "phone_verified": "${ . }"
-          }
-        },
-        "export": {
-          "as": "${ $context + {phone_verified: .phone_verified} }"
-        }
-      }
-    },
-    {
-      "N4_generate_report": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/generate_report",
-          "body": {
-            "value": "${ $context.phone_verified }"
-          }
-        },
-        "output": {
-          "as": {
-            "report": "${ . }"
-          }
-        },
-        "export": {
-          "as": "${ $context + {report: .report} }"
-        }
-      }
-    },
-    {
-      "N5_expose": {
-        "set": {
-          "report": "${ .report }"
-        },
-        "then": "end"
-      }
-    },
-    {
-      "N6_fetch_product": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/fetch_product",
+          "endpoint": "http://localhost:8080/process_order",
           "body": {
             "value": "${ $context.user_email }"
           }
         },
         "output": {
           "as": {
-            "product_details": "${ . }"
+            "order_status": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {product_details: .product_details} }"
+          "as": "${ $context + {order_status: .order_status} }"
         }
       }
     },
     {
-      "N7_calculate_age": {
+      "N4_greet": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/calculate_age",
+          "endpoint": "http://localhost:8080/greet",
           "body": {
-            "value": "${ $context.product_details }"
+            "value": "${ $context.order_status }"
           }
         },
         "output": {
           "as": {
-            "age": "${ . }"
+            "greeting": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {age: .age} }"
+          "as": "${ $context + {greeting: .greeting} }"
+        }
+      }
+    },
+    {
+      "N5_expose": {
+        "set": {
+          "greeting": "${ .greeting }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N6_format_output": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/format_output",
+          "body": {
+            "value": "${ $context.country }"
+          }
+        },
+        "output": {
+          "as": {
+            "formatted_output": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {formatted_output: .formatted_output} }"
+        }
+      }
+    },
+    {
+      "N7_geocode": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/geocode",
+          "body": {
+            "value": "${ $context.formatted_output }"
+          }
+        },
+        "output": {
+          "as": {
+            "coordinates": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {coordinates: .coordinates} }"
         }
       }
     },
     {
       "N8_expose": {
         "set": {
-          "age": "${ .age }"
+          "coordinates": "${ .coordinates }"
         },
         "then": "end"
       }

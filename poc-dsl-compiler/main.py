@@ -110,8 +110,8 @@ def main():
     print()
 
     print("=== Traversal ===")
-    for node in traversal:
-        print(f"  {node['id']}  ({node['type']})")
+    for entry in traversal:
+        print(f"  {entry['node_id']}  ({entry['node_type']})")
     print()
 
     # DSL Generator

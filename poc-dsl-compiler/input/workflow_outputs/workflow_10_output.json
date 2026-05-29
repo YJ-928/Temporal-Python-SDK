@@ -1,15 +1,42 @@
 {
   "nodes": [
     {
-      "id": "N6",
-      "type": "ACTION",
+      "id": "N7",
+      "type": "OUTPUT",
       "data": {
-        "operation": "log_missing_email",
-        "inputs": {
-          "value": "user_email"
-        },
-        "output": "log_id"
+        "outputs": [
+          {
+            "field": "log_id",
+            "type": "string"
+          }
+        ]
       }
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "email",
+            "store_as": "user_email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "IF",
+      "condition": {
+        "left": "user_email",
+        "operator": "!=",
+        "right": ""
+      }
+    },
+    {
+      "id": "N1",
+      "type": "START"
     },
     {
       "id": "N8",
@@ -27,23 +54,6 @@
       }
     },
     {
-      "id": "N1",
-      "type": "START"
-    },
-    {
-      "id": "N2",
-      "type": "INPUT",
-      "data": {
-        "inputs": [
-          {
-            "field": "email",
-            "store_as": "user_email",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
       "id": "N5",
       "type": "OUTPUT",
       "data": {
@@ -56,24 +66,14 @@
       }
     },
     {
-      "id": "N7",
-      "type": "OUTPUT",
+      "id": "N6",
+      "type": "ACTION",
       "data": {
-        "outputs": [
-          {
-            "field": "log_id",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "id": "N3",
-      "type": "IF",
-      "condition": {
-        "left": "user_email",
-        "operator": "!=",
-        "right": ""
+        "operation": "log_missing_email",
+        "inputs": {
+          "value": "user_email"
+        },
+        "output": "log_id"
       }
     }
   ],

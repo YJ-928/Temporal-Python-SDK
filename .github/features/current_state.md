@@ -62,16 +62,16 @@ Nested IF with parent data:
 
 ## Pipeline Status
 
-| Stage | Function | Status |
-|---|---|---|
-| Node map | `generate_node_map()` | ✅ |
-| Adjacency list | `generate_adjaceny_list()` | ✅ (intentional typo — do not rename); tuples `(target_id, control)` — `control=None` for non-IF edges, `{"branch": "true"|"false"}` for IF branch edges |
-| Entrypoint detection | `find_entrypoint()` | ✅ |
-| Graph structure | `generate_graph_structure()` | ✅ |
-| Traversal | `traverse_graph()` | ✅ |
-| DSL generation | `generate_dsl()` | ✅ |
-| Serialization | `save_dsl()` | ✅ |
-| Batch validation | `validate_outputs.py` | ✅ |
+| Stage | Function | Owner | Status |
+|---|---|---|---|
+| Node map | `generate_node_map()` | Phase A | ✅ |
+| Adjacency list | `generate_adjaceny_list()` | Phase A | ✅ (intentional typo — do not rename); tuples `(target_id, control)` — `control=None` for non-IF edges, `{"branch": "true"|"false"}` for IF branch edges |
+| Entrypoint detection | `find_entrypoint()` | Phase A | ✅ |
+| Graph structure | `generate_graph_structure()` | Phase A | ✅ node dicts are READ-ONLY after construction — shared refs in memoised DAG |
+| Traversal | `traverse_graph()` | Phase A | ✅ returns `list[TraversalEntry]`; computes `is_terminal`, `branch_map`, `successors`, `incoming_edge_control` |
+| DSL generation | `generate_dsl()` | Phase B | ✅ iterates `TraversalEntry` list; no graph reads |
+| Serialization | `save_dsl()` | Phase B | ✅ |
+| Batch validation | `validate_outputs.py` | — | ✅ |
 
 ---
 
@@ -82,6 +82,11 @@ Nested IF with parent data:
 - No YAML output — JSON only
 - No API server — compiler runs as a CLI tool only
 - No sub-workflow support — `WORKFLOW` node type deferred
+- **Reconvergence (JOIN/diamond patterns) not supported:** when two branches converge on a shared node (one node with two incoming edges from different paths), `traverse_graph()` visits it from the first DFS path only. The second path sees it already in `visited` and skips it. The compiled DSL will be missing the reconvergent node for one branch. No JOIN semantics are implemented.
+- **PARALLEL not implemented:** no `fork` task generation. The `PARALLEL` node type is deferred to V2.
+- **LOOP/cycle not implemented:** no cycle detection beyond the `visited` set deduplication used for DAG shared-node memoisation. Cyclic graphs are not supported.
+- **`builder_context` deprecated:** `run_compiler()` returns `builder_context: {}` (empty dict) for call-site compatibility. No builder reads it. Reserved for future LOOP/PARALLEL work without breaking call sites.
+- **No input validation:** the compiler assumes well-formed generator output (one START, one END, no orphan nodes). Malformed JSON from untrusted sources (e.g., arbitrary UI input) will cause undefined traversal behaviour, not explicit errors.
 
 ---
 
@@ -114,19 +119,26 @@ Nested IF with parent data:
 ```
 UI Workflow JSON  {nodes, edges}
         ↓
-compiler.py
+── PHASE A: Graph Compilation (compiler.py) ──────────────────────────────────
   generate_node_map()          →  {id: node_dict}
-  generate_adjaceny_list()     →  {source_id: [target_id, ...]}
+  generate_adjaceny_list()     →  {source_id: [(target_id, control), ...]}
   find_entrypoint()            →  START node ID
-  generate_graph_structure()   →  recursive DAG (dedup via visited set)
-  traverse_graph()             →  DFS preorder ordered list of node dicts
+  generate_graph_structure()   →  recursive memoised DAG (shared nodes deduplicated)
+  traverse_graph()             →  list[TraversalEntry] — DFS preorder
+                                  Each entry: {node_id, node_type, node (READ-ONLY),
+                                               is_terminal, successors,
+                                               incoming_edge_control, branch_map (IF only)}
         ↓
-dsl_generator.py
+── PHASE B: DSL Assembly (dsl_generator.py) ──────────────────────────────────
   generate_dsl_boilerplate()   →  {document: {...}, do: []}
-  NODE_BUILDERS dispatch       →  per-node DSL fragments appended to do list
+  NODE_BUILDERS dispatch       →  builder(node, traversal_entry=entry) per entry
+                                  Builders self-inject then:end via is_terminal
+                                  IF builder reads branch_map for goto routing
         ↓
-output/workflow_N_output_dsl_schema.json
+output/workflow_N_dsl_schema.json
         ↓
 validate_outputs.py
   zigflow validate             →  must pass (exit 0)
 ```
+
+**Phase boundary:** `compiler.py` is the sole producer of `TraversalEntry` dicts. `dsl_generator.py` and all builders must not read `adjacency`, `node_map`, or any other graph internals. Everything they need is pre-computed in the `TraversalEntry`.

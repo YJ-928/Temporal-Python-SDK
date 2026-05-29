@@ -10,59 +10,21 @@
     {
       "N2_capture": {
         "set": {
-          "product_id": "${ $input.product_id }"
+          "user_email": "${ $input.email }"
         },
         "export": {
-          "as": "${ $context + {product_id: .product_id} }"
+          "as": "${ $context + {user_email: .user_email} }"
         }
       }
     },
     {
-      "N3_verify_phone": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8080/verify_phone",
-          "body": {
-            "value": "${ $context.product_id }"
-          }
-        },
-        "output": {
-          "as": {
-            "phone_verified": "${ . }"
-          }
-        },
-        "export": {
-          "as": "${ $context + {phone_verified: .phone_verified} }"
-        }
-      }
-    },
-    {
-      "N4_expose": {
-        "set": {
-          "phone_verified": "${ .phone_verified }"
-        },
-        "then": "end"
-      }
-    },
-    {
-      "N5_capture": {
-        "set": {
-          "city": "${ $input.city }"
-        },
-        "export": {
-          "as": "${ $context + {city: .city} }"
-        }
-      }
-    },
-    {
-      "N6_generate_report": {
+      "N3_generate_report": {
         "call": "http",
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8080/generate_report",
           "body": {
-            "value": "${ $context.city }"
+            "value": "${ $context.user_email }"
           }
         },
         "output": {
@@ -76,13 +38,51 @@
       }
     },
     {
+      "N4_expose": {
+        "set": {
+          "report": "${ .report }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N5_capture": {
+        "set": {
+          "country": "${ $input.country }"
+        },
+        "export": {
+          "as": "${ $context + {country: .country} }"
+        }
+      }
+    },
+    {
+      "N6_geocode": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8080/geocode",
+          "body": {
+            "value": "${ $context.country }"
+          }
+        },
+        "output": {
+          "as": {
+            "coordinates": "${ . }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {coordinates: .coordinates} }"
+        }
+      }
+    },
+    {
       "N7_process_order": {
         "call": "http",
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8080/process_order",
           "body": {
-            "value": "${ $context.report }"
+            "value": "${ $context.coordinates }"
           }
         },
         "output": {
@@ -96,29 +96,29 @@
       }
     },
     {
-      "N8_send_email": {
+      "N8_format_output": {
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8080/send_email",
+          "endpoint": "http://localhost:8080/format_output",
           "body": {
             "value": "${ $context.order_status }"
           }
         },
         "output": {
           "as": {
-            "email_status": "${ . }"
+            "formatted_output": "${ . }"
           }
         },
         "export": {
-          "as": "${ $context + {email_status: .email_status} }"
+          "as": "${ $context + {formatted_output: .formatted_output} }"
         }
       }
     },
     {
       "N9_expose": {
         "set": {
-          "email_status": "${ .email_status }"
+          "formatted_output": "${ .formatted_output }"
         },
         "then": "end"
       }

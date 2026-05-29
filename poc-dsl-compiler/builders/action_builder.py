@@ -1,4 +1,4 @@
-def build_action(node: dict, compiler_context: dict | None = None) -> dict:
+def build_action(node: dict, *, traversal_entry=None, compiler_context=None) -> dict:
     """
     Convert an ACTION node into a call: http DSL fragment.
 
@@ -39,7 +39,7 @@ def build_action(node: dict, compiler_context: dict | None = None) -> dict:
 
     task_name = f"{node_id}_{operation}"
 
-    return {
+    fragment = {
         task_name: {
             "call": "http",
             "with": {
@@ -57,3 +57,6 @@ def build_action(node: dict, compiler_context: dict | None = None) -> dict:
             },
         }
     }
+    if traversal_entry and traversal_entry["is_terminal"]:
+        fragment[task_name]["then"] = "end"
+    return fragment
