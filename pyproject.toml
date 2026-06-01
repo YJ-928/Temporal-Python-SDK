@@ -24,6 +24,7 @@ dependencies = [
     "protobuf>=6.33.6",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
+    "python-multipart>=0.0.30",
     "temporalio>=1.24.0",
     "types-protobuf>=6.32.1.20260221",
     "typing-extensions>=4.15.0",

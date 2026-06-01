@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zigflow DSL Compiler Demo</title>
+
+  <!-- Mermaid.js 10 (renders flowchart diagrams) -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+  <!-- highlight.js 11 (JSON syntax highlighting) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- Demo styles -->
+  <link rel="stylesheet" href="/static/css/demo.css" />
+</head>
+<body>
+  {% block content %}{% endblock %}
+
+  <!-- panzoom (SVG pan/zoom) -->
+  <script src="https://unpkg.com/panzoom@9.4.3/dist/panzoom.min.js"></script>
+
+  <!-- Demo JS -->
+  <script src="/static/js/demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="app-container">
+
+  <!-- ── Header ───────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-inner">
+      <h1>⚡ Zigflow DSL Compiler</h1>
+      <p class="pipeline-banner">
+        <span class="banner-step">Generate Workflow</span>
+        <span class="banner-arrow">→</span>
+        <span class="banner-step">Compile Graph</span>
+        <span class="banner-arrow">→</span>
+        <span class="banner-step">Build DSL</span>
+        <span class="banner-arrow">→</span>
+        <span class="banner-step">Validate</span>
+      </p>
+    </div>
+  </header>
+
+  <!-- ── 4-Stage Visual Timeline (maps to story, not internals) ── -->
+  <div class="timeline-bar">
+    <div class="timeline-stage stage-pending" data-vstage="0">
+      <span class="stage-num">1</span>
+      <div class="stage-info">
+        <span class="stage-title">Workflow</span>
+        <span class="stage-sub">Generate &amp; visualise</span>
+      </div>
+    </div>
+    <div class="timeline-connector"></div>
+    <div class="timeline-stage stage-pending" data-vstage="1">
+      <span class="stage-num">2</span>
+      <div class="stage-info">
+        <span class="stage-title">DSL</span>
+        <span class="stage-sub">Assemble Zigflow DSL</span>
+      </div>
+    </div>
+    <div class="timeline-connector"></div>
+    <div class="timeline-stage stage-pending" data-vstage="2">
+      <span class="stage-num">3</span>
+      <div class="stage-info">
+        <span class="stage-title">Compiler</span>
+        <span class="stage-sub">Graph traversal</span>
+      </div>
+    </div>
+    <div class="timeline-connector"></div>
+    <div class="timeline-stage stage-pending" data-vstage="3">
+      <span class="stage-num">4</span>
+      <div class="stage-info">
+        <span class="stage-title">Validation</span>
+        <span class="stage-sub">zigflow validate</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Controls ─────────────────────────────────────────────── -->
+  <div class="controls-bar">
+    <div class="mode-toggle" role="group" aria-label="Input mode">
+      <button class="mode-btn active" id="btn-mode-generate" data-mode="generate">🎲 Generate</button>
+      <button class="mode-btn" id="btn-mode-paste" data-mode="paste">📋 Paste JSON</button>
+    </div>
+    <div class="control-group" id="ctrl-generate">
+      <label for="level-select" class="sr-only">Difficulty Level</label>
+      <select id="level-select" class="level-select">
+        <option value="">Choose workflow type...</option>
+      </select>
+      <button class="btn-primary" id="btn-run">Generate &amp; Compile</button>
+      <button class="btn-secondary" id="btn-regen" disabled>🔄 Regenerate</button>
+    </div>
+    <div class="control-group hidden" id="ctrl-paste">
+      <button class="btn-primary" id="btn-compile-paste">Compile JSON</button>
+    </div>
+  </div>
+
+  <!-- Paste JSON textarea -->
+  <div class="paste-area hidden" id="paste-area">
+    <textarea
+      id="paste-input"
+      class="paste-textarea"
+      placeholder='Paste workflow JSON here, e.g. {"nodes": [...], "edges": [...]}'
+      rows="10"
+      spellcheck="false"
+    ></textarea>
+    <p class="paste-hint">Must be a valid workflow JSON with <code>nodes</code> and <code>edges</code> keys.</p>
+  </div>
+
+  <!-- ── Results area (hidden until first run) ─────────────────── -->
+  <div id="results-area" class="hidden">
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 1 — WORKFLOW OVERVIEW
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="result-section" id="section-workflow">
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <h2 class="section-title">Workflow Overview</h2>
+      </div>
+      <div class="section-body">
+
+        <!-- Description -->
+        <div class="workflow-description" id="panel-description">
+          <h3 class="workflow-name" id="workflow-name">—</h3>
+          <p class="workflow-subtitle" id="workflow-subtitle"></p>
+          <div class="node-badges" id="node-type-badges"></div>
+          <details class="raw-json-details">
+            <summary>View Raw Workflow JSON</summary>
+            <pre><code class="language-json" id="raw-workflow-json"></code></pre>
+          </details>
+        </div>
+
+        <!-- Full-width Mermaid diagram -->
+        <div class="diagram-section" id="panel-diagram">
+          <div class="diagram-controls-bar">
+            <span class="diagram-hint">Scroll to zoom &middot; Drag to pan</span>
+            <div class="diagram-controls hidden" id="diagram-controls">
+              <button class="btn-small" id="btn-zoom-in" title="Zoom In">&plus; In</button>
+              <button class="btn-small" id="btn-zoom-out" title="Zoom Out">&minus; Out</button>
+              <button class="btn-small" id="btn-zoom-reset" title="Reset View">&#8857; Reset</button>
+              <button class="btn-small" id="btn-zoom-fullscreen" title="Fullscreen">&#10562; Full</button>
+            </div>
+          </div>
+          <div class="mermaid-wrapper" id="diagram-container"></div>
+        </div>
+
+        <!-- Metric cards row -->
+        <div class="metrics-grid hidden" id="metrics-card">
+          <div class="metric-card" title="Total nodes in workflow">
+            <span class="metric-card-value" id="m-nodes">—</span>
+            <span class="metric-card-label">Nodes</span>
+          </div>
+          <div class="metric-card" title="Total edges in workflow">
+            <span class="metric-card-value" id="m-edges">—</span>
+            <span class="metric-card-label">Edges</span>
+          </div>
+          <div class="metric-card" title="Traversal steps (DFS preorder)">
+            <span class="metric-card-value" id="m-steps">—</span>
+            <span class="metric-card-label">Traversal Steps</span>
+          </div>
+          <div class="metric-card" title="Topology pattern">
+            <span class="metric-card-value" id="m-topology">—</span>
+            <span class="metric-card-label">Topology</span>
+          </div>
+          <div class="metric-card metric-card-validation" id="mc-validation" title="Zigflow validation result">
+            <span class="metric-card-value" id="m-valid-label">—</span>
+            <span class="metric-card-label">Validation</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 2 — COMPILER JOURNEY  (visual order 03)
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="result-section" id="section-compiler">
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <h2 class="section-title">Compiler Journey</h2>
+        <span class="section-tagline">How the compiler transformed this workflow graph into an ordered task list</span>
+      </div>
+      <div class="section-body">
+
+        <!-- Compiler internals accordion (collapsed by default) -->
+        <div class="accordion" id="accordion-internals">
+          <button class="accordion-trigger" aria-expanded="false" aria-controls="accordion-internals-body">
+            <span class="accordion-icon">▶</span>
+            <span class="accordion-label">Compiler Internals</span>
+            <span class="accordion-hint">Node Map · Adjacency List · DFS Traversal</span>
+          </button>
+          <div class="accordion-body" id="accordion-internals-body" hidden>
+
+            <!-- Node Map -->
+            <div class="internal-panel" id="panel-nodemap">
+              <h3 class="internal-panel-title">Node Map</h3>
+              <p class="internal-panel-desc">Every node in the workflow indexed by ID. The compiler builds this first so every subsequent stage can look up any node in O(1).</p>
+              <div class="table-wrapper">
+                <table class="data-table" id="nodemap-table">
+                  <thead><tr><th>ID</th><th>Type</th><th>Data (summary)</th></tr></thead>
+                  <tbody id="nodemap-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Adjacency List -->
+            <div class="internal-panel" id="panel-adjacency">
+              <h3 class="internal-panel-title">Adjacency List</h3>
+              <p class="internal-panel-desc">Directed graph edges keyed by source node. IF-branch edges carry a <code>control</code> annotation (<code>true</code> / <code>false</code>). Used by the traversal to determine execution order.</p>
+              <div class="adjacency-list" id="adjacency-list"></div>
+            </div>
+
+            <!-- DFS Traversal -->
+            <div class="internal-panel" id="panel-traversal">
+              <h3 class="internal-panel-title">DFS Traversal</h3>
+              <p class="internal-panel-desc">Depth-first preorder walk of the graph. Each <code>TraversalEntry</code> carries the metadata the DSL builder reads to emit a Zigflow task.</p>
+              <div class="traversal-list" id="traversal-list"></div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 3 — GENERATED DSL  (visual order 02 — hero output)
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="result-section" id="section-dsl">
+      <div class="section-header">
+        <span class="section-num">02</span>
+        <h2 class="section-title">Generated DSL</h2>
+        <span class="section-tagline">Zigflow YAML-compatible JSON produced by the compiler</span>
+      </div>
+      <div class="section-body">
+
+        <!-- DSL summary row -->
+        <div class="dsl-summary" id="dsl-summary">
+          <div class="dsl-stat">
+            <span class="dsl-stat-value" id="dsl-task-count">—</span>
+            <span class="dsl-stat-label">Tasks</span>
+          </div>
+          <div class="dsl-stat">
+            <span class="dsl-stat-value" id="dsl-workflow-type">—</span>
+            <span class="dsl-stat-label">Workflow Type</span>
+          </div>
+          <div class="dsl-stat">
+            <span class="dsl-stat-value" id="dsl-dsl-version">—</span>
+            <span class="dsl-stat-label">DSL Version</span>
+          </div>
+          <div class="dsl-actions">
+            <button class="btn-primary" id="btn-download-dsl" title="Download DSL JSON">⬇ Download DSL</button>
+            <button class="btn-small" id="btn-toggle-dsl">Hide DSL ▲</button>
+          </div>
+        </div>
+
+        <!-- DSL JSON viewer (open by default — it's the hero output) -->
+        <div class="dsl-viewer" id="dsl-viewer">
+          <pre class="dsl-pre"><code class="language-json" id="dsl-output"></code></pre>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECTION 4 — VALIDATION
+    ══════════════════════════════════════════════════════════════ -->
+    <section class="result-section" id="section-validation">
+      <div class="section-header">
+        <span class="section-num">04</span>
+        <h2 class="section-title">Validation</h2>
+        <span class="section-tagline">zigflow validate — schema and semantic correctness</span>
+      </div>
+      <div class="section-body">
+
+        <!-- Prominent validation result -->
+        <div class="validation-result" id="validation-badge">
+          <span class="validation-result-icon" id="vbadge-icon">⏳</span>
+          <span class="validation-result-text" id="vbadge-text">Running…</span>
+        </div>
+
+        <!-- Detailed CLI output -->
+        <details class="validation-details">
+          <summary>View CLI Output</summary>
+          <pre class="validation-output" id="validation-output"></pre>
+        </details>
+
+        <div class="download-row">
+          <button class="btn-small" id="btn-download-workflow" title="Download source Workflow JSON">⬇ Download Workflow JSON</button>
+        </div>
+
+      </div>
+    </section>
+
+  </div><!-- /results-area -->
+
+  <!-- ── Loading overlay ──────────────────────────────────────── -->
+  <div class="loading-overlay hidden" id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p class="loading-text" id="loading-text">Compiling…</p>
+  </div>
+
+  <!-- ── Error toast ───────────────────────────────────────────── -->
+  <div class="error-toast hidden" id="error-toast">
+    <span class="error-icon">⚠</span>
+    <span id="error-toast-msg">An error occurred.</span>
+    <button class="toast-close" onclick="document.getElementById('error-toast').classList.add('hidden')">✕</button>
+  </div>
+
+</div><!-- /app-container -->
+{% endblock %}

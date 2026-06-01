@@ -1,14 +1,3 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# PHASE A — GRAPH COMPILATION
-#
-# Ownership: graph structure, topology, adjacency, traversal order, and all
-# execution-aware metadata (is_terminal, branch_map, incoming_edge_control).
-#
-# This module is the sole producer of TraversalEntry dicts. The DSL generator
-# (Phase B) and all builders must not read adjacency, node_map, or any other
-# graph internals. Everything they need arrives pre-computed in TraversalEntry.
-# ─────────────────────────────────────────────────────────────────────────────
-
 from utils.task_names import resolve_task_name
 
 
@@ -43,12 +32,6 @@ def find_entrypoint(node_map: dict):
   return "Entrypoint not found"
 
 def generate_graph_structure(entrypoint, node_map, adjacency, graph=None):
-    # NOTE: graph node dicts (the "node" values inside each graph entry) are
-    # READ-ONLY after construction. Do not attach traversal-specific metadata
-    # to them — they are shared references in the memoised DAG. A node
-    # reachable from multiple parents has one graph entry shared across all
-    # parents. Metadata that belongs to a traversal step must live in a
-    # TraversalEntry, not on the graph node.
     if graph is None:
         graph = {}
 
@@ -84,8 +67,7 @@ def print_graph(graph, level=0, visited=None, control=None):
     for edge in graph["children"]:
         print_graph(edge["child"], level + 1, visited, edge["control"])
 
-# ── PARALLEL helpers (Phase A private API) ───────────────────────────────────
-
+#PARALLEL helpers
 def _bfs_reachable(start_id: str, adjacency: dict) -> set:
     """
     Return the set of all node IDs reachable from start_id (excluding start_id).
@@ -106,7 +88,6 @@ def _bfs_reachable(start_id: str, adjacency: dict) -> set:
                 reachable.add(target_id)
                 queue.append(target_id)
     return reachable
-
 
 def _find_parallel_convergence(parallel_node_id: str, adjacency: dict, node_map: dict) -> str:
     """
@@ -174,7 +155,6 @@ def _find_parallel_convergence(parallel_node_id: str, adjacency: dict, node_map:
 
     return convergence
 
-
 def _detect_back_edge_to_parallel(
     parallel_node_id: str, branch_starts: list, adjacency: dict
 ) -> None:
@@ -200,7 +180,6 @@ def _detect_back_edge_to_parallel(
                 f"Use a LOOP node type for cyclic patterns."
             )
 
-
 def _traverse_branch(
     branch_start_id: str,
     convergence_id: str,
@@ -223,8 +202,8 @@ def _traverse_branch(
         Ordered list of TraversalEntry dicts in DFS preorder.
     """
     order: list = []
-    visited: set = {convergence_id}        # stop sentinel
-    pending_convergences: set = set()      # inner-PARALLEL convergences → reads_from_context
+    visited: set = {convergence_id}
+    pending_convergences: set = set()
 
     def _dfs(node_id: str, parent_control) -> None:
         if node_id in visited:
@@ -294,9 +273,7 @@ def _traverse_branch(
     _dfs(branch_start_id, None)
     return order
 
-
-# ── Main traversal ────────────────────────────────────────────────────────────
-
+# Main traversal
 def traverse_graph(
     graph,
     adjacency,
@@ -387,7 +364,7 @@ def traverse_graph(
     order.append({
         "node_id": node_id,
         "node_type": node_type,
-        "node": node,                   # READ-ONLY — never mutate this dict
+        "node": node,
         "is_terminal": is_terminal,
         "successors": successors,
         "incoming_edge_control": parent_control,
@@ -424,7 +401,5 @@ def run_compiler(workflow: dict) -> dict:
         "adjacency": adjacency,
         "graph": graph,
         "traversal": traversal,
-        "builder_context": {},  # Deprecated. All builder metadata is now in
-                                # traversal entries. Kept for call-site compat
-                                # until LOOP/PARALLEL stabilise.
+        "builder_context": {},
     }
