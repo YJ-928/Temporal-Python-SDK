@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     DEFAULT_DSL_VERSION: str = "1.0.0"
     DEFAULT_TASK_QUEUE: str = "workflow-builder"
+    TEMPORAL_ADDRESS: str = "localhost:7233"
 
     CORS_ORIGINS: List[str] = ["*"]
     CORS_CREDENTIALS: bool = True

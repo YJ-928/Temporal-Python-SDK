@@ -570,8 +570,32 @@ body, html, #root {
 }
 
 .node-completed {
-  border-color: var(--color-input) !important;
-  animation: pulse-success 1.5s infinite;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4) !important;
+}
+
+.node-running {
+  border-color: #3b82f6 !important;
+  animation: pulse-active 1.5s infinite;
+  transform: scale(1.03);
+}
+
+.node-failed {
+  border-color: #ef4444 !important;
+  animation: pulse-failed 1.5s infinite;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5) !important;
+}
+
+.node-skipped {
+  opacity: 0.5;
+  filter: grayscale(80%);
+  border-color: #64748b !important;
+}
+
+@keyframes pulse-failed {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
 /* --------------------------------------------------------------------------

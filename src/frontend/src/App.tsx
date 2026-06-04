@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   MiniMap,
@@ -20,6 +20,8 @@ import { nodeTypes } from './components/CustomNodes';
 import type { NodeType, RFNodeData, RFEdgeData } from './types';
 import { getDefaultNodeData } from './utils/nodeDefaults';
 import { getAgentById } from './constants/agents';
+import { compilerApi } from './services/compilerApi';
+import { buildExportPayload } from './utils/exportWorkflow';
 
 const FlowBuilder: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -212,6 +214,13 @@ const FlowBuilder: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [simulatingNodeId, setSimulatingNodeId] = useState<string | null>(null);
   const [completedNodeIds, setCompletedNodeIds] = useState<string[]>([]);
+
+  // Temporal Live Execution States
+  const [mode, setMode] = useState<'simulation' | 'temporal'>('simulation');
+  const [executionHistory, setExecutionHistory] = useState<any[]>([]);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [nodeTraceStates, setNodeTraceStates] = useState<Record<string, any>>({});
+  const [isTriggeringRun, setIsTriggeringRun] = useState(false);
 
   const simulationTimeoutRef = useRef<number | null>(null);
 
@@ -611,6 +620,137 @@ const FlowBuilder: React.FC = () => {
     setLogs([]);
   };
 
+  // Temporal live execution functions
+  const refreshHistory = useCallback(async () => {
+    try {
+      const history = await compilerApi.getHistory('workflow-builder-id');
+      setExecutionHistory(history);
+    } catch (err: any) {
+      console.error("Failed to load execution history:", err);
+    }
+  }, []);
+
+  const triggerTemporalRun = async () => {
+    setIsTriggeringRun(true);
+    try {
+      // 1. Compile current canvas layout first (Mandatory Compilation Gate!)
+      const payload = buildExportPayload(nodes, edges);
+      addLog("Compiling and validating workflow design...", 'info');
+      const compileRes = await compilerApi.compileWorkflow({
+        nodes: payload.nodes,
+        edges: payload.edges,
+        workflow_id: 'workflow-builder-id',
+      });
+      addLog(`Compilation validated successfully (hash: ${compileRes.content_hash}). Starting Temporal execution...`, 'info');
+      
+      // 2. Start the workflow run using versioned content hash
+      const res = await compilerApi.executeWorkflow('workflow-builder-id', compileRes.content_hash, {});
+      addLog(`Workflow triggered successfully! Run ID: ${res.run_id}`, 'success');
+      
+      // 3. Refresh and select the active run
+      await refreshHistory();
+      setActiveRunId(res.run_id);
+    } catch (err: any) {
+      addLog(`Failed to run: ${err.message}`, 'error');
+      alert(`Execution failed: ${err.message}`);
+    } finally {
+      setIsTriggeringRun(false);
+    }
+  };
+
+  const loggedStepsRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    if (activeRunId) {
+      setLogs([]);
+      loggedStepsRef.current = {};
+      setNodeTraceStates({});
+    }
+  }, [activeRunId]);
+
+  useEffect(() => {
+    if (mode === 'temporal') {
+      refreshHistory();
+    }
+  }, [mode, refreshHistory]);
+
+  const handleCancelRun = async (workflowId: string, runId: string) => {
+    try {
+      addLog(`Requesting cancellation for workflow ${workflowId} (run: ${runId})...`, 'info');
+      await compilerApi.cancelWorkflow(workflowId, runId);
+      addLog("Cancellation request submitted successfully.", 'success');
+      await refreshHistory();
+    } catch (err: any) {
+      addLog(`Failed to cancel: ${err.message}`, 'error');
+    }
+  };
+
+  const handleTerminateRun = async (workflowId: string, runId: string, reason: string) => {
+    try {
+      addLog(`Terminating workflow ${workflowId} (run: ${runId})...`, 'info');
+      await compilerApi.terminateWorkflow(workflowId, runId, reason);
+      addLog("Workflow terminated successfully.", 'success');
+      await refreshHistory();
+    } catch (err: any) {
+      addLog(`Failed to terminate: ${err.message}`, 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (!activeRunId || mode !== 'temporal') return;
+
+    let intervalId: any;
+
+    const activeRun = executionHistory.find(r => r.run_id === activeRunId);
+    const activeWorkflowId = activeRun?.workflow_id || `rf-workflow-builder-id-${activeRunId}`;
+
+    const pollTrace = async () => {
+      try {
+        const trace = await compilerApi.getTrace(activeWorkflowId, activeRunId);
+        if (trace && trace.steps) {
+          setNodeTraceStates(trace.steps);
+          
+          // Print logs
+          Object.keys(trace.steps).forEach((nodeId) => {
+            const step = trace.steps[nodeId];
+            const prev = loggedStepsRef.current[nodeId];
+            if (step.status !== prev) {
+              loggedStepsRef.current[nodeId] = step.status;
+              const node = nodes.find((n) => n.id === nodeId);
+              const label = node?.data?.label || nodeId;
+              if (step.status === 'running') {
+                addLog(`[Temporal: ${label}] Running...`, 'info');
+              } else if (step.status === 'completed') {
+                addLog(`[Temporal: ${label}] Completed successfully. ${step.output ? 'Output: ' + JSON.stringify(step.output) : ''}`, 'success');
+              } else if (step.status === 'failed') {
+                addLog(`[Temporal: ${label}] Failed: ${step.error || 'Activity failed'}`, 'error');
+              } else if (step.status === 'skipped') {
+                addLog(`[Temporal: ${label}] Skipped.`, 'text');
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Trace polling error:", err);
+      }
+    };
+
+    pollTrace();
+    
+    const isCompleted = activeRun && (activeRun.status === 'COMPLETED' || activeRun.status === 'completed' || activeRun.status === 'FAILED' || activeRun.status === 'failed' || activeRun.status === 'CANCELED' || activeRun.status === 'canceled' || activeRun.status === 'TERMINATED' || activeRun.status === 'terminated');
+
+    if (!isCompleted) {
+      intervalId = setInterval(async () => {
+        await pollTrace();
+        await refreshHistory();
+      }, 2000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [activeRunId, mode, executionHistory, nodes, refreshHistory]);
+
   // Find selected elements
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || null;
@@ -618,11 +758,26 @@ const FlowBuilder: React.FC = () => {
   // Add styles for simulating states inside the nodes list dynamically
   const styledNodes = nodes.map((node) => {
     let className = '';
-    if (node.id === simulatingNodeId) {
-      className = 'node-simulating';
-    } else if (completedNodeIds.includes(node.id)) {
-      className = 'node-completed';
+    
+    if (mode === 'temporal' && nodeTraceStates[node.id]) {
+      const trace = nodeTraceStates[node.id];
+      if (trace.status === 'completed') {
+        className = 'node-completed';
+      } else if (trace.status === 'running') {
+        className = 'node-running';
+      } else if (trace.status === 'failed') {
+        className = 'node-failed';
+      } else if (trace.status === 'skipped') {
+        className = 'node-skipped';
+      }
+    } else {
+      if (node.id === simulatingNodeId) {
+        className = 'node-simulating';
+      } else if (completedNodeIds.includes(node.id)) {
+        className = 'node-completed';
+      }
     }
+    
     return {
       ...node,
       className: `${node.className || ''} ${className}`.trim(),
@@ -687,6 +842,7 @@ const FlowBuilder: React.FC = () => {
           selectedEdge={selectedEdge}
           onUpdateNode={onUpdateNode}
           onUpdateEdge={onUpdateEdge}
+          nodeTraceStates={nodeTraceStates}
         />
 
         <Simulator
@@ -695,6 +851,16 @@ const FlowBuilder: React.FC = () => {
           onStartSimulation={startSimulation}
           onStopSimulation={stopSimulation}
           onClearLogs={clearLogs}
+          mode={mode}
+          setMode={setMode}
+          executionHistory={executionHistory}
+          activeRunId={activeRunId}
+          setActiveRunId={setActiveRunId}
+          onTriggerTemporalRun={triggerTemporalRun}
+          onRefreshHistory={refreshHistory}
+          isTriggeringRun={isTriggeringRun}
+          onCancelRun={handleCancelRun}
+          onTerminateRun={handleTerminateRun}
         />
       </div>
     </div>

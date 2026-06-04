@@ -13,33 +13,40 @@ from ..config import settings, get_logger
 logger = get_logger(__name__)
 
 
+def calculate_dsl_hash(dsl: dict) -> str:
+    """
+    Calculate a deterministic 16-character SHA-256 content hash of the compiled DSL.
+    """
+    import hashlib
+    dsl_bytes = json.dumps(dsl, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(dsl_bytes).hexdigest()[:16]
+
+
 def save_dsl(
     dsl: dict,
     workflow_id: Optional[str] = None,
     custom_filename: Optional[str] = None,
+    rf_json: Optional[dict] = None,
 ) -> Path:
     """
     Save compiled DSL to resources/compiled/ with date-based folder structure.
 
     Directory structure:
-        resources/compiled/YYYY/MM/DD/wf_YYYYMMDD_HHMMSS.json
+        resources/compiled/YYYY/MM/DD/wf-{dsl_hash}.json
 
     Args:
         dsl: Complete Zigflow DSL dictionary
         workflow_id: Optional workflow identifier (included in filename if provided)
         custom_filename: Optional custom filename (overrides default naming)
+        rf_json: Optional ReactFlow representation dictionary to save alongside DSL
 
     Returns:
         Path to saved file
-
-    Example:
-        >>> save_dsl(my_dsl)
-        Path('resources/compiled/2026/06/02/wf_20260602_143052.json')
-
-        >>> save_dsl(my_dsl, workflow_id="order-flow")
-        Path('resources/compiled/2026/06/02/order-flow_20260602_143052.json')
     """
     now = datetime.now()
+
+    # Calculate deterministic SHA-256 content hash of DSL
+    dsl_hash = calculate_dsl_hash(dsl)
 
     # Create date-based directory structure: YYYY/MM/DD
     year_dir = settings.COMPILED_DIR / str(now.year)
@@ -49,15 +56,14 @@ def save_dsl(
     # Ensure directories exist
     day_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate filename
+    # Generate filename with hash suffix to guarantee version safety
     if custom_filename:
-        filename = custom_filename if custom_filename.endswith('.json') else f"{custom_filename}.json"
+        # Strip extension if provided
+        base_name = custom_filename[:-5] if custom_filename.endswith('.json') else custom_filename
+        filename = f"{base_name}-{dsl_hash}.json"
     else:
-        timestamp = now.strftime("%Y%m%d_%H%M%S")
-        if workflow_id:
-            filename = f"{workflow_id}_{timestamp}.json"
-        else:
-            filename = f"wf_{timestamp}.json"
+        prefix = workflow_id if workflow_id else "wf"
+        filename = f"{prefix}-{dsl_hash}.json"
 
     # Full file path
     file_path = day_dir / filename
@@ -66,9 +72,36 @@ def save_dsl(
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump(dsl, f, indent=2, ensure_ascii=False)
 
-    logger.info(f"DSL saved to: {file_path}")
+    logger.info(f"DSL saved to: {file_path} (hash: {dsl_hash})")
+
+    # If original ReactFlow JSON is provided, save it under same hash name
+    if rf_json:
+        rf_filename = filename.replace(".json", ".rf.json")
+        rf_path = day_dir / rf_filename
+        with open(rf_path, 'w', encoding='utf-8') as f:
+            json.dump(rf_json, f, indent=2, ensure_ascii=False)
+        logger.info(f"ReactFlow schema saved to: {rf_path}")
 
     return file_path
+
+
+def find_by_hash(workflow_id: str, dsl_hash: str, ext: str = ".json") -> Optional[Path]:
+    """
+    Find a compiled or ReactFlow file by its workflow ID and DSL hash.
+
+    Args:
+        workflow_id: Visual design ID of the workflow
+        dsl_hash: 16-character content hash
+        ext: Target extension (.json or .rf.json)
+
+    Returns:
+        Path to file if found, otherwise None
+    """
+    # Scope search to pattern containing BOTH workflow_id and dsl_hash to prevent collision
+    matches = list(settings.COMPILED_DIR.glob(f"**/*{workflow_id}*-{dsl_hash}{ext}"))
+    if matches:
+        return matches[0]
+    return None
 
 
 def load_dsl(file_path: str | Path) -> dict:
@@ -137,7 +170,7 @@ def list_compiled_workflows(
         logger.info(f"No workflows found for {date.date()}")
         return []
 
-    workflows = sorted(day_dir.glob("*.json"))
+    workflows = sorted([w for w in day_dir.glob("*.json") if not w.name.endswith(".rf.json")])
     logger.info(f"Found {len(workflows)} workflows for {date.date()}")
 
     return workflows
@@ -157,10 +190,10 @@ def get_latest_workflow(workflow_id: Optional[str] = None) -> Optional[Path]:
         >>> latest = get_latest_workflow()
         >>> latest = get_latest_workflow(workflow_id="order-flow")
     """
+    from datetime import timedelta
     # Search in reverse chronological order (last 30 days)
     for days_ago in range(30):
-        date = datetime.now()
-        date = date.replace(day=date.day - days_ago) if days_ago > 0 else date
+        date = datetime.now() - timedelta(days=days_ago)
 
         workflows = list_compiled_workflows(date)
 

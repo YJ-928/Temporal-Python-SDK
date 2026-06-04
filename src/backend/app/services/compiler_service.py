@@ -4,6 +4,10 @@ Compiler service layer.
 High-level service wrapping the workflow compiler.
 Handles workflow JSON → DSL compilation without direct API concerns.
 """
+import os
+import json
+import tempfile
+import subprocess
 from typing import Optional
 from ..compiler.workflow_compiler import compile_workflow_to_dsl, initialize_builders
 from ..config import settings, get_logger
@@ -78,6 +82,25 @@ class CompilerService:
                 task_queue=task_queue,
             )
 
+            # Validate generated DSL using zigflow validate
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
+                json.dump(dsl, tmp)
+                tmp_path = tmp.name
+
+            try:
+                result = subprocess.run(
+                    ["zigflow", "validate", tmp_path],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode != 0:
+                    error_msg = result.stderr.strip() or result.stdout.strip()
+                    logger.error(f"Zigflow validation failed for {workflow_type}: {error_msg}")
+                    raise ValueError(f"Zigflow validation failed: {error_msg}")
+            finally:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+
             logger.info(
                 f"Compilation successful: {workflow_type} "
                 f"({len(workflow['nodes'])} nodes, {len(dsl.get('do', []))} tasks)"
@@ -136,19 +159,24 @@ class CompilerService:
         # Use workflow_id if provided, else fall back to workflow_type
         save_id = workflow_id or workflow_type
 
-        # Save to storage
+        from .storage_service import calculate_dsl_hash
+        content_hash = calculate_dsl_hash(dsl)
+
+        # Save to storage (persisting both .json and .rf.json versioned by content hash)
         file_path = save_dsl(
             dsl=dsl,
             workflow_id=save_id,
             custom_filename=custom_filename,
+            rf_json=workflow,
         )
 
-        logger.info(f"DSL saved: {file_path}")
+        logger.info(f"DSL saved: {file_path} (hash: {content_hash})")
 
         return {
             "workflow_id": save_id,
             "dsl": dsl,
             "file_path": file_path,
+            "content_hash": content_hash,
         }
 
 

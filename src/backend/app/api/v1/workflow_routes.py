@@ -51,13 +51,14 @@ async def compile_workflow(request: CompileWorkflowRequest):
             workflow_id=request.workflow_id,
         )
 
-        logger.info(f"Compiled workflow: {result['workflow_id']}")
+        logger.info(f"Compiled workflow: {result['workflow_id']} (hash: {result['content_hash']})")
 
         return CompileWorkflowResponse(
             success=True,
             workflow_id=result["workflow_id"],
             dsl=result["dsl"],
             file_path=str(result["file_path"]),
+            content_hash=result["content_hash"],
         )
 
     except ValueError as e:

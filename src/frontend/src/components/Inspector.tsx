@@ -17,6 +17,7 @@ interface InspectorProps {
   selectedEdge: Edge<RFEdgeData> | null;
   onUpdateNode: (nodeId: string, updatedData: Partial<RFNodeData>) => void;
   onUpdateEdge: (edgeId: string, updatedData: Partial<RFEdgeData>) => void;
+  nodeTraceStates?: Record<string, { status: string; input?: any; output?: any; error?: string }>;
 }
 
 const newRowId = () => `row-${Math.random().toString(36).slice(2, 9)}`;
@@ -26,6 +27,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   selectedEdge,
   onUpdateNode,
   onUpdateEdge,
+  nodeTraceStates = {},
 }) => {
   if (selectedNode) {
     const { id, type, data } = selectedNode;
@@ -33,6 +35,9 @@ export const Inspector: React.FC<InspectorProps> = ({
     const patch = (updated: Partial<RFNodeData>) => onUpdateNode(id, updated);
 
     const handleLabelChange = (value: string) => patch({ label: value });
+    
+    // Check if there is trace state for this node
+    const trace = nodeTraceStates[id];
 
     return (
       <aside className="inspector">
@@ -47,6 +52,50 @@ export const Inspector: React.FC<InspectorProps> = ({
         </div>
 
         <div className="inspector-form">
+          {trace && (
+            <div style={{
+              background: 'rgba(30, 41, 59, 0.7)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '16px',
+              fontSize: '0.8rem'
+            }}>
+              <h4 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Execution Trace</span>
+                <span className={`compiler-status-badge ${trace.status}`} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                  {trace.status.toUpperCase()}
+                </span>
+              </h4>
+              
+              {trace.input && (
+                <div style={{ marginTop: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Input:</span>
+                  <pre style={{ margin: 0, padding: '6px', background: 'rgba(15, 23, 42, 0.6)', borderRadius: '4px', overflowX: 'auto', maxHeight: '100px', color: '#a5b4fc' }}>
+                    {JSON.stringify(trace.input, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {trace.output && (
+                <div style={{ marginTop: '8px' }}>
+                  <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Output:</span>
+                  <pre style={{ margin: 0, padding: '6px', background: 'rgba(15, 23, 42, 0.6)', borderRadius: '4px', overflowX: 'auto', maxHeight: '100px', color: '#86efac' }}>
+                    {JSON.stringify(trace.output, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {trace.error && (
+                <div style={{ marginTop: '8px', color: '#f87171' }}>
+                  <span style={{ display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Error:</span>
+                  <div style={{ padding: '6px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', whiteSpace: 'pre-wrap' }}>
+                    {trace.error}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {type !== 'start' && type !== 'end' && (
             <div className="form-group">
               <label>Display Label</label>

@@ -21,7 +21,14 @@ from .compiler_sch import (
     GetWorkflowResponse,
     ErrorResponse,
 )
-
+from .execution_sch import (
+    ExecuteWorkflowRequest,
+    ExecuteWorkflowResponse,
+    ExecutionListItem,
+    ExecutionListResponse,
+    TraceStepResponse,
+    ExecutionTraceResponse,
+)
 
 __all__ = [
     # Workflow schemas
@@ -35,25 +42,16 @@ __all__ = [
     "WorkflowDefinition",
     "CompileRequest",
     "CompileResponse",
-    # API schemas
+    # Compiler API schemas
     "CompileWorkflowRequest",
     "CompileWorkflowResponse",
     "GetWorkflowResponse",
     "ErrorResponse",
-]
-
-
-__all__ = [
-    "InputField",
-    "OutputField",
-    "IfCondition",
-    "AgentConfig",
-    "WaitConfig",
-    "NodeData",
-    "Node",
-    "EdgeControl",
-    "Edge",
-    "WorkflowDefinition",
-    "CompileRequest",
-    "CompileResponse",
+    # Execution API schemas
+    "ExecuteWorkflowRequest",
+    "ExecuteWorkflowResponse",
+    "ExecutionListItem",
+    "ExecutionListResponse",
+    "TraceStepResponse",
+    "ExecutionTraceResponse",
 ]

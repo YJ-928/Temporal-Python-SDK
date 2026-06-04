@@ -95,8 +95,10 @@ def register_routers(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     from ..api.v1.workflow_routes import router as workflow_router
+    from ..api.v1.execution_routes import router as execution_router
 
     app.include_router(workflow_router, prefix="/api/v1")
+    app.include_router(execution_router, prefix="/api/v1")
     logger.info("Routers registered")
 
 
@@ -112,6 +114,20 @@ def register_events(app: FastAPI) -> None:
     @app.on_event("startup")
     async def startup_event():
         logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION}")
+        
+        # Verify zigflow CLI is installed on PATH
+        import shutil
+        import subprocess
+        if not shutil.which("zigflow"):
+            logger.critical("❌ zigflow command-line tool is not installed or not found on PATH.")
+            raise RuntimeError("zigflow CLI tool not found on PATH. Please install zigflow before starting the application.")
+        
+        try:
+            res = subprocess.run(["zigflow", "--version"], capture_output=True, text=True, check=True)
+            logger.info(f"✓ zigflow CLI version: {res.stdout.strip() or 'unknown'}")
+        except Exception as e:
+            logger.warning(f"Unable to determine zigflow version: {e}")
+
         if settings.DATABASE_URL:
             logger.info("Database configured and ready")
 

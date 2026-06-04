@@ -66,6 +66,7 @@ cleanup() {
         kill "$WORKERS_PID" 2>/dev/null || true
         # Kill all worker processes
         pkill -f "python.*worker.*dsl-executor" 2>/dev/null || true
+        pkill -f "zigflow run" 2>/dev/null || true
         echo -e "${GREEN}✓ Workers stopped${NC}"
     fi
 
@@ -196,20 +197,24 @@ echo ""
 echo -e "${BLUE}[5/8] Starting Temporal Workers...${NC}"
 
 # Export required env vars for workers
-export TASK_QUEUE="${TASK_QUEUE:-dsl-executor}"
+export TASK_QUEUE="${TASK_QUEUE:-workflow-builder}"
 export WORKFLOW_TYPE="${WORKFLOW_TYPE:-DslWorkflow}"
 
-bash "$SCRIPTS_DIR/start_workers.sh" &>/dev/null &
+# Create compiled directory if it doesn't exist
+mkdir -p "$SCRIPT_DIR/resources/compiled"
+
+# Start zigflow run daemon watching the compiled directory
+zigflow run --dir "$SCRIPT_DIR/resources/compiled" --watch --metrics-listen-address "127.0.0.1:9095" --health-listen-address "127.0.0.1:3005" &>/dev/null &
 WORKERS_PID=$!
 
 # Give workers time to initialize
 sleep 2
 
 if kill -0 "$WORKERS_PID" 2>/dev/null; then
-    echo -e "${GREEN}✓ Workers running (PID: $WORKERS_PID)${NC}"
-    echo -e "${GREEN}  Task Queue: $TASK_QUEUE${NC}"
+    echo -e "${GREEN}✓ Zigflow worker daemon running (PID: $WORKERS_PID)${NC}"
+    echo -e "${GREEN}  Watching directory: $SCRIPT_DIR/resources/compiled${NC}"
 else
-    echo -e "${RED}❌ Workers failed to start${NC}"
+    echo -e "${RED}❌ Zigflow worker daemon failed to start${NC}"
     exit 1
 fi
 echo ""

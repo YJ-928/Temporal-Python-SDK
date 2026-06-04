@@ -47,22 +47,23 @@ class CompileWorkflowResponse(BaseModel):
     workflow_id: str = Field(..., description="Generated or provided workflow ID")
     dsl: Dict[str, Any] = Field(..., description="Compiled Zigflow DSL")
     file_path: str = Field(..., description="Path to saved DSL file")
+    content_hash: str = Field(..., description="SHA-256 content hash of the compiled DSL")
 
     class Config:
         json_schema_extra = {
             "example": {
                 "success": True,
-                "workflow_id": "greeting-flow_20260602_143052",
+                "workflow_id": "greeting-flow",
                 "dsl": {
                     "document": {
                         "dsl": "1.0.0",
                         "taskQueue": "workflow-builder",
                         "workflowType": "greeting-workflow",
-                        "version": "1.0.0",
-                    },
-                    "do": [],
+                        "name": "greeting-flow"
+                    }
                 },
-                "file_path": "resources/compiled/2026/06/02/greeting-flow_20260602_143052.json",
+                "file_path": "resources/compiled/2026/06/02/greeting-flow-a8d23e91c1bfe345.json",
+                "content_hash": "a8d23e91c1bfe345"
             }
         }
 
