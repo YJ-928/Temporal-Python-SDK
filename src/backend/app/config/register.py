@@ -96,9 +96,11 @@ def register_routers(app: FastAPI) -> None:
     """
     from ..api.v1.workflow_routes import router as workflow_router
     from ..api.v1.execution_routes import router as execution_router
+    from ..api.v1.health_routes import router as health_router
 
     app.include_router(workflow_router, prefix="/api/v1")
     app.include_router(execution_router, prefix="/api/v1")
+    app.include_router(health_router, prefix="/api/v1")
 
     @app.post("/api/v1/actions/{operation}", tags=["Actions"])
     async def mock_action(operation: str, request: Request):
@@ -173,6 +175,14 @@ def register_events(app: FastAPI) -> None:
 
         if settings.DATABASE_URL:
             logger.info("Database configured and ready")
+
+        # Sync pre-existing compiled workflows
+        from ..services.registration_service import registration_service
+        try:
+            await registration_service.sync_pre_existing()
+            logger.info("✓ Sync of pre-existing compiled workflows complete")
+        except Exception as e:
+            logger.error(f"Failed to sync compiled workflows on startup: {e}")
 
     @app.on_event("shutdown")
     async def shutdown_event():

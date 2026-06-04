@@ -20,6 +20,39 @@ router = APIRouter(prefix="/executions", tags=["Executions"])
     description="Starts a new workflow run on Temporal using the versioned compiled DSL matching the provided content hash."
 )
 async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
+    # 1. Check if hash is registered and validated
+    from ...services.registration_service import registration_service
+    if not registration_service.is_registered(request.dsl_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Workflow version (hash {request.dsl_hash}) is not registered."
+        )
+
+    # 2. Check if it's hot-reloaded/runtime-loaded into the worker
+    if not registration_service.is_runtime_loaded(request.dsl_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Workflow version (hash {request.dsl_hash}) is still pending runtime loading."
+        )
+
+    # 3. Check if runtime is healthy
+    import urllib.request
+    import json
+    runtime_healthy = False
+    try:
+        req = urllib.request.Request("http://localhost:3005/health")
+        with urllib.request.urlopen(req, timeout=1) as r:
+            res = json.loads(r.read())
+            runtime_healthy = res.get("healthy", False)
+    except Exception:
+        pass
+
+    if not runtime_healthy:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Zigflow Runtime Daemon is offline or unhealthy."
+        )
+
     try:
         result = await execution_service.execute_workflow(
             workflow_id=workflow_id,

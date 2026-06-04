@@ -1,0 +1,50 @@
+{
+  "677a4fb6ecb7e20f": {
+    "workflow_id": "test",
+    "workflow_type": "test-probe-type",
+    "validated": true,
+    "registered": true,
+    "runtime_loaded": true,
+    "registered_at": "2026-06-04T10:38:04.949605Z"
+  },
+  "b3bf8add8338ccba": {
+    "workflow_id": "workflow-builder-id",
+    "workflow_type": "workflow-builder",
+    "validated": true,
+    "registered": true,
+    "runtime_loaded": true,
+    "registered_at": "2026-06-04T10:38:05.112955Z"
+  },
+  "bf68685982abfdeb": {
+    "workflow_id": "account-routing",
+    "workflow_type": "account-routing-type",
+    "validated": true,
+    "registered": true,
+    "runtime_loaded": true,
+    "registered_at": "2026-06-04T10:38:05.294059Z"
+  },
+  "c71a8a4e801fbe17": {
+    "workflow_id": "single-email-validator",
+    "workflow_type": "single-email-validator-type",
+    "validated": true,
+    "registered": true,
+    "runtime_loaded": true,
+    "registered_at": "2026-06-04T10:38:05.441126Z"
+  },
+  "06bb78a7f19fc484": {
+    "workflow_id": "weather-assistant",
+    "workflow_type": "weather-assistant-type",
+    "validated": true,
+    "registered": true,
+    "runtime_loaded": true,
+    "registered_at": "2026-06-04T10:38:05.633362Z"
+  },
+  "e1251eabdf735f1e": {
+    "workflow_id": "email-validation-sender",
+    "workflow_type": "email-validation-sender-type",
+    "validated": true,
+    "registered": true,
+    "runtime_loaded": true,
+    "registered_at": "2026-06-04T10:38:05.785303Z"
+  }
+}

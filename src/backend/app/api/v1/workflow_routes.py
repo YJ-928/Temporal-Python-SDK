@@ -53,6 +53,15 @@ async def compile_workflow(request: CompileWorkflowRequest):
 
         logger.info(f"Compiled workflow: {result['workflow_id']} (hash: {result['content_hash']})")
 
+        # Register the compiled workflow version (hot-reloads runtime in background)
+        from ...services.registration_service import registration_service
+        registration_service.register_workflow(
+            dsl_hash=result["content_hash"],
+            workflow_id=result["workflow_id"],
+            workflow_type=resolved_workflow_type,
+            file_path=result["file_path"],
+        )
+
         return CompileWorkflowResponse(
             success=True,
             workflow_id=result["workflow_id"],
