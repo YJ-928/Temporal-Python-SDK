@@ -62,6 +62,7 @@ class TraceStepResponse(BaseModel):
     input: Optional[Dict[str, Any]] = Field(None, description="Decoded input data passed to the step")
     output: Optional[Dict[str, Any]] = Field(None, description="Decoded output data returned by the step")
     error: Optional[str] = Field(None, description="Error message if the step failed")
+    duration_seconds: Optional[float] = Field(None, description="Execution duration in seconds")
 
 
 class ExecutionTraceResponse(BaseModel):

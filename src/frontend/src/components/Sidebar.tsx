@@ -7,12 +7,10 @@ import {
   Zap,
   LogOut,
   Bot,
-  Sparkles,
 } from 'lucide-react';
 import type { NodeType } from '../types';
 
 interface SidebarProps {
-  onLoadTemplate: (templateName: string) => void;
   onAddNode: (type: NodeType) => void;
 }
 
@@ -32,7 +30,7 @@ const PALETTE: {
   { type: 'end', title: 'END', desc: 'Workflow exit', icon: <CircleStop size={20} />, className: 'palette-node-end' },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ onLoadTemplate, onAddNode }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onAddNode }) => {
   const onDragStart = (event: React.DragEvent, nodeType: NodeType) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
@@ -59,36 +57,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLoadTemplate, onAddNode }) =
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 'auto' }}>
-        <h3
-          className="sidebar-section-title"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <Sparkles size={14} style={{ color: 'var(--accent)' }} /> Pre-built Templates
-        </h3>
-        <div className="template-list">
-          <button
-            className="template-card"
-            onClick={() => onLoadTemplate('customer_support')}
-          >
-            <div className="template-card-title">Customer Support Triage</div>
-            <div className="template-card-desc">
-              START → INPUT → AGENT → IF → branches → OUTPUT → END
-            </div>
-          </button>
-
-          <button
-            className="template-card"
-            onClick={() => onLoadTemplate('content_generation')}
-          >
-            <div className="template-card-title">Topic Researcher & Writer</div>
-            <div className="template-card-desc">
-              START → INPUT → AGENT → ACTION → OUTPUT → END
-            </div>
-          </button>
         </div>
       </div>
     </aside>

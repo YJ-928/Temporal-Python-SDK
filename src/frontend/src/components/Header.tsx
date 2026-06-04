@@ -1,282 +1,386 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { Node, Edge } from 'reactflow';
-import { Undo, Redo, GitMerge, Download, Code, RotateCcw, Copy, Check, Save, FolderOpen } from 'lucide-react';
-import { WorkflowStorageModal } from './WorkflowStorageModal';
+import { Undo, Redo, GitMerge, Download, Code, RotateCcw, Upload, FileJson, Copy, ChevronDown } from 'lucide-react';
 import type { RFNodeData, RFEdgeData } from '../types';
-import { buildExportPayload } from '../utils/exportWorkflow';
-import { compilerApi } from '../services/compilerApi';
+import { EXAMPLES } from '../constants/examples';
 
 interface HeaderProps {
-  nodes: Node<RFNodeData>[];
-  edges: Edge<RFEdgeData>[];
   onReset: () => void;
-  onLoadTemplate: (name: string) => void;
+  onLoadExample: (key: string) => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  onLoadWorkflow: (nodes: Node<RFNodeData>[], edges: Edge<RFEdgeData>[]) => void;
+  isCompiled: boolean;
+  onValidateAndCompile: () => void;
+  isCompiling: boolean;
+  onViewDslClick: () => void;
+  onDownloadDsl: () => void;
+  onCopyDsl: () => void;
+  onExportJson: () => void;
+  onImportJson: (nodes: Node<RFNodeData>[], edges: Edge<RFEdgeData>[], metadata: any) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  nodes,
-  edges,
   onReset,
-  onLoadTemplate,
+  onLoadExample,
   onUndo,
   onRedo,
   canUndo,
   canRedo,
-  onLoadWorkflow,
+  isCompiled,
+  onValidateAndCompile,
+  isCompiling,
+  onViewDslClick,
+  onDownloadDsl,
+  onCopyDsl,
+  onExportJson,
+  onImportJson,
 }) => {
-  const [storageModal, setStorageModal] = useState<'save' | 'load' | null>(null);
-  const [dslModalOpen, setDslModalOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [exampleOpen, setExampleOpen] = useState(false);
+  const [dslOpen, setDslOpen] = useState(false);
+  const [jsonOpen, setJsonOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Compilation States
-  const [compiledDsl, setCompiledDsl] = useState<any>(null);
-  const [compiledAt, setCompiledAt] = useState<string | null>(null);
-  const [compilationError, setCompilationError] = useState<string | null>(null);
-  const [isCompiling, setIsCompiling] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dsl' | 'payload'>('dsl');
-  const [sourcePayload, setSourcePayload] = useState<any>(null);
-
-  const compileCurrentWorkflow = async () => {
-    setIsCompiling(true);
-    setCompilationError(null);
-    try {
-      const payload = buildExportPayload(nodes, edges);
-      setSourcePayload(payload);
-
-      const res = await compilerApi.compileWorkflow({
-        nodes: payload.nodes,
-        edges: payload.edges,
-        workflow_id: 'workflow-builder-id',
-      });
-
-      setCompiledDsl(res.dsl);
-      setCompiledAt(
-        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
-          ' ' +
-          new Date().toLocaleDateString()
-      );
-      return res.dsl;
-    } catch (err: any) {
-      const errMsg = err.message || 'Failed to compile workflow';
-      setCompilationError(errMsg);
-      setCompiledDsl(null);
-      setCompiledAt(null);
-      throw err;
-    } finally {
-      setIsCompiling(false);
-    }
+  const toggleExample = () => {
+    setExampleOpen(!exampleOpen);
+    setDslOpen(false);
+    setJsonOpen(false);
+  };
+  const toggleDsl = () => {
+    if (!isCompiled) return;
+    setDslOpen(!dslOpen);
+    setExampleOpen(false);
+    setJsonOpen(false);
+  };
+  const toggleJson = () => {
+    setJsonOpen(!jsonOpen);
+    setExampleOpen(false);
+    setDslOpen(false);
   };
 
-  const openDslModal = async () => {
-    setDslModalOpen(true);
-    try {
-      await compileCurrentWorkflow();
-    } catch (err) {
-      // Error is stored in compilationError state and rendered in modal
-    }
-  };
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const downloadDsl = () => {
-    if (!compiledDsl) return;
-    const dataStr =
-      'data:text/json;charset=utf-8,' +
-      encodeURIComponent(JSON.stringify(compiledDsl, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', 'workflow.dsl.json');
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
-  const handleHeaderDownloadDsl = async () => {
-    if (compiledDsl) {
-      downloadDsl();
-      return;
-    }
-    try {
-      const dsl = await compileCurrentWorkflow();
-      if (dsl) {
-        const dataStr =
-          'data:text/json;charset=utf-8,' +
-          encodeURIComponent(JSON.stringify(dsl, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute('href', dataStr);
-        downloadAnchor.setAttribute('download', 'workflow.dsl.json');
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.nodes && data.edges) {
+          onImportJson(data.nodes, data.edges, data.metadata || {
+            workflow_id: data.workflow_id || 'imported-workflow',
+            workflow_type: data.workflow_type || 'imported-type',
+            task_queue: data.task_queue || 'default',
+            version: data.version || '1.0.0',
+            description: data.description || '',
+          });
+        } else {
+          alert('Invalid JSON: nodes or edges are missing.');
+        }
+      } catch (err: any) {
+        alert(`Failed to parse file: ${err.message}`);
       }
-    } catch (err) {
-      // If compile fails, open modal to display failure explanation
-      setDslModalOpen(true);
-    }
-  };
-
-  const exportJson = () => {
-    const payload = buildExportPayload(nodes, edges);
-    const dataStr =
-      'data:text/json;charset=utf-8,' +
-      encodeURIComponent(JSON.stringify(payload, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', 'workflow.json');
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
-  const copyToClipboard = () => {
-    const textToCopy = activeTab === 'dsl' ? JSON.stringify(compiledDsl, null, 2) : JSON.stringify(sourcePayload, null, 2);
-    navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset file input
   };
 
   return (
-    <>
-      <header className="header">
-        <div className="header-logo">
-          <GitMerge size={26} />
-          <h1 className="header-title">Workflow Builder Canvas</h1>
+    <header className="header">
+      <div className="header-logo">
+        <GitMerge size={26} />
+        <div>
+          <h1 className="header-title" style={{ margin: 0, lineHeight: 1.1 }}>Workflow Builder</h1>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '2px', fontWeight: '500', letterSpacing: '0.5px' }}>Visual DSL Compiler</span>
         </div>
+      </div>
 
-        <div className="header-actions">
-          <button className="btn btn-outline" onClick={onUndo} disabled={!canUndo}>
-            <Undo size={14} style={{ opacity: canUndo ? 1 : 0.5 }} /> Undo
-          </button>
-          <button
-            className="btn btn-outline"
-            onClick={onRedo}
-            disabled={!canRedo}
-            style={{ marginLeft: '6px' }}
+      <div className="header-actions" style={{ gap: '12px', alignItems: 'center' }}>
+        {/* Group 1 — Workflow */}
+        <div style={{ position: 'relative' }}>
+          <button 
+            className="btn" 
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={toggleExample}
           >
-            <Redo size={14} style={{ opacity: canRedo ? 1 : 0.5 }} /> Redo
+            Load Example <ChevronDown size={14} />
           </button>
-          <button className="btn" onClick={() => onLoadTemplate('customer_support')}>
-            Load Demo
-          </button>
+          {exampleOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              background: '#1e293b',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              marginTop: '4px',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: '200px',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+              overflow: 'hidden'
+            }}>
+              {Object.entries(EXAMPLES).map(([key, item]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    onLoadExample(key);
+                    setExampleOpen(false);
+                  }}
+                  style={{
+                    padding: '10px 16px',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    width: '100%',
+                    transition: 'background 0.2s',
+                    borderBottom: '1px solid rgba(255,255,255,0.03)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
-          <button className="btn" onClick={onReset}>
-            <RotateCcw size={14} /> Reset
-          </button>
+        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
 
-          <button className="btn btn-outline" onClick={() => setStorageModal('save')}>
-            <Save size={14} /> Save
+        {/* Group 2 — Editing */}
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button className="btn btn-outline btn-icon" onClick={onUndo} disabled={!canUndo} title="Undo">
+            <Undo size={15} style={{ opacity: canUndo ? 1 : 0.4 }} />
           </button>
-          <button className="btn btn-outline" onClick={() => setStorageModal('load')}>
-            <FolderOpen size={14} /> Open
+          <button className="btn btn-outline btn-icon" onClick={onRedo} disabled={!canRedo} title="Redo">
+            <Redo size={15} style={{ opacity: canRedo ? 1 : 0.4 }} />
           </button>
-
-          <button className="btn btn-outline" onClick={openDslModal}>
-            <Code size={14} /> View DSL
-          </button>
-
-          <button className="btn btn-outline" onClick={handleHeaderDownloadDsl}>
-            <Download size={14} /> Download DSL
-          </button>
-
-          <button className="btn btn-primary" onClick={exportJson}>
-            Export JSON
+          <button className="btn btn-outline btn-icon" onClick={onReset} title="Reset Canvas">
+            <RotateCcw size={15} />
           </button>
         </div>
-      </header>
 
-      {storageModal && (
-        <WorkflowStorageModal
-          mode={storageModal}
-          nodes={nodes}
-          edges={edges}
-          onClose={() => setStorageModal(null)}
-          onLoad={onLoadWorkflow}
+        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
+
+        {/* Group 3 — Compiler */}
+        <button 
+          className="btn" 
+          style={{ 
+            borderColor: isCompiled ? '#10b981' : 'var(--accent)', 
+            color: '#ffffff',
+            background: isCompiled ? '#10b981' : 'var(--accent)',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }} 
+          onClick={onValidateAndCompile}
+          disabled={isCompiling}
+        >
+          <GitMerge size={15} className={isCompiling ? 'spin' : ''} />
+          {isCompiling ? 'Compiling...' : 'Validate & Compile'}
+        </button>
+
+        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
+
+        {/* Group 4 — DSL */}
+        <div style={{ position: 'relative' }}>
+          <button 
+            className="btn btn-outline" 
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={toggleDsl}
+            disabled={!isCompiled}
+            title={isCompiled ? "DSL Operations" : "Compile workflow first to use DSL"}
+          >
+            DSL <ChevronDown size={14} style={{ opacity: isCompiled ? 1 : 0.5 }} />
+          </button>
+          {dslOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              background: '#1e293b',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              marginTop: '4px',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: '160px',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+              overflow: 'hidden'
+            }}>
+              <button
+                onClick={() => {
+                  onViewDslClick();
+                  setDslOpen(false);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  transition: 'background 0.2s',
+                  borderBottom: '1px solid rgba(255,255,255,0.03)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              >
+                <Code size={12} /> View DSL
+              </button>
+              <button
+                onClick={() => {
+                  onDownloadDsl();
+                  setDslOpen(false);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  transition: 'background 0.2s',
+                  borderBottom: '1px solid rgba(255,255,255,0.03)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              >
+                <Download size={12} /> Download DSL
+              </button>
+              <button
+                onClick={() => {
+                  onCopyDsl();
+                  setDslOpen(false);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              >
+                <Copy size={12} /> Copy DSL
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
+
+        {/* Group 5 — JSON */}
+        <div style={{ position: 'relative' }}>
+          <button 
+            className="btn btn-outline" 
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={toggleJson}
+          >
+            JSON <ChevronDown size={14} />
+          </button>
+          {jsonOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              background: '#1e293b',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              marginTop: '4px',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: '180px',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+              overflow: 'hidden'
+            }}>
+              <button
+                onClick={() => {
+                  fileInputRef.current?.click();
+                  setJsonOpen(false);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  transition: 'background 0.2s',
+                  borderBottom: '1px solid rgba(255,255,255,0.03)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              >
+                <Upload size={12} /> Import Workflow JSON
+              </button>
+              <button
+                onClick={() => {
+                  onExportJson();
+                  setJsonOpen(false);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              >
+                <FileJson size={12} /> Export Workflow JSON
+              </button>
+            </div>
+          )}
+        </div>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          accept=".json" 
+          onChange={handleImportJson} 
         />
-      )}
-
-      {dslModalOpen && (
-        <div className="modal-overlay" onClick={() => setDslModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Workflow Compilation</h3>
-                {isCompiling && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Compiling...</span>
-                )}
-                {!isCompiling && compilationError && (
-                  <span className="compiler-status-badge error">✗ Compilation Failed</span>
-                )}
-                {!isCompiling && compiledDsl && (
-                  <span className="compiler-status-badge success">✓ Compiler Passed</span>
-                )}
-              </div>
-              <button className="close-btn" onClick={() => setDslModalOpen(false)}>
-                &times;
-              </button>
-            </div>
-            <div className="modal-body">
-              {isCompiling ? (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Compiling graph...</div>
-                </div>
-              ) : compilationError ? (
-                <div style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '8px', color: '#f87171', fontSize: '0.875rem', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>
-                  <strong>Compilation Error:</strong>
-                  <div style={{ marginTop: '8px', fontFamily: 'monospace' }}>{compilationError}</div>
-                </div>
-              ) : (
-                <>
-                  <div className="modal-tabs">
-                    <button
-                      className={`modal-tab-btn ${activeTab === 'dsl' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('dsl')}
-                    >
-                      Generated DSL
-                    </button>
-                    <button
-                      className={`modal-tab-btn ${activeTab === 'payload' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('payload')}
-                    >
-                      Workflow JSON
-                    </button>
-                    {compiledAt && (
-                      <span className="compiler-timestamp">Generated At: {compiledAt}</span>
-                    )}
-                  </div>
-                  {activeTab === 'dsl' ? (
-                    <pre className="dsl-pre">{JSON.stringify(compiledDsl, null, 2)}</pre>
-                  ) : (
-                    <pre className="dsl-pre" style={{ color: '#a5b4fc' }}>{JSON.stringify(sourcePayload, null, 2)}</pre>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="modal-footer">
-              {!isCompiling && compiledDsl && (
-                <>
-                  <button className="btn btn-outline" onClick={copyToClipboard}>
-                    {copied ? (
-                      <Check size={14} style={{ color: '#10b981' }} />
-                    ) : (
-                      <Copy size={14} />
-                    )}
-                    {copied ? 'Copied!' : 'Copy to Clipboard'}
-                  </button>
-                  <button className="btn btn-primary" onClick={downloadDsl}>
-                    <Download size={14} /> Download DSL
-                  </button>
-                </>
-              )}
-              <button className="btn btn-outline" onClick={() => setDslModalOpen(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      </div>
+    </header>
   );
 };

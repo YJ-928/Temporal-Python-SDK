@@ -40,6 +40,7 @@ class CompilerService:
         task_queue: str = settings.DEFAULT_TASK_QUEUE,
         dsl_version: str = settings.DEFAULT_DSL_VERSION,
         version: str = "1.0.0",
+        description: str = "",
     ) -> dict:
         """
         Compile workflow JSON to Zigflow DSL.
@@ -50,6 +51,7 @@ class CompilerService:
             task_queue: Temporal task queue name
             dsl_version: DSL specification version
             version: Workflow version
+            description: Workflow description
 
         Returns:
             Complete Zigflow DSL dictionary
@@ -80,6 +82,7 @@ class CompilerService:
                 version=version,
                 workflow_type=workflow_type,
                 task_queue=task_queue,
+                description=description,
             )
 
             # Validate generated DSL using zigflow validate
@@ -119,6 +122,7 @@ class CompilerService:
         task_queue: str = settings.DEFAULT_TASK_QUEUE,
         dsl_version: str = settings.DEFAULT_DSL_VERSION,
         version: str = "1.0.0",
+        description: str = "",
         workflow_id: Optional[str] = None,
         custom_filename: Optional[str] = None,
     ) -> dict:
@@ -131,6 +135,7 @@ class CompilerService:
             task_queue: Temporal task queue name
             dsl_version: DSL specification version
             version: Workflow version
+            description: Workflow description
             workflow_id: Optional workflow identifier (for file naming)
             custom_filename: Optional custom filename for saved DSL
 
@@ -154,6 +159,7 @@ class CompilerService:
             task_queue=task_queue,
             dsl_version=dsl_version,
             version=version,
+            description=description,
         )
 
         # Use workflow_id if provided, else fall back to workflow_type

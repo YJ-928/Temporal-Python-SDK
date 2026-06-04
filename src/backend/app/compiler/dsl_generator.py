@@ -30,6 +30,7 @@ def generate_dsl(
     version: str,
     workflow_type: str,
     task_queue: str,
+    description: str = "",
 ) -> dict:
     """
     Build Zigflow DSL from traversal.
@@ -40,6 +41,7 @@ def generate_dsl(
         version: Workflow version
         workflow_type: Temporal workflow type
         task_queue: Temporal task queue name
+        description: Workflow description
 
     Returns:
         Complete Zigflow DSL dict
@@ -86,6 +88,7 @@ def generate_dsl(
             "taskQueue": task_queue,
             "workflowType": workflow_type,
             "version": version,
+            "summary": description,
         },
         "do": do_list,
     }

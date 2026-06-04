@@ -183,6 +183,7 @@ class ExecutionService:
         # 1. Fetch history events
         event_states = {}
         scheduled_events = {}
+        scheduled_times = {}
         workflow_completed = False
 
         def _extract_task_name(payloads) -> Optional[str]:
@@ -206,6 +207,7 @@ class ExecutionService:
                 task_name = _extract_task_name(attrs.input.payloads)
                 if task_name:
                     scheduled_events[event.event_id] = task_name
+                    scheduled_times[event.event_id] = event.event_time.ToDatetime()
                     input_data = None
                     if attrs.input.payloads:
                         try:
@@ -216,7 +218,8 @@ class ExecutionService:
                         "status": "running",
                         "input": input_data,
                         "output": None,
-                        "error": None
+                        "error": None,
+                        "duration_seconds": None
                     }
 
             # External Activity Completed
@@ -232,6 +235,9 @@ class ExecutionService:
                             pass
                     event_states[task_name]["status"] = "completed"
                     event_states[task_name]["output"] = output_data
+                    start_t = scheduled_times.get(attrs.scheduled_event_id)
+                    if start_t:
+                        event_states[task_name]["duration_seconds"] = round((event.event_time.ToDatetime() - start_t).total_seconds(), 2)
 
             # External Activity Failed
             elif event.HasField("activity_task_failed_event_attributes"):
@@ -243,6 +249,9 @@ class ExecutionService:
                         error_msg = attrs.failure.message
                     event_states[task_name]["status"] = "failed"
                     event_states[task_name]["error"] = error_msg
+                    start_t = scheduled_times.get(attrs.scheduled_event_id)
+                    if start_t:
+                        event_states[task_name]["duration_seconds"] = round((event.event_time.ToDatetime() - start_t).total_seconds(), 2)
 
             # Child Workflow Initiated
             elif event.HasField("start_child_workflow_execution_initiated_event_attributes"):
@@ -250,6 +259,7 @@ class ExecutionService:
                 task_name = attrs.workflow_type.name
                 if task_name:
                     scheduled_events[event.event_id] = task_name
+                    scheduled_times[event.event_id] = event.event_time.ToDatetime()
                     input_data = None
                     if attrs.input.payloads:
                         try:
@@ -260,7 +270,8 @@ class ExecutionService:
                         "status": "running",
                         "input": input_data,
                         "output": None,
-                        "error": None
+                        "error": None,
+                        "duration_seconds": None
                     }
 
             # Child Workflow Completed
@@ -276,6 +287,9 @@ class ExecutionService:
                             pass
                     event_states[task_name]["status"] = "completed"
                     event_states[task_name]["output"] = output_data
+                    start_t = scheduled_times.get(attrs.initiated_event_id)
+                    if start_t:
+                        event_states[task_name]["duration_seconds"] = round((event.event_time.ToDatetime() - start_t).total_seconds(), 2)
 
             # Child Workflow Failed
             elif event.HasField("child_workflow_execution_failed_event_attributes"):
@@ -287,6 +301,9 @@ class ExecutionService:
                         error_msg = attrs.failure.message
                     event_states[task_name]["status"] = "failed"
                     event_states[task_name]["error"] = error_msg
+                    start_t = scheduled_times.get(attrs.initiated_event_id)
+                    if start_t:
+                        event_states[task_name]["duration_seconds"] = round((event.event_time.ToDatetime() - start_t).total_seconds(), 2)
 
             # Workflow Completed
             elif event.HasField("workflow_execution_completed_event_attributes"):

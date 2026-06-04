@@ -36,6 +36,7 @@ async def compile_workflow(request: CompileWorkflowRequest):
         CompileWorkflowResponse with workflow_id, DSL, and file_path
     """
     try:
+        from datetime import datetime, timezone
         workflow = {
             "nodes": [node.model_dump() for node in request.nodes],
             "edges": [edge.model_dump() for edge in request.edges],
@@ -43,11 +44,15 @@ async def compile_workflow(request: CompileWorkflowRequest):
 
         resolved_workflow_type = request.workflow_type or compiler_settings.workflow_type
         resolved_task_queue = request.task_queue or compiler_settings.task_queue
+        resolved_version = request.version or "1.0.0"
+        resolved_description = request.description or ""
 
         result = compiler_service.compile_and_save(
             workflow=workflow,
             workflow_type=resolved_workflow_type,
             task_queue=resolved_task_queue,
+            version=resolved_version,
+            description=resolved_description,
             workflow_id=request.workflow_id,
         )
 
@@ -62,12 +67,15 @@ async def compile_workflow(request: CompileWorkflowRequest):
             file_path=result["file_path"],
         )
 
+        generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
         return CompileWorkflowResponse(
             success=True,
             workflow_id=result["workflow_id"],
             dsl=result["dsl"],
             file_path=str(result["file_path"]),
             content_hash=result["content_hash"],
+            generated_at=generated_at,
         )
 
     except ValueError as e:

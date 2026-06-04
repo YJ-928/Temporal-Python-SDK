@@ -61,6 +61,7 @@ def compile_workflow_to_dsl(
     version: str = compiler_settings.workflow_version,
     workflow_type: str = compiler_settings.workflow_type,
     task_queue: str = compiler_settings.task_queue,
+    description: str = "",
 ) -> dict:
     """
     Full compilation pipeline: Workflow JSON → Zigflow DSL.
@@ -71,6 +72,7 @@ def compile_workflow_to_dsl(
         version: Workflow version
         workflow_type: Temporal workflow type
         task_queue: Temporal task queue name
+        description: Workflow description
 
     Returns:
         Complete Zigflow DSL dict
@@ -92,6 +94,7 @@ def compile_workflow_to_dsl(
         version=version,
         workflow_type=workflow_type,
         task_queue=task_queue,
+        description=description,
     )
 
     return dsl

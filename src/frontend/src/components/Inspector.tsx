@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Node, Edge } from 'reactflow';
-import { MousePointerClick, Settings, Plus, Trash2 } from 'lucide-react';
+import { Settings, Plus, Trash2 } from 'lucide-react';
 import type {
   RFNodeData,
   RFEdgeData,
@@ -8,6 +8,7 @@ import type {
   OutputFieldRow,
   FieldDataType,
   IfCondition,
+  WorkflowMetadata,
 } from '../types';
 import { FIELD_TYPE_OPTIONS, IF_OPERATOR_OPTIONS } from '../types';
 import { AVAILABLE_AGENTS } from '../constants/agents';
@@ -18,6 +19,8 @@ interface InspectorProps {
   onUpdateNode: (nodeId: string, updatedData: Partial<RFNodeData>) => void;
   onUpdateEdge: (edgeId: string, updatedData: Partial<RFEdgeData>) => void;
   nodeTraceStates?: Record<string, { status: string; input?: any; output?: any; error?: string }>;
+  metadata: WorkflowMetadata;
+  onChangeMetadata: (meta: Partial<WorkflowMetadata>) => void;
 }
 
 const newRowId = () => `row-${Math.random().toString(36).slice(2, 9)}`;
@@ -28,6 +31,8 @@ export const Inspector: React.FC<InspectorProps> = ({
   onUpdateNode,
   onUpdateEdge,
   nodeTraceStates = {},
+  metadata,
+  onChangeMetadata,
 }) => {
   if (selectedNode) {
     const { id, type, data } = selectedNode;
@@ -300,9 +305,85 @@ export const Inspector: React.FC<InspectorProps> = ({
 
   return (
     <aside className="inspector">
-      <div className="inspector-placeholder">
-        <MousePointerClick size={48} />
-        <p>Select a node or edge on the canvas to configure its parameters.</p>
+      <div className="inspector-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Settings size={18} style={{ color: 'var(--accent)' }} />
+          <h3 className="inspector-title">Workflow Configuration</h3>
+        </div>
+        <span 
+          style={{ 
+            fontSize: '9px', 
+            background: 'rgba(99, 102, 241, 0.15)', 
+            color: '#a5b4fc', 
+            padding: '3px 8px', 
+            borderRadius: '12px', 
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            display: 'inline-block',
+            marginTop: '6px'
+          }}
+        >
+          Global Settings
+        </span>
+      </div>
+
+      <div className="inspector-form">
+        <div className="form-group">
+          <label>Workflow Name / ID</label>
+          <input
+            type="text"
+            className="form-input"
+            value={metadata.workflow_id}
+            onChange={(e) => onChangeMetadata({ workflow_id: e.target.value })}
+            placeholder="e.g. weather-assistant"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Workflow Type</label>
+          <input
+            type="text"
+            className="form-input"
+            value={metadata.workflow_type}
+            onChange={(e) => onChangeMetadata({ workflow_type: e.target.value })}
+            placeholder="e.g. weather-assistant-type"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Task Queue</label>
+          <input
+            type="text"
+            className="form-input"
+            value={metadata.task_queue}
+            onChange={(e) => onChangeMetadata({ task_queue: e.target.value })}
+            placeholder="e.g. default"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Version</label>
+          <input
+            type="text"
+            className="form-input"
+            value={metadata.version}
+            onChange={(e) => onChangeMetadata({ version: e.target.value })}
+            placeholder="e.g. 1.0.0"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Description</label>
+          <textarea
+            className="form-textarea"
+            value={metadata.description || ''}
+            onChange={(e) => onChangeMetadata({ description: e.target.value })}
+            placeholder="Optional workflow description..."
+            rows={4}
+          />
+        </div>
       </div>
     </aside>
   );

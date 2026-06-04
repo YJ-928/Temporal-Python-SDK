@@ -1,5 +1,6 @@
-import React, { useRef, useEffect } from 'react';
-import { Play, Square, Trash2, ChevronDown, ChevronUp, RefreshCw, Zap, History } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Trash2, ChevronDown, ChevronUp, RefreshCw, Zap, History, Activity, ChevronRight, Gauge } from 'lucide-react';
+import type { WorkflowMetadata } from '../types';
 
 export interface LogEntry {
   timestamp: string;
@@ -7,35 +8,45 @@ export interface LogEntry {
   message: string;
 }
 
+export type TabType = 'execution' | 'trace' | 'compilation_log' | 'dsl' | 'metrics';
+
 interface SimulatorProps {
-  // Local simulation
   logs: LogEntry[];
-  status: 'idle' | 'running' | 'completed' | 'failed';
-  onStartSimulation: () => void;
-  onStopSimulation: () => void;
   onClearLogs: () => void;
 
+  // Compilation state
+  isCompiled: boolean;
+  compiledDsl: any;
+  compiledHash: string;
+  compiledAt: string;
+  metadata: WorkflowMetadata;
+
   // Temporal runner
-  mode: 'simulation' | 'temporal';
-  setMode: (mode: 'simulation' | 'temporal') => void;
   executionHistory: any[];
   activeRunId: string | null;
   setActiveRunId: (runId: string | null) => void;
-  onTriggerTemporalRun: () => void;
+  onTriggerTemporalRun: (inputData: Record<string, any>) => void;
   onRefreshHistory: () => void;
   isTriggeringRun: boolean;
   onCancelRun?: (workflowId: string, runId: string) => void;
   onTerminateRun?: (workflowId: string, runId: string, reason: string) => void;
+  nodeTraceStates?: Record<string, { status: string; input?: any; output?: any; error?: string; duration_seconds?: number }>;
+
+  // Control tabs and visibility
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
 }
 
 export const Simulator: React.FC<SimulatorProps> = ({
   logs,
-  status,
-  onStartSimulation,
-  onStopSimulation,
   onClearLogs,
-  mode,
-  setMode,
+  isCompiled,
+  compiledDsl,
+  compiledHash,
+  compiledAt,
+  metadata,
   executionHistory,
   activeRunId,
   setActiveRunId,
@@ -44,80 +55,82 @@ export const Simulator: React.FC<SimulatorProps> = ({
   isTriggeringRun,
   onCancelRun,
   onTerminateRun,
+  nodeTraceStates = {},
+  activeTab,
+  setActiveTab,
+  isOpen,
+  setIsOpen,
 }) => {
   const consoleEndRef = useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = React.useState(true);
+  const [inputJson, setInputJson] = useState<string>('{\n  "city": "kolkata"\n}');
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (consoleEndRef.current) {
+    if (consoleEndRef.current && activeTab === 'compilation_log') {
       consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [logs]);
+  }, [logs, activeTab]);
+
+  // Set default JSON input based on selected workflow id/type
+  useEffect(() => {
+    const wfId = metadata.workflow_id;
+    if (wfId === 'weather-assistant') {
+      setInputJson('{\n  "city": "kolkata"\n}');
+    } else if (wfId === 'email-validation-sender') {
+      setInputJson('{\n  "email": "test@domain.com",\n  "subject": "Greetings",\n  "message": "Hello from Workflow Builder!"\n}');
+    } else if (wfId === 'account-routing') {
+      setInputJson('{\n  "account_id": "ACC-789"\n}');
+    } else if (wfId === 'single-email-validator') {
+      setInputJson('{\n  "email": "verify-me@test.com"\n}');
+    } else {
+      setInputJson('{\n  "city": "kolkata"\n}');
+    }
+  }, [metadata.workflow_id]);
 
   const activeRun = executionHistory.find((r) => r.run_id === activeRunId);
+
+  // Compute duration for the run summary
+  const getRunDuration = () => {
+    if (!activeRun) return null;
+    if (activeRun.start_time) {
+      const start = new Date(activeRun.start_time).getTime();
+      const end = activeRun.close_time ? new Date(activeRun.close_time).getTime() : Date.now();
+      return `${((end - start) / 1000).toFixed(2)}s`;
+    }
+    return null;
+  };
+
+  const handleExecute = () => {
+    try {
+      const parsed = JSON.parse(inputJson);
+      onTriggerTemporalRun(parsed);
+      setActiveTab('trace');
+    } catch (e: any) {
+      alert(`Invalid JSON format: ${e.message}`);
+    }
+  };
+
+  const toggleExpandNode = (nodeId: string) => {
+    setExpandedNodes((prev) => ({
+      ...prev,
+      [nodeId]: !prev[nodeId],
+    }));
+  };
 
   return (
     <div 
       className="simulator-panel" 
-      style={{ height: isOpen ? '280px' : '40px' }}
+      style={{ height: isOpen ? '280px' : '48px' }}
     >
-      <div className="simulator-header">
+      <div className="simulator-header" style={{ background: '#0f172a' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div className={`simulator-title ${mode === 'temporal' ? 'completed' : status === 'running' ? 'running' : ''}`}>
-            <div className="dot"></div>
-            <span>{mode === 'simulation' ? `Simulation Runner (${status})` : 'Temporal Live Execution'}</span>
-          </div>
-
-          {/* Mode switcher tabs */}
-          <div className="modal-tabs" style={{ marginBottom: 0, padding: '2px', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-            <button
-              className={`modal-tab-btn ${mode === 'simulation' ? 'active' : ''}`}
-              style={{ fontSize: '11px', padding: '4px 10px', minWidth: 'auto', borderRadius: '4px' }}
-              onClick={() => setMode('simulation')}
-            >
-              Local Sim
-            </button>
-            <button
-              className={`modal-tab-btn ${mode === 'temporal' ? 'active' : ''}`}
-              style={{ fontSize: '11px', padding: '4px 10px', minWidth: 'auto', borderRadius: '4px' }}
-              onClick={() => setMode('temporal')}
-            >
-              Temporal Runner
-            </button>
+          <div className="simulator-title" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
+            <Activity size={14} style={{ color: 'var(--accent)' }} />
+            <span>Workflow Runtime</span>
           </div>
         </div>
 
         <div className="simulator-controls">
-          {mode === 'simulation' ? (
-            status === 'running' ? (
-              <button className="btn btn-outline" style={{ padding: '4px 10px', fontSize: '11px', borderColor: '#f87171', color: '#f87171' }} onClick={onStopSimulation}>
-                <Square size={12} /> Stop
-              </button>
-            ) : (
-              <button className="btn btn-success" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={onStartSimulation}>
-                <Play size={12} /> Run Simulation
-              </button>
-            )
-          ) : (
-            <>
-              <button 
-                className="btn btn-primary" 
-                style={{ padding: '4px 10px', fontSize: '11px', background: 'var(--accent)' }} 
-                onClick={onTriggerTemporalRun}
-                disabled={isTriggeringRun}
-              >
-                <Zap size={12} /> {isTriggeringRun ? 'Starting...' : 'Trigger Temporal Run'}
-              </button>
-              <button className="btn" style={{ padding: '4px 10px', fontSize: '11px', background: 'transparent' }} onClick={onRefreshHistory} title="Refresh History">
-                <RefreshCw size={12} />
-              </button>
-            </>
-          )}
-          
-          <button className="btn" style={{ padding: '4px 10px', fontSize: '11px', background: 'transparent' }} onClick={onClearLogs} title="Clear Logs">
-            <Trash2 size={12} />
-          </button>
-          
           <button className="close-btn" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
@@ -126,161 +139,566 @@ export const Simulator: React.FC<SimulatorProps> = ({
 
       {isOpen && (
         <div style={{ display: 'flex', height: '240px', overflow: 'hidden' }}>
-          {/* Temporal Execution History Sidebar */}
-          {mode === 'temporal' && (
-            <div style={{
-              width: '240px',
-              borderRight: '1px solid var(--border-color)',
-              background: 'rgba(15, 23, 42, 0.2)',
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100%'
-            }}>
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}>
+          {/* Run History Sidebar */}
+          <div style={{
+            width: '240px',
+            borderRight: '1px solid var(--border-color)',
+            background: 'rgba(15, 23, 42, 0.4)',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%'
+          }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-color)', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 'bold' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <History size={12} />
                 <span>Execution History</span>
               </div>
-              <div style={{ overflowY: 'auto', flex: 1, padding: '4px' }}>
-                {executionHistory.length === 0 ? (
-                  <div style={{ padding: '16px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    No executions found. Trigger a run above.
-                  </div>
-                ) : (
-                  executionHistory.map((run) => {
-                    const isSelected = run.run_id === activeRunId;
-                    const statusColor = 
-                      run.status === 'COMPLETED' || run.status === 'completed' ? '#10b981' :
-                      run.status === 'RUNNING' || run.status === 'running' ? '#3b82f6' : '#ef4444';
-                    
-                    return (
-                      <div
-                        key={run.run_id}
-                        onClick={() => setActiveRunId(run.run_id)}
-                        style={{
-                          padding: '8px',
-                          margin: '2px 0',
-                          borderRadius: '4px',
-                          background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                          border: isSelected ? '1px solid var(--accent)' : '1px solid transparent',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: '500', color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }} title={run.workflow_id}>
-                            {run.workflow_id}
-                          </span>
-                          <span style={{ 
-                            fontSize: '9px', 
-                            color: statusColor, 
-                            fontWeight: 'bold',
-                            border: `1px solid ${statusColor}`,
-                            borderRadius: '3px',
-                            padding: '1px 4px',
-                            background: `${statusColor}15`
-                          }}>
-                            {run.status.toLowerCase()}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)' }}>
-                          <span>{run.run_id.slice(0, 8)}...</span>
-                          <span>{run.start_time ? new Date(run.start_time).toLocaleTimeString() : ''}</span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+              <button 
+                onClick={onRefreshHistory} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                title="Refresh History"
+              >
+                <RefreshCw size={11} />
+              </button>
             </div>
-          )}
-
-          {/* Console Output Area */}
-          <div className="simulator-console" style={{ flex: 1, height: '100%', overflowY: 'auto' }}>
-            {mode === 'simulation' ? (
-              logs.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
-                  Click "Run Simulation" to trace the execution of your React Flow graph step-by-step.
+            <div style={{ overflowY: 'auto', flex: 1, padding: '4px' }}>
+              {executionHistory.length === 0 ? (
+                <div style={{ padding: '16px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                  No past runs found.
                 </div>
               ) : (
-                logs.map((log, index) => (
-                  <div key={index} className={`console-line ${log.type}`}>
-                    <span className="console-line-timestamp">[{log.timestamp}]</span>
-                    {log.message}
-                  </div>
-                ))
-              )
-            ) : (
-              // Temporal execution logs or status
-              !activeRunId ? (
-                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
-                  Select an execution from the history list to replay and trace its active nodes on the canvas.
-                </div>
-              ) : (
-                <>
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', marginBottom: '8px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      Viewing Run: <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{activeRunId}</span>
-                    </div>
-                    {activeRun && (activeRun.status === 'RUNNING' || activeRun.status === 'running') && (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button
-                          onClick={() => onCancelRun && onCancelRun(activeRun.workflow_id, activeRun.run_id)}
-                          style={{
-                            padding: '2px 8px',
-                            fontSize: '10px',
-                            border: '1px solid #fbbf24',
-                            borderRadius: '3px',
-                            color: '#fbbf24',
-                            background: 'transparent',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => {
-                            const reason = prompt("Enter termination reason:", "Terminated by user");
-                            if (reason !== null && onTerminateRun) {
-                              onTerminateRun(activeRun.workflow_id, activeRun.run_id, reason);
-                            }
-                          }}
-                          style={{
-                            padding: '2px 8px',
-                            fontSize: '10px',
-                            border: '1px solid #f87171',
-                            borderRadius: '3px',
-                            color: '#f87171',
-                            background: 'transparent',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Terminate
-                        </button>
-                        <span style={{ fontSize: '10px', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <RefreshCw size={10} className="spin" />
-                          Polling...
+                executionHistory.map((run) => {
+                  const isSelected = run.run_id === activeRunId;
+                  const statusColor = 
+                    run.status === 'COMPLETED' || run.status === 'completed' ? '#10b981' :
+                    run.status === 'RUNNING' || run.status === 'running' ? '#3b82f6' : '#ef4444';
+                  
+                  return (
+                    <div
+                      key={run.run_id}
+                      onClick={() => {
+                        setActiveRunId(run.run_id);
+                        setActiveTab('trace');
+                      }}
+                      style={{
+                        padding: '8px',
+                        margin: '2px 0',
+                        borderRadius: '6px',
+                        background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                        border: isSelected ? '1px solid var(--accent)' : '1px solid transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }} title={run.workflow_id}>
+                          {run.workflow_id}
+                        </span>
+                        <span style={{ 
+                          fontSize: '8px', 
+                          color: statusColor, 
+                          fontWeight: 'bold',
+                          border: `1px solid ${statusColor}40`,
+                          borderRadius: '4px',
+                          padding: '1px 4px',
+                          background: `${statusColor}10`
+                        }}>
+                          {run.status.toLowerCase()}
                         </span>
                       </div>
-                    )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)' }}>
+                        <span>{run.run_id.slice(0, 8)}...</span>
+                        <span>{run.start_time ? new Date(run.start_time).toLocaleTimeString() : ''}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Main Workspace Area with Tabs */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', background: '#0b0f19' }}>
+            {/* Tabs Bar */}
+            <div className="modal-tabs" style={{ marginBottom: 0, padding: '0 16px', background: '#0a0d16', borderBottom: '1px solid var(--border-color)' }}>
+              <button
+                className={`modal-tab-btn ${activeTab === 'execution' ? 'active' : ''}`}
+                style={{ padding: '12px 16px', fontSize: '12px' }}
+                onClick={() => setActiveTab('execution')}
+              >
+                Execution
+              </button>
+              <button
+                className={`modal-tab-btn ${activeTab === 'trace' ? 'active' : ''}`}
+                style={{ padding: '12px 16px', fontSize: '12px' }}
+                onClick={() => setActiveTab('trace')}
+              >
+                Trace
+              </button>
+              <button
+                className={`modal-tab-btn ${activeTab === 'compilation_log' ? 'active' : ''}`}
+                style={{ padding: '12px 16px', fontSize: '12px' }}
+                onClick={() => setActiveTab('compilation_log')}
+              >
+                Compilation Log
+              </button>
+              <button
+                className={`modal-tab-btn ${activeTab === 'dsl' ? 'active' : ''}`}
+                style={{ padding: '12px 16px', fontSize: '12px' }}
+                onClick={() => setActiveTab('dsl')}
+              >
+                DSL
+              </button>
+              <button
+                className={`modal-tab-btn ${activeTab === 'metrics' ? 'active' : ''}`}
+                style={{ padding: '12px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => setActiveTab('metrics')}
+              >
+                <Gauge size={12} /> Metrics
+              </button>
+            </div>
+
+            {/* Tab Contents */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+              
+              {/* TAB 1: EXECUTION */}
+              {activeTab === 'execution' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600' }}>Workflow Input Payload (JSON)</span>
+                    <button
+                      className="btn btn-success"
+                      style={{ padding: '6px 16px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      onClick={handleExecute}
+                      disabled={!isCompiled || isTriggeringRun}
+                    >
+                      <Zap size={12} />
+                      {isTriggeringRun ? 'Executing...' : 'Execute Workflow'}
+                    </button>
                   </div>
-                  {logs.length === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px', fontSize: '12px' }}>
-                      Retrieving step details for this run...
+
+                  <textarea
+                    className="form-textarea"
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      background: 'rgba(15, 23, 42, 0.6)',
+                      color: '#38bdf8',
+                      flex: 1,
+                      minHeight: '120px',
+                      resize: 'none',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '6px',
+                      padding: '10px'
+                    }}
+                    value={inputJson}
+                    onChange={(e) => setInputJson(e.target.value)}
+                  />
+
+                  {!isCompiled && (
+                    <div style={{ padding: '8px 12px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '6px', fontSize: '11px', color: '#fbbf24' }}>
+                      ⚠️ Please validate & compile the workflow design in the toolbar before execution.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: TRACE */}
+              {activeTab === 'trace' && (
+                <div>
+                  {!activeRunId ? (
+                    <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px', fontSize: '12px' }}>
+                      No active execution selected. Select a run from the history sidebar or execute a new workflow.
                     </div>
                   ) : (
-                    logs.map((log, index) => (
-                      <div key={index} className={`console-line ${log.type}`}>
-                        <span className="console-line-timestamp">[{log.timestamp}]</span>
-                        {log.message}
+                    <div>
+                      {/* Summary Block */}
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        marginBottom: '16px',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                        gap: '12px',
+                        fontSize: '11px'
+                      }}>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Workflow</span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{activeRun?.workflow_id || 'Unknown'}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Run ID</span>
+                          <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{activeRunId}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Status</span>
+                          <strong style={{ 
+                            color: activeRun?.status === 'COMPLETED' || activeRun?.status === 'completed' ? '#10b981' : activeRun?.status === 'RUNNING' || activeRun?.status === 'running' ? '#3b82f6' : '#ef4444'
+                          }}>
+                            {activeRun?.status?.toUpperCase() || 'UNKNOWN'}
+                          </strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Started</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>
+                            {activeRun?.start_time ? new Date(activeRun.start_time).toLocaleString() : ''}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Duration</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{getRunDuration() || '--'}</span>
+                        </div>
+                        {activeRun && (activeRun.status === 'RUNNING' || activeRun.status === 'running') && (
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                              onClick={() => onCancelRun && onCancelRun(activeRun.workflow_id, activeRun.run_id)}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: '10px',
+                                border: '1px solid #fbbf24',
+                                borderRadius: '4px',
+                                color: '#fbbf24',
+                                background: 'transparent',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => {
+                                const reason = prompt("Enter termination reason:", "Terminated by user");
+                                if (reason !== null && onTerminateRun) {
+                                  onTerminateRun(activeRun.workflow_id, activeRun.run_id, reason);
+                                }
+                              }}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: '10px',
+                                border: '1px solid #f87171',
+                                borderRadius: '4px',
+                                color: '#f87171',
+                                background: 'transparent',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Terminate
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    ))
+
+                      {/* Trace Timeline Table */}
+                      <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ background: '#0a0d16', borderBottom: '1px solid var(--border-color)' }}>
+                              <th style={{ padding: '8px 12px', color: 'var(--text-muted)', fontWeight: '600' }}>Node Name</th>
+                              <th style={{ padding: '8px 12px', color: 'var(--text-muted)', fontWeight: '600' }}>Type</th>
+                              <th style={{ padding: '8px 12px', color: 'var(--text-muted)', fontWeight: '600' }}>Status</th>
+                              <th style={{ padding: '8px 12px', color: 'var(--text-muted)', fontWeight: '600' }}>Duration</th>
+                              <th style={{ padding: '8px 12px', color: 'var(--text-muted)', fontWeight: '600' }}>Payloads</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.keys(nodeTraceStates).length === 0 ? (
+                              <tr>
+                                <td colSpan={5} style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                  No execution trace events found for this run.
+                                </td>
+                              </tr>
+                            ) : (
+                              Object.keys(nodeTraceStates).map((nodeId) => {
+                                const step = nodeTraceStates[nodeId];
+                                const isExpanded = expandedNodes[nodeId];
+                                const statColor = 
+                                  step.status === 'completed' ? '#10b981' :
+                                  step.status === 'running' ? '#3b82f6' :
+                                  step.status === 'failed' ? '#ef4444' : '#64748b';
+
+                                return (
+                                  <React.Fragment key={nodeId}>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                      <td style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--text-primary)' }}>{nodeId}</td>
+                                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '10px' }}>{step.status === 'skipped' ? 'skipped' : 'task'}</td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        <span style={{ 
+                                          color: statColor, 
+                                          fontWeight: 'bold',
+                                          border: `1px solid ${statColor}30`,
+                                          borderRadius: '4px',
+                                          padding: '1px 6px',
+                                          background: `${statColor}08`
+                                        }}>
+                                          {step.status}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>
+                                        {step.duration_seconds !== undefined && step.duration_seconds !== null ? `${step.duration_seconds}s` : '--'}
+                                      </td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        {(step.input || step.output || step.error) ? (
+                                          <button
+                                            onClick={() => toggleExpandNode(nodeId)}
+                                            style={{
+                                              background: 'none',
+                                              border: 'none',
+                                              color: 'var(--accent)',
+                                              cursor: 'pointer',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '2px',
+                                              fontSize: '10px',
+                                              padding: 0
+                                            }}
+                                          >
+                                            <ChevronRight size={10} style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                                            <span>{isExpanded ? 'Hide' : 'Inspect'}</span>
+                                          </button>
+                                        ) : (
+                                          <span style={{ color: 'var(--text-muted)' }}>--</span>
+                                        )}
+                                      </td>
+                                    </tr>
+
+                                    {/* Collapsible payloads info */}
+                                    {isExpanded && (
+                                      <tr>
+                                        <td colSpan={5} style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '12px' }}>
+                                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                            <div>
+                                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Input Data</span>
+                                              <pre style={{ margin: 0, padding: '8px', background: '#020617', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px', color: '#a5b4fc', overflowX: 'auto', maxLines: 5 }}>
+                                                {step.input ? JSON.stringify(step.input, null, 2) : '{}'}
+                                              </pre>
+                                            </div>
+                                            <div>
+                                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Result / Error</span>
+                                              {step.error ? (
+                                                <div style={{ padding: '8px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '4px', color: '#f87171' }}>
+                                                  {step.error}
+                                                </div>
+                                              ) : (
+                                                <pre style={{ margin: 0, padding: '8px', background: '#020617', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px', color: '#86efac', overflowX: 'auto', maxLines: 5 }}>
+                                                  {step.output ? JSON.stringify(step.output, null, 2) : '{}'}
+                                                </pre>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   )}
-                </>
-              )
-            )}
-            <div ref={consoleEndRef} />
+                </div>
+              )}
+
+              {/* TAB 3: COMPILATION LOG */}
+              {activeTab === 'compilation_log' && (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Build Logs & Dynamic Events</span>
+                    <button 
+                      onClick={onClearLogs} 
+                      style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Trash2 size={12} />
+                      Clear Logs
+                    </button>
+                  </div>
+                  <div className="simulator-console" style={{ background: '#020617', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px', flex: 1, maxHeight: '200px' }}>
+                    {logs.length === 0 ? (
+                      <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
+                        No logs printed. Validate/Compile or Run a workflow to view output logs.
+                      </div>
+                    ) : (
+                      logs.map((log, index) => (
+                        <div key={index} className={`console-line ${log.type}`}>
+                          <span className="console-line-timestamp">[{log.timestamp}]</span>
+                          {log.message}
+                        </div>
+                      ))
+                    )}
+                    <div ref={consoleEndRef} />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: DSL */}
+              {activeTab === 'dsl' && (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '12px' }}>
+                  {isCompiled ? (
+                    <>
+                      {/* DSL Metadata Summary */}
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        padding: '8px 12px',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, 1fr)',
+                        gap: '12px',
+                        fontSize: '11px'
+                      }}>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block' }}>Workflow Name</span>
+                          <strong style={{ color: 'var(--text-primary)' }}>{metadata.workflow_id}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block' }}>Workflow Type</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{metadata.workflow_type}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block' }}>Description</span>
+                          <span style={{ color: 'var(--text-secondary)' }} title={metadata.description}>
+                            {metadata.description ? (metadata.description.length > 25 ? metadata.description.slice(0, 22) + '...' : metadata.description) : '--'}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block' }}>Hash</span>
+                          <span style={{ fontFamily: 'monospace', color: 'var(--accent)' }}>{compiledHash}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', display: 'block' }}>Generated At</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{compiledAt ? new Date(compiledAt).toLocaleString() : '--'}</span>
+                        </div>
+                      </div>
+
+                      {/* DSL Code Display */}
+                      <pre className="dsl-pre" style={{ margin: 0, maxHeight: '160px', overflowY: 'auto' }}>
+                        <code>{JSON.stringify(compiledDsl, null, 2)}</code>
+                      </pre>
+                    </>
+                  ) : (
+                    <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                      ⚠️ No compiled DSL available. Click "Validate & Compile" in the toolbar to generate and view the backend compiler output.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 5: METRICS */}
+              {activeTab === 'metrics' && (() => {
+                const totalRuns = executionHistory.length;
+                const completedRunsCount = executionHistory.filter(run => run.status === 'COMPLETED' || run.status === 'completed').length;
+                const successRateStr = totalRuns > 0 ? `${Math.round((completedRunsCount / totalRuns) * 100)}%` : '--';
+                
+                const completedRunsWithDuration = executionHistory.filter(run => 
+                  (run.status === 'COMPLETED' || run.status === 'completed') && 
+                  run.start_time && 
+                  run.close_time
+                );
+                
+                let averageDurationStr = '--';
+                if (completedRunsWithDuration.length > 0) {
+                  const totalDurationMs = completedRunsWithDuration.reduce((acc, run) => {
+                    const start = new Date(run.start_time).getTime();
+                    const end = new Date(run.close_time).getTime();
+                    return acc + (end - start);
+                  }, 0);
+                  const avgSeconds = (totalDurationMs / completedRunsWithDuration.length) / 1000;
+                  averageDurationStr = `${avgSeconds.toFixed(2)}s`;
+                }
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '12px' }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: '12px',
+                      height: '100%',
+                      maxHeight: '180px'
+                    }}>
+                      {/* Card 1: Compile Metrics */}
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.4)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Compiled Status</span>
+                        <strong style={{ color: isCompiled ? '#10b981' : '#f59e0b', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isCompiled ? '#10b981' : '#f59e0b', display: 'inline-block' }} />
+                          {isCompiled ? 'Active & Registered' : 'Not Compiled'}
+                        </strong>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '10px', marginTop: '4px' }}>
+                          Last compiled: {compiledAt ? new Date(compiledAt).toLocaleString() : 'Never'}
+                        </span>
+                      </div>
+
+                      {/* Card 2: Executions & Success Rate */}
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.4)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Executions & Success</span>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                          <span style={{ color: 'var(--text-primary)', fontSize: '20px', fontWeight: 'bold' }}>
+                            {executionHistory.length} <span style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-muted)' }}>runs</span>
+                          </span>
+                          {executionHistory.length > 0 && (
+                            <span style={{ 
+                              fontSize: '11px', 
+                              color: completedRunsCount === totalRuns ? '#10b981' : '#3b82f6', 
+                              fontWeight: 'bold',
+                              background: completedRunsCount === totalRuns ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                              padding: '2px 8px',
+                              borderRadius: '12px'
+                            }}>
+                              {successRateStr} Success
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '10px', marginTop: '4px' }}>
+                          Last Run: {executionHistory.length > 0 && executionHistory[0].start_time ? new Date(executionHistory[0].start_time).toLocaleTimeString() : '--'}
+                        </span>
+                      </div>
+
+                      {/* Card 3: Performance */}
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.4)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Performance</span>
+                        <span style={{ color: 'var(--text-primary)', fontSize: '20px', fontWeight: 'bold' }}>
+                          {averageDurationStr} <span style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-muted)' }}>avg. duration</span>
+                        </span>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '10px', marginTop: '4px' }}>
+                          Calculated from {completedRunsWithDuration.length} completed run{completedRunsWithDuration.length === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
           </div>
         </div>
       )}

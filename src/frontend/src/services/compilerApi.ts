@@ -8,6 +8,8 @@ export interface CompilePayload {
   workflow_id?: string;
   workflow_type?: string;
   task_queue?: string;
+  version?: string;
+  description?: string;
 }
 
 export interface CompileResponse {
@@ -16,6 +18,7 @@ export interface CompileResponse {
   dsl: Record<string, any>;
   file_path: string;
   content_hash: string;
+  generated_at?: string;
 }
 
 export const compilerApi = {
@@ -36,6 +39,8 @@ export const compilerApi = {
         workflow_id: payload.workflow_id || 'workflow-design',
         workflow_type: payload.workflow_type ?? import.meta.env.VITE_WORKFLOW_TYPE ?? 'workflow-builder',
         task_queue: payload.task_queue ?? import.meta.env.VITE_TASK_QUEUE ?? 'workflow-builder',
+        version: payload.version || '1.0.0',
+        description: payload.description || '',
       }),
     });
 

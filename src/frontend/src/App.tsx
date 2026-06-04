@@ -15,13 +15,13 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Inspector } from './components/Inspector';
 import { Simulator } from './components/Simulator';
-import type { LogEntry } from './components/Simulator';
+import type { LogEntry, TabType } from './components/Simulator';
 import { nodeTypes } from './components/CustomNodes';
-import type { NodeType, RFNodeData, RFEdgeData } from './types';
+import type { NodeType, RFNodeData, RFEdgeData, WorkflowMetadata } from './types';
 import { getDefaultNodeData } from './utils/nodeDefaults';
-import { getAgentById } from './constants/agents';
 import { compilerApi } from './services/compilerApi';
 import { buildExportPayload } from './utils/exportWorkflow';
+import { EXAMPLES } from './constants/examples';
 
 const FlowBuilder: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -42,185 +42,39 @@ const FlowBuilder: React.FC = () => {
   // Helper to generate unique IDs
   const getId = (type: NodeType) => `${type}-${Math.random().toString(36).substr(2, 9)}`;
 
-  // Pre-built Template Workflows
-  const TEMPLATES: Record<string, { nodes: Node<RFNodeData>[]; edges: Edge<RFEdgeData>[] }> = {
-    customer_support: {
-      nodes: [
-        {
-          id: 'n-start',
-          type: 'start',
-          position: { x: 120, y: 0 },
-          data: { label: 'START' },
-        },
-        {
-          id: 'n-input',
-          type: 'input',
-          position: { x: 120, y: 100 },
-          data: {
-            label: 'User Request',
-            inputFields: [
-              { id: 'f1', field: 'message', store_as: 'ctx.message', type: 'string' },
-              { id: 'f2', field: 'user_id', store_as: 'ctx.user_id', type: 'string' },
-            ],
-          },
-        },
-        {
-          id: 'n-triage',
-          type: 'agent',
-          position: { x: 120, y: 230 },
-          data: { label: 'Triage Agent', selectedAgentId: 'agent-001' },
-        },
-        {
-          id: 'n-if',
-          type: 'if',
-          position: { x: 120, y: 360 },
-          data: {
-            label: 'Billing?',
-            ifCondition: { left: 'ctx.intent', operator: '==', right: 'billing' },
-          },
-        },
-        {
-          id: 'n-billing',
-          type: 'agent',
-          position: { x: -60, y: 490 },
-          data: { label: 'Billing Agent', selectedAgentId: 'agent-002' },
-        },
-        {
-          id: 'n-support',
-          type: 'agent',
-          position: { x: 300, y: 490 },
-          data: { label: 'Support Agent', selectedAgentId: 'agent-003' },
-        },
-        {
-          id: 'n-action',
-          type: 'action',
-          position: { x: -60, y: 620 },
-          data: {
-            label: 'Account Lookup',
-            actionOperation: 'http_get',
-            actionInputs: '{"path": "/api/accounts/{id}"}',
-            actionOutput: 'ctx.account',
-          },
-        },
-        {
-          id: 'n-output',
-          type: 'output',
-          position: { x: 120, y: 750 },
-          data: {
-            label: 'Response',
-            outputFields: [
-              { id: 'o1', field: 'reply', type: 'string' },
-              { id: 'o2', field: 'status', type: 'string' },
-            ],
-          },
-        },
-        {
-          id: 'n-end',
-          type: 'end',
-          position: { x: 120, y: 880 },
-          data: { label: 'END' },
-        },
-      ],
-      edges: [
-        { id: 'e0', source: 'n-start', target: 'n-input', animated: true },
-        { id: 'e1', source: 'n-input', target: 'n-triage', animated: true },
-        { id: 'e2', source: 'n-triage', target: 'n-if', animated: true },
-        { id: 'e3', source: 'n-if', target: 'n-billing', sourceHandle: 'branch1', label: 'true', data: { branch: 'branch1', label: 'true' }, animated: true },
-        { id: 'e4', source: 'n-if', target: 'n-support', sourceHandle: 'branch2', label: 'false', data: { branch: 'branch2', label: 'false' }, animated: true },
-        { id: 'e5', source: 'n-billing', target: 'n-action', animated: true },
-        { id: 'e6', source: 'n-action', target: 'n-output', animated: true },
-        { id: 'e7', source: 'n-support', target: 'n-output', animated: true },
-        { id: 'e8', source: 'n-output', target: 'n-end', animated: true },
-      ],
-    },
-    content_generation: {
-      nodes: [
-        {
-          id: 'n-start',
-          type: 'start',
-          position: { x: 120, y: 0 },
-          data: { label: 'START' },
-        },
-        {
-          id: 'n-input',
-          type: 'input',
-          position: { x: 120, y: 100 },
-          data: {
-            label: 'Article Topic',
-            inputFields: [
-              { id: 'f1', field: 'topic', store_as: 'ctx.topic', type: 'string' },
-            ],
-          },
-        },
-        {
-          id: 'n-researcher',
-          type: 'agent',
-          position: { x: 120, y: 230 },
-          data: { label: 'Researcher', selectedAgentId: 'agent-004' },
-        },
-        {
-          id: 'n-search',
-          type: 'action',
-          position: { x: 120, y: 360 },
-          data: {
-            label: 'Web Search',
-            actionOperation: 'http_post',
-            actionInputs: '{"url": "https://api.search.com/v1", "query": "{{ctx.topic}}"}',
-            actionOutput: 'ctx.search_results',
-          },
-        },
-        {
-          id: 'n-writer',
-          type: 'agent',
-          position: { x: 120, y: 490 },
-          data: { label: 'Writer', selectedAgentId: 'agent-005' },
-        },
-        {
-          id: 'n-output',
-          type: 'output',
-          position: { x: 120, y: 620 },
-          data: {
-            label: 'Save Draft',
-            outputFields: [
-              { id: 'o1', field: 'article_body', type: 'string' },
-              { id: 'o2', field: 'title', type: 'string' },
-            ],
-          },
-        },
-        {
-          id: 'n-end',
-          type: 'end',
-          position: { x: 120, y: 750 },
-          data: { label: 'END' },
-        },
-      ],
-      edges: [
-        { id: 'e0', source: 'n-start', target: 'n-input', animated: true },
-        { id: 'e1', source: 'n-input', target: 'n-researcher', animated: true },
-        { id: 'e2', source: 'n-researcher', target: 'n-search', animated: true },
-        { id: 'e3', source: 'n-search', target: 'n-writer', animated: true },
-        { id: 'e4', source: 'n-writer', target: 'n-output', animated: true },
-        { id: 'e5', source: 'n-output', target: 'n-end', animated: true },
-      ],
-    },
-  };
-
   // Inspector States
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
-  // Simulator States
-  const [simStatus, setSimStatus] = useState<'idle' | 'running' | 'completed' | 'failed'>('idle');
+  // Simulator / Execution States
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [simulatingNodeId, setSimulatingNodeId] = useState<string | null>(null);
-  const [completedNodeIds, setCompletedNodeIds] = useState<string[]>([]);
 
-  // Temporal Live Execution States
-  const [mode, setMode] = useState<'simulation' | 'temporal'>('simulation');
+  // Unified Workflow Execution States
   const [executionHistory, setExecutionHistory] = useState<any[]>([]);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [nodeTraceStates, setNodeTraceStates] = useState<Record<string, any>>({});
   const [isTriggeringRun, setIsTriggeringRun] = useState(false);
+
+  // Compilation state machine cache
+  const [isCompiled, setIsCompiled] = useState<boolean>(false);
+  const [compiledDsl, setCompiledDsl] = useState<any>(null);
+  const [compiledHash, setCompiledHash] = useState<string>('');
+  const [compiledAt, setCompiledAt] = useState<string>('');
+  const [showBanner, setShowBanner] = useState<boolean>(false);
+  const [isCompiling, setIsCompiling] = useState<boolean>(false);
+
+  // Global Metadata
+  const [metadata, setMetadata] = useState<WorkflowMetadata>({
+    workflow_id: 'weather-assistant',
+    workflow_type: 'weather-assistant-type',
+    task_queue: 'default',
+    version: '1.0.0',
+    description: 'Checks the weather using a Weather Agent, routes based on rain condition, and sends alerts or summary reports.',
+  });
+
+  // Simulator Tabs and panel visibility state
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState<boolean>(true);
+  const [simulatorTab, setSimulatorTab] = useState<TabType>('execution');
 
   const simulationTimeoutRef = useRef<number | null>(null);
 
@@ -238,14 +92,27 @@ const FlowBuilder: React.FC = () => {
     }
   }, []);
 
+  const invalidateCompilation = () => {
+    if (isCompiled) {
+      setIsCompiled(false);
+      setCompiledDsl(null);
+      setCompiledHash('');
+      setCompiledAt('');
+      setShowBanner(false);
+      addLog("Graph design modified. Cache invalidated. Please Validate & Compile again.", 'warning');
+    }
+  };
+
   const onNodesChange = (changes: any) => {
     pushToUndo();
     onNodesChangeInternal(changes);
+    invalidateCompilation();
   };
 
   const onEdgesChange = (changes: any) => {
     pushToUndo();
     onEdgesChangeInternal(changes);
+    invalidateCompilation();
   };
 
   // Update selected Node fields
@@ -264,7 +131,8 @@ const FlowBuilder: React.FC = () => {
         return node;
       })
     );
-  }, [setNodes]);
+    invalidateCompilation();
+  }, [setNodes, isCompiled]);
 
   // Update selected Edge fields
   const onUpdateEdge = useCallback((edgeId: string, updatedData: Partial<RFEdgeData>) => {
@@ -288,7 +156,8 @@ const FlowBuilder: React.FC = () => {
         return edge;
       })
     );
-  }, [setEdges]);
+    invalidateCompilation();
+  }, [setEdges, isCompiled]);
 
   // Connect Nodes
   const onConnect = useCallback((connection: Connection) => {
@@ -318,7 +187,8 @@ const FlowBuilder: React.FC = () => {
         eds
       )
     );
-  }, [nodes, setEdges]);
+    invalidateCompilation();
+  }, [nodes, setEdges, isCompiled]);
 
   // Drag and drop mechanics
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -351,8 +221,9 @@ const FlowBuilder: React.FC = () => {
       };
 
       setNodes((nds) => nds.concat(newNode));
+      invalidateCompilation();
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, isCompiled]
   );
 
   // Click palette to add node directly to viewport center
@@ -360,7 +231,6 @@ const FlowBuilder: React.FC = () => {
     pushToUndo();
     if (!reactFlowInstance) return;
 
-    // Position at center of screen viewport
     const position = reactFlowInstance.project({
       x: window.innerWidth / 2 - 200,
       y: window.innerHeight / 2 - 200,
@@ -374,7 +244,8 @@ const FlowBuilder: React.FC = () => {
     };
 
     setNodes((nds) => nds.concat(newNode));
-  }, [reactFlowInstance, setNodes]);
+    invalidateCompilation();
+  }, [reactFlowInstance, setNodes, isCompiled]);
 
   // Reset flow builder
   const handleReset = useCallback(() => {
@@ -383,42 +254,33 @@ const FlowBuilder: React.FC = () => {
     setEdges([]);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
-    setSimStatus('idle');
     setLogs([]);
-    setSimulatingNodeId(null);
-    setCompletedNodeIds([]);
+    setIsCompiled(false);
+    setCompiledDsl(null);
+    setCompiledHash('');
+    setCompiledAt('');
+    setShowBanner(false);
     if (simulationTimeoutRef.current) {
       clearTimeout(simulationTimeoutRef.current);
     }
   }, [setNodes, setEdges]);
 
-  // Load workflow from browser local storage
-  const handleLoadWorkflow = useCallback(
-    (loadedNodes: Node<RFNodeData>[], loadedEdges: Edge<RFEdgeData>[]) => {
-      pushToUndo();
-      setNodes(JSON.parse(JSON.stringify(loadedNodes)));
-      setEdges(JSON.parse(JSON.stringify(loadedEdges)));
-      setSelectedNodeId(null);
-      setSelectedEdgeId(null);
-      setSimStatus('idle');
-      setLogs([]);
-      setSimulatingNodeId(null);
-      setCompletedNodeIds([]);
-      if (simulationTimeoutRef.current) {
-        clearTimeout(simulationTimeoutRef.current);
-      }
-    },
-    [setNodes, setEdges]
-  );
-
   // Load a preset template
-  const handleLoadTemplate = useCallback((templateName: string) => {
+  const handleLoadExample = useCallback((key: string) => {
     pushToUndo();
     handleReset();
-    const template = TEMPLATES[templateName];
-    if (template) {
-      setNodes(JSON.parse(JSON.stringify(template.nodes)));
-      setEdges(JSON.parse(JSON.stringify(template.edges)));
+    const example = EXAMPLES[key];
+    if (example) {
+      setNodes(JSON.parse(JSON.stringify(example.nodes)));
+      setEdges(JSON.parse(JSON.stringify(example.edges)));
+      setMetadata(JSON.parse(JSON.stringify(example.metadata)));
+      setIsCompiled(false);
+      setCompiledDsl(null);
+      setCompiledHash('');
+      setCompiledAt('');
+      setShowBanner(false);
+      setLogs([]);
+      addLog(`Loaded example workflow: "${example.name}"`, 'info');
     }
   }, [setNodes, setEdges, handleReset]);
 
@@ -430,6 +292,7 @@ const FlowBuilder: React.FC = () => {
     setNodes(previous.nodes);
     setEdges(previous.edges);
     setUndoStack((prev) => prev.slice(0, -1));
+    invalidateCompilation();
   };
 
   // Redo operation
@@ -440,6 +303,7 @@ const FlowBuilder: React.FC = () => {
     setNodes(next.nodes);
     setEdges(next.edges);
     setRedoStack((prev) => prev.slice(0, -1));
+    invalidateCompilation();
   };
 
   // Simulator Logging Helper
@@ -448,173 +312,7 @@ const FlowBuilder: React.FC = () => {
     setLogs((prev) => [...prev, { timestamp, type, message }]);
   };
 
-  // Run Simulation Engine
-  const startSimulation = () => {
-    if (nodes.length === 0) {
-      alert("Canvas is empty! Drag some nodes or Load Demo first.");
-      return;
-    }
 
-    if (simulationTimeoutRef.current) {
-      clearTimeout(simulationTimeoutRef.current);
-    }
-
-    setSimStatus('running');
-    setLogs([]);
-    setCompletedNodeIds([]);
-    setSimulatingNodeId(null);
-
-    // Find entry points
-    const sourceIds = new Set(edges.map((e) => e.target));
-    const entryNodes = nodes.filter(
-      (n) => n.type === 'start' || n.type === 'input' || !sourceIds.has(n.id)
-    );
-
-    if (entryNodes.length === 0) {
-      addLog("Error: Could not find any entry points. Connect nodes and try again.", 'error');
-      setSimStatus('failed');
-      return;
-    }
-
-    addLog("Starting Workflow Simulation Runner...", 'info');
-
-    // Start simulation queue with entry nodes
-    const queue = entryNodes.map(n => n.id);
-    runNextSimulationStep(queue, []);
-  };
-
-  // Recursive step executor
-  const runNextSimulationStep = (queue: string[], completed: string[]) => {
-    if (queue.length === 0) {
-      addLog("Workflow execution completed successfully.", 'success');
-      setSimStatus('completed');
-      setSimulatingNodeId(null);
-      return;
-    }
-
-    const currentNodeId = queue[0];
-    const remainingQueue = queue.slice(1);
-    const node = nodes.find((n) => n.id === currentNodeId);
-
-    if (!node) {
-      runNextSimulationStep(remainingQueue, completed);
-      return;
-    }
-
-    setSimulatingNodeId(currentNodeId);
-
-    // Print step initiation logs
-    const agent = getAgentById(node.data.selectedAgentId);
-    const label = node.data.label || agent?.name || node.id;
-    const cond = node.data.ifCondition;
-
-    if (node.type === 'start') {
-      addLog(`[START: ${label}] Workflow execution started.`, 'info');
-    } else if (node.type === 'input') {
-      const count = node.data.inputFields?.length ?? 0;
-      addLog(`[INPUT: ${label}] Mapping ${count} input field(s)...`, 'info');
-    } else if (node.type === 'if') {
-      addLog(
-        `[IF: ${label}] Evaluating: ${cond?.left || '?'} ${cond?.operator || '=='} ${cond?.right || '?'}`,
-        'info'
-      );
-    } else if (node.type === 'action') {
-      addLog(
-        `[ACTION: ${label}] Running operation "${node.data.actionOperation || 'unknown'}"...`,
-        'info'
-      );
-    } else if (node.type === 'agent') {
-      addLog(
-        `[AGENT: ${label}] Invoking agent (${node.data.selectedAgentId || 'not set'})...`,
-        'info'
-      );
-    } else if (node.type === 'output') {
-      const count = node.data.outputFields?.length ?? 0;
-      addLog(`[OUTPUT: ${label}] Emitting ${count} output field(s)...`, 'info');
-    } else if (node.type === 'end') {
-      addLog(`[END: ${label}] Reached workflow terminal.`, 'info');
-    }
-
-    // Set timeout to mock asynchronous execution delay
-    simulationTimeoutRef.current = window.setTimeout(() => {
-      // Print execution completion logs
-      if (node.type === 'start') {
-        addLog(`[START: ${label}] Entry point ready.`, 'success');
-      } else if (node.type === 'input') {
-        addLog(`[INPUT: ${label}] Fields mapped into context.`, 'success');
-      } else if (node.type === 'if') {
-        addLog(
-          `[IF: ${label}] Condition result: ${cond?.left} ${cond?.operator} ${cond?.right}`,
-          'success'
-        );
-      } else if (node.type === 'action') {
-        addLog(`[ACTION: ${label}] Operation completed → ${node.data.actionOutput || 'ctx'}`, 'success');
-      } else if (node.type === 'agent') {
-        addLog(`[AGENT: ${label}] Agent run finished.`, 'success');
-      } else if (node.type === 'output') {
-        addLog(`[OUTPUT: ${label}] Output payload ready.`, 'success');
-      } else if (node.type === 'end') {
-        addLog(`[END: ${label}] Workflow complete.`, 'success');
-      }
-
-      const nextCompleted = [...completed, currentNodeId];
-      setCompletedNodeIds(nextCompleted);
-
-      // Find next targets
-      const nextQueue = [...remainingQueue];
-      const outgoingEdges = edges.filter((e) => e.source === currentNodeId);
-
-      if (node.type === 'if') {
-        const b1 = outgoingEdges.find((e) => e.data?.branch === 'branch1');
-        const b2 = outgoingEdges.find((e) => e.data?.branch === 'branch2');
-        const decision = Math.random() > 0.4 ? 'branch1' : 'branch2';
-        const chosenEdge = decision === 'branch1' ? b1 : b2;
-
-        if (chosenEdge) {
-          addLog(
-            `[IF: ${label}] Taking ${decision === 'branch1' ? 'true' : 'false'} branch → ${chosenEdge.target}`,
-            'info'
-          );
-          if (!nextQueue.includes(chosenEdge.target) && !nextCompleted.includes(chosenEdge.target)) {
-            nextQueue.push(chosenEdge.target);
-          }
-        } else {
-          const fallback = b1 || b2;
-          if (fallback) {
-            addLog(`[IF: ${label}] Missing branch; using fallback edge.`, 'warning');
-            if (!nextQueue.includes(fallback.target) && !nextCompleted.includes(fallback.target)) {
-              nextQueue.push(fallback.target);
-            }
-          } else {
-            addLog(`[IF: ${label}] No branch targets connected.`, 'error');
-            setSimStatus('failed');
-            return;
-          }
-        }
-      } else if (node.type !== 'end') {
-        // Plain connections
-        outgoingEdges.forEach((edge) => {
-          if (edge.data?.condition) {
-            addLog(`[Routing: ${label}] Found edge condition: "${edge.data.condition}"`, 'text');
-          }
-          if (!nextQueue.includes(edge.target) && !nextCompleted.includes(edge.target)) {
-            nextQueue.push(edge.target);
-          }
-        });
-      }
-
-      runNextSimulationStep(nextQueue, nextCompleted);
-    }, 1500);
-  };
-
-  const stopSimulation = () => {
-    if (simulationTimeoutRef.current) {
-      clearTimeout(simulationTimeoutRef.current);
-    }
-    setSimStatus('idle');
-    setSimulatingNodeId(null);
-    addLog("Simulation terminated manually by user.", 'warning');
-  };
 
   const clearLogs = () => {
     setLogs([]);
@@ -623,39 +321,121 @@ const FlowBuilder: React.FC = () => {
   // Temporal live execution functions
   const refreshHistory = useCallback(async () => {
     try {
-      const history = await compilerApi.getHistory('workflow-builder-id');
-      setExecutionHistory(history);
+      const history = await compilerApi.getHistory(metadata.workflow_id);
+      setExecutionHistory(history.executions || []);
     } catch (err: any) {
       console.error("Failed to load execution history:", err);
     }
-  }, []);
+  }, [metadata.workflow_id]);
 
-  const triggerTemporalRun = async () => {
+  const triggerTemporalRun = async (inputData: Record<string, any>) => {
     setIsTriggeringRun(true);
     try {
-      // 1. Compile current canvas layout first (Mandatory Compilation Gate!)
-      const payload = buildExportPayload(nodes, edges);
-      addLog("Compiling and validating workflow design...", 'info');
-      const compileRes = await compilerApi.compileWorkflow({
-        nodes: payload.nodes,
-        edges: payload.edges,
-        workflow_id: 'workflow-builder-id',
-      });
-      addLog(`Compilation validated successfully (hash: ${compileRes.content_hash}). Starting Temporal execution...`, 'info');
-      
-      // 2. Start the workflow run using versioned content hash
-      const res = await compilerApi.executeWorkflow('workflow-builder-id', compileRes.content_hash, {});
+      addLog(`Triggering execution for workflow "${metadata.workflow_id}" (hash: ${compiledHash})...`, 'info');
+      const res = await compilerApi.executeWorkflow(metadata.workflow_id, compiledHash, inputData);
       addLog(`Workflow triggered successfully! Run ID: ${res.run_id}`, 'success');
       
-      // 3. Refresh and select the active run
-      await refreshHistory();
       setActiveRunId(res.run_id);
+      setSimulatorTab('trace');
+      await refreshHistory();
     } catch (err: any) {
-      addLog(`Failed to run: ${err.message}`, 'error');
+      addLog(`Failed to execute: ${err.message}`, 'error');
       alert(`Execution failed: ${err.message}`);
     } finally {
       setIsTriggeringRun(false);
     }
+  };
+
+  const validateAndCompile = async () => {
+    setIsCompiling(true);
+    try {
+      addLog("Starting workflow validation and DSL compilation...", 'info');
+      const payload = buildExportPayload(nodes, edges);
+      const compileRes = await compilerApi.compileWorkflow({
+        nodes: payload.nodes,
+        edges: payload.edges,
+        workflow_id: metadata.workflow_id,
+        workflow_type: metadata.workflow_type,
+        task_queue: metadata.task_queue,
+        version: metadata.version,
+        description: metadata.description,
+      });
+
+      setIsCompiled(true);
+      setCompiledDsl(compileRes.dsl);
+      setCompiledHash(compileRes.content_hash);
+      setCompiledAt(compileRes.generated_at || new Date().toISOString());
+      setShowBanner(true);
+
+      // Print success logs in console
+      addLog("✓ Validation Passed", 'success');
+      addLog("✓ DSL Generated", 'success');
+      addLog("✓ Registered", 'success');
+      addLog("✓ Runtime Loaded", 'success');
+      addLog(`Compilation validated successfully (hash: ${compileRes.content_hash}).`, 'success');
+    } catch (err: any) {
+      addLog(`Compilation failed: ${err.message || err}`, 'error');
+      alert(`Compilation failed: ${err.message || err}`);
+    } finally {
+      setIsCompiling(false);
+    }
+  };
+
+  const handleUpdateMetadata = (updated: Partial<WorkflowMetadata>) => {
+    setMetadata((prev) => ({
+      ...prev,
+      ...updated,
+    }));
+    invalidateCompilation();
+  };
+
+  const handleImportJson = (importedNodes: Node<RFNodeData>[], importedEdges: Edge<RFEdgeData>[], importedMetadata: any) => {
+    pushToUndo();
+    handleReset();
+    setNodes(importedNodes);
+    setEdges(importedEdges);
+    setMetadata(importedMetadata);
+    invalidateCompilation();
+    addLog(`Imported workflow design from JSON file.`, 'info');
+  };
+
+  const handleExportJson = () => {
+    const payload = {
+      nodes,
+      edges,
+      metadata,
+    };
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `${metadata.workflow_id}-design.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    addLog("Exported workflow design JSON file.", 'info');
+  };
+
+  const handleViewDslClick = () => {
+    setIsSimulatorOpen(true);
+    setSimulatorTab('dsl');
+  };
+
+  const handleDownloadDsl = () => {
+    if (!compiledDsl) return;
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(compiledDsl, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `${metadata.workflow_id}.dsl.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const handleCopyDsl = () => {
+    if (!compiledDsl) return;
+    navigator.clipboard.writeText(JSON.stringify(compiledDsl, null, 2))
+      .then(() => alert("DSL copied to clipboard!"))
+      .catch((err) => console.error("Failed to copy DSL:", err));
   };
 
   const loggedStepsRef = useRef<Record<string, string>>({});
@@ -669,10 +449,8 @@ const FlowBuilder: React.FC = () => {
   }, [activeRunId]);
 
   useEffect(() => {
-    if (mode === 'temporal') {
-      refreshHistory();
-    }
-  }, [mode, refreshHistory]);
+    refreshHistory();
+  }, [refreshHistory]);
 
   const handleCancelRun = async (workflowId: string, runId: string) => {
     try {
@@ -697,12 +475,12 @@ const FlowBuilder: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!activeRunId || mode !== 'temporal') return;
+    if (!activeRunId) return;
 
     let intervalId: any;
 
     const activeRun = executionHistory.find(r => r.run_id === activeRunId);
-    const activeWorkflowId = activeRun?.workflow_id || `rf-workflow-builder-id-${activeRunId}`;
+    const activeWorkflowId = activeRun?.workflow_id || metadata.workflow_id;
 
     const pollTrace = async () => {
       try {
@@ -710,7 +488,6 @@ const FlowBuilder: React.FC = () => {
         if (trace && trace.steps) {
           setNodeTraceStates(trace.steps);
           
-          // Print logs
           Object.keys(trace.steps).forEach((nodeId) => {
             const step = trace.steps[nodeId];
             const prev = loggedStepsRef.current[nodeId];
@@ -749,7 +526,7 @@ const FlowBuilder: React.FC = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [activeRunId, mode, executionHistory, nodes, refreshHistory]);
+  }, [activeRunId, executionHistory, nodes, refreshHistory, metadata.workflow_id]);
 
   // Find selected elements
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
@@ -759,7 +536,7 @@ const FlowBuilder: React.FC = () => {
   const styledNodes = nodes.map((node) => {
     let className = '';
     
-    if (mode === 'temporal' && nodeTraceStates[node.id]) {
+    if (nodeTraceStates[node.id]) {
       const trace = nodeTraceStates[node.id];
       if (trace.status === 'completed') {
         className = 'node-completed';
@@ -769,12 +546,6 @@ const FlowBuilder: React.FC = () => {
         className = 'node-failed';
       } else if (trace.status === 'skipped') {
         className = 'node-skipped';
-      }
-    } else {
-      if (node.id === simulatingNodeId) {
-        className = 'node-simulating';
-      } else if (completedNodeIds.includes(node.id)) {
-        className = 'node-completed';
       }
     }
     
@@ -787,23 +558,91 @@ const FlowBuilder: React.FC = () => {
   return (
     <div className="app-container">
       <Header
-        nodes={nodes}
-        edges={edges}
         onReset={handleReset}
-        onLoadTemplate={handleLoadTemplate}
+        onLoadExample={handleLoadExample}
         onUndo={undo}
         onRedo={redo}
         canUndo={undoStack.length > 0}
         canRedo={redoStack.length > 0}
-        onLoadWorkflow={handleLoadWorkflow}
+        isCompiled={isCompiled}
+        onValidateAndCompile={validateAndCompile}
+        isCompiling={isCompiling}
+        onViewDslClick={handleViewDslClick}
+        onDownloadDsl={handleDownloadDsl}
+        onCopyDsl={handleCopyDsl}
+        onExportJson={handleExportJson}
+        onImportJson={handleImportJson}
       />
       <div className="main-content">
         <Sidebar
-          onLoadTemplate={handleLoadTemplate}
           onAddNode={onAddNodeDirectly}
         />
 
         <div className="canvas-container" ref={reactFlowWrapper}>
+          {showBanner && isCompiled && (
+            <div style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'rgba(15, 23, 42, 0.95)',
+              border: '1px solid #10b981',
+              borderRadius: '8px',
+              padding: '16px',
+              zIndex: 100,
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+              minWidth: '240px',
+              backdropFilter: 'blur(8px)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>✓ Compiled Successfully</span>
+                </span>
+                <button 
+                  onClick={() => setShowBanner(false)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '16px', padding: 0 }}
+                >
+                  &times;
+                </button>
+              </div>
+              <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-secondary)' }}>
+                <div style={{ fontFamily: 'monospace', fontSize: '10px' }}>
+                  Hash: {compiledHash.slice(0, 10)}...
+                </div>
+                <div>
+                  Generated: {compiledAt ? (() => {
+                    const d = new Date(compiledAt);
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                  })() : ''}
+                </div>
+                <button
+                  onClick={() => {
+                    setSimulatorTab('dsl');
+                    setIsSimulatorOpen(true);
+                    setShowBanner(false);
+                  }}
+                  style={{
+                    marginTop: '6px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#10b981',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    transition: 'background 0.2s',
+                    textAlign: 'center'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
+                >
+                  Open DSL
+                </button>
+              </div>
+            </div>
+          )}
+
           <ReactFlow
             nodes={styledNodes}
             edges={edges}
@@ -843,16 +682,18 @@ const FlowBuilder: React.FC = () => {
           onUpdateNode={onUpdateNode}
           onUpdateEdge={onUpdateEdge}
           nodeTraceStates={nodeTraceStates}
+          metadata={metadata}
+          onChangeMetadata={handleUpdateMetadata}
         />
 
         <Simulator
           logs={logs}
-          status={simStatus}
-          onStartSimulation={startSimulation}
-          onStopSimulation={stopSimulation}
           onClearLogs={clearLogs}
-          mode={mode}
-          setMode={setMode}
+          isCompiled={isCompiled}
+          compiledDsl={compiledDsl}
+          compiledHash={compiledHash}
+          compiledAt={compiledAt}
+          metadata={metadata}
           executionHistory={executionHistory}
           activeRunId={activeRunId}
           setActiveRunId={setActiveRunId}
@@ -861,6 +702,11 @@ const FlowBuilder: React.FC = () => {
           isTriggeringRun={isTriggeringRun}
           onCancelRun={handleCancelRun}
           onTerminateRun={handleTerminateRun}
+          nodeTraceStates={nodeTraceStates}
+          activeTab={simulatorTab}
+          setActiveTab={setSimulatorTab}
+          isOpen={isSimulatorOpen}
+          setIsOpen={setIsSimulatorOpen}
         />
       </div>
     </div>
@@ -874,3 +720,4 @@ export default function App() {
     </ReactFlowProvider>
   );
 }
+

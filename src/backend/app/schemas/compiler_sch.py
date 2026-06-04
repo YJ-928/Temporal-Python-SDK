@@ -16,6 +16,8 @@ class CompileWorkflowRequest(BaseModel):
     workflow_id: Optional[str] = Field(None, description="Optional custom workflow ID")
     workflow_type: Optional[str] = Field(None, description="Temporal workflow type")
     task_queue: Optional[str] = Field(None, description="Temporal task queue")
+    version: Optional[str] = Field(None, description="Workflow version")
+    description: Optional[str] = Field(None, description="Workflow description")
 
     class Config:
         json_schema_extra = {
@@ -36,6 +38,8 @@ class CompileWorkflowRequest(BaseModel):
                 "workflow_id": "greeting-flow",
                 "workflow_type": "greeting-workflow",
                 "task_queue": "workflow-builder",
+                "version": "1.0.0",
+                "description": "Greeting user workflow example",
             }
         }
 
@@ -48,6 +52,7 @@ class CompileWorkflowResponse(BaseModel):
     dsl: Dict[str, Any] = Field(..., description="Compiled Zigflow DSL")
     file_path: str = Field(..., description="Path to saved DSL file")
     content_hash: str = Field(..., description="SHA-256 content hash of the compiled DSL")
+    generated_at: str = Field(..., description="ISO datetime string when compiled")
 
     class Config:
         json_schema_extra = {
@@ -63,7 +68,8 @@ class CompileWorkflowResponse(BaseModel):
                     }
                 },
                 "file_path": "runtime/compiled/2026/06/02/greeting-flow-a8d23e91c1bfe345.json",
-                "content_hash": "a8d23e91c1bfe345"
+                "content_hash": "a8d23e91c1bfe345",
+                "generated_at": "2026-06-04T12:00:00Z"
             }
         }
 

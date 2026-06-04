@@ -174,12 +174,19 @@ body, html, #root {
   border-color: var(--accent);
 }
 
+.btn-icon {
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+}
+
 /* --------------------------------------------------------------------------
    Sidebar
    -------------------------------------------------------------------------- */
 
 .sidebar {
-  width: 280px;
+  width: 220px;
   background: var(--bg-card);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -271,40 +278,6 @@ body, html, #root {
 .palette-node-agent:hover  { border-color: var(--color-agent); }
 .palette-node-output:hover { border-color: var(--color-output); }
 
-/* Template List */
-.template-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.template-card {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s ease;
-}
-
-.template-card:hover {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.3);
-}
-
-.template-card-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #e2e8f0;
-  margin-bottom: 2px;
-}
-
-.template-card-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-}
-
 /* --------------------------------------------------------------------------
    React Flow Canvas Area
    -------------------------------------------------------------------------- */
@@ -313,7 +286,7 @@ body, html, #root {
   flex: 1;
   position: relative;
   height: 100%;
-  background-color: var(--bg-primary);
+  background: radial-gradient(circle at top, rgba(99, 102, 241, 0.08), transparent 60%), var(--bg-primary);
 }
 
 .react-flow__background {

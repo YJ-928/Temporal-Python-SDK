@@ -57,17 +57,6 @@ async def check_system_health():
     except Exception:
         pass
 
-    # Check Agents (Weather, Validator, Sender)
-    agents_ok = True
-    for port in [11000, 11001, 11002]:
-        try:
-            req = urllib.request.Request(f"http://localhost:{port}/docs")
-            with urllib.request.urlopen(req, timeout=1) as r:
-                if r.status != 200:
-                    agents_ok = False
-        except Exception:
-            agents_ok = False
-
     # Check Runtime
     runtime_ok = False
     try:
@@ -78,9 +67,29 @@ async def check_system_health():
     except Exception:
         pass
 
+    # Check Agents individually
+    agent_health = {}
+    ports = {
+        "weather_agent": 11000,
+        "email_validator": 11001,
+        "email_sender": 11002,
+    }
+    for name, port in ports.items():
+        ok = False
+        try:
+            req = urllib.request.Request(f"http://localhost:{port}/docs")
+            with urllib.request.urlopen(req, timeout=1) as r:
+                if r.status == 200:
+                    ok = True
+        except Exception:
+            pass
+        agent_health[name] = ok
+
     return {
         "temporal": temporal_ok,
         "backend": True,
-        "agents": agents_ok,
-        "runtime": runtime_ok
+        "runtime": runtime_ok,
+        "weather_agent": agent_health["weather_agent"],
+        "email_validator": agent_health["email_validator"],
+        "email_sender": agent_health["email_sender"],
     }

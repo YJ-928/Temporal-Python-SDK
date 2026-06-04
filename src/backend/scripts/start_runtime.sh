@@ -9,6 +9,37 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 mkdir -p "$WORKSPACE_DIR/runtime/pids"
+mkdir -p "$WORKSPACE_DIR/runtime/logs"
+mkdir -p "$WORKSPACE_DIR/runtime/compiled"
+
+# Count existing JSON workflows (excluding bootstrap directory)
+JSON_COUNT=$(find "$WORKSPACE_DIR/runtime/compiled" -name "*.json" -not -path "*/bootstrap/*" 2>/dev/null | wc -l)
+
+if [ "$JSON_COUNT" -eq 0 ]; then
+    echo "No compiled workflows found. Creating System Bootstrap Workflow..."
+    mkdir -p "$WORKSPACE_DIR/runtime/compiled/bootstrap"
+    cat <<EOF > "$WORKSPACE_DIR/runtime/compiled/bootstrap/bootstrap_workflow.json"
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "system-bootstrap-queue",
+    "workflowType": "system-bootstrap",
+    "version": "1.0.0",
+    "summary": "Hidden system bootstrap workflow to satisfy Zigflow startup check"
+  },
+  "do": [
+    {
+      "init_system": {
+        "set": {
+          "status": "ready"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}
+EOF
+fi
 
 # Check if Zigflow health endpoint is already responsive
 if curl -s http://localhost:3005/health &>/dev/null; then

@@ -86,3 +86,11 @@ export const IF_OPERATOR_OPTIONS = [
   { value: 'is_empty', label: 'is empty' },
   { value: 'is_not_empty', label: 'is not empty' },
 ] as const;
+
+export interface WorkflowMetadata {
+  workflow_id: string;
+  workflow_type: string;
+  task_queue: string;
+  version: string;
+  description: string;
+}

@@ -40,7 +40,8 @@ def propagate_dag_states(
             "status": "not_started",
             "input": None,
             "output": None,
-            "error": None
+            "error": None,
+            "duration_seconds": None
         }
 
     # Overlay explicit event states from history (activities/child workflows)
@@ -61,7 +62,8 @@ def propagate_dag_states(
                 "status": state.get("status", "running"),
                 "input": state.get("input"),
                 "output": state.get("output"),
-                "error": state.get("error")
+                "error": state.get("error"),
+                "duration_seconds": state.get("duration_seconds")
             }
 
     # Build adjacency lists for DAG traversal
