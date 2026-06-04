@@ -1,0 +1,8 @@
+{
+  "workflow_id": "no-start",
+  "workflow_type": "invalid",
+  "nodes": [
+    { "id": "N1", "type": "END", "data": {} }
+  ],
+  "edges": []
+}

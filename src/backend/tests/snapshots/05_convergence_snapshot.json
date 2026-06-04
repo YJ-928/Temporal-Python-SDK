@@ -1,0 +1,58 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "convergence",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "query": "${ $input.query }"
+        },
+        "export": {
+          "as": "${ $context + {query: .query} }"
+        }
+      }
+    },
+    {
+      "N3_vector_search": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/vector_search",
+          "body": {
+            "q": "${ $context.query }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {results: .} }"
+        }
+      }
+    },
+    {
+      "N4_rerank": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/rerank",
+          "body": {
+            "data": "${ $context.results }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {top_result: .} }"
+        }
+      }
+    },
+    {
+      "N5_expose": {
+        "set": {
+          "top_result": "${ $context.top_result }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

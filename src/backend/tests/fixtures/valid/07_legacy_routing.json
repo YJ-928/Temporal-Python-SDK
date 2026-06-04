@@ -1,0 +1,95 @@
+{
+  "workflow_id": "legacy-branching",
+  "workflow_type": "legacy-routing",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "status",
+            "store_as": "status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "IF",
+      "data": {
+        "left": "status",
+        "operator": "==",
+        "right": "active"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "process",
+        "inputs": {},
+        "output": "res"
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "skip",
+        "inputs": {},
+        "output": "res"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4",
+      "control": {
+        "branch": "true"
+      }
+    },
+    {
+      "id": "E4",
+      "source": "N3",
+      "target": "N5",
+      "control": {
+        "branch": "false"
+      }
+    },
+    {
+      "id": "E5",
+      "source": "N4",
+      "target": "N6"
+    },
+    {
+      "id": "E6",
+      "source": "N5",
+      "target": "N6"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "action-pipeline",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "id": "${ $input.user_id }"
+        },
+        "export": {
+          "as": "${ $context + {id: .id} }"
+        }
+      }
+    },
+    {
+      "N3_get_user": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/get_user",
+          "body": {
+            "id": "${ $context.id }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {user_profile: .} }"
+        }
+      }
+    },
+    {
+      "N4_expose": {
+        "set": {
+          "user_profile": "${ $context.user_profile }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

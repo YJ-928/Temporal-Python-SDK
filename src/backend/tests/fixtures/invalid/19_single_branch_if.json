@@ -1,0 +1,15 @@
+{
+  "workflow_id": "single-branch-if",
+  "workflow_type": "edge_case",
+  "nodes": [
+    { "id": "N1", "type": "START", "data": {} },
+    { "id": "N2", "type": "IF", "data": { "left": "x", "operator": "==", "right": 1 } },
+    { "id": "N3", "type": "ACTION", "data": { "operation": "op", "inputs": {}, "output": "a" } },
+    { "id": "N4", "type": "END", "data": {} }
+  ],
+  "edges": [
+    { "id": "E1", "source": "N1", "target": "N2" },
+    { "id": "E2", "source": "N2", "target": "N3", "branch": "true" },
+    { "id": "E3", "source": "N3", "target": "N4" }
+  ]
+}

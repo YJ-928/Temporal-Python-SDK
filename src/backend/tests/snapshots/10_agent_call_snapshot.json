@@ -1,0 +1,24 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "agent-call",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_agent": {
+        "run": {
+          "workflow": {
+            "type": "billing-support-assistant",
+            "input": {}
+          }
+        },
+        "export": {
+          "as": "${ $context + {agent_result: .} }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "workflow_id": "mixed-pipeline",
+  "workflow_type": "mixed",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "ACTION",
+      "data": {
+        "operation": "fetch_info",
+        "inputs": {},
+        "output": "info"
+      }
+    },
+    {
+      "id": "N3",
+      "type": "AGENT",
+      "data": {
+        "agent": "summarizer-agent"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    }
+  ]
+}

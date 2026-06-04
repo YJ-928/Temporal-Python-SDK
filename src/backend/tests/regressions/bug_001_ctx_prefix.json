@@ -1,0 +1,45 @@
+{
+  "workflow": {
+    "nodes": [
+      {
+        "id": "N1",
+        "type": "START",
+        "data": {}
+      },
+      {
+        "id": "N2",
+        "type": "INPUT",
+        "data": {
+          "inputs": [
+            {
+              "field": "ctx.name",
+              "store_as": "name",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "id": "N3",
+        "type": "END",
+        "data": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "E1",
+        "source": "N1",
+        "target": "N2"
+      },
+      {
+        "id": "E2",
+        "source": "N2",
+        "target": "N3"
+      }
+    ]
+  },
+  "dsl_version": "1.0.0",
+  "version": "1.0.0",
+  "workflow_type": "bug-ctx-prefix",
+  "task_queue": "default"
+}

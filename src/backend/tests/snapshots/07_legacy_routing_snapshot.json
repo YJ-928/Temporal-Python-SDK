@@ -1,0 +1,63 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "legacy-routing",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "status": "${ $input.status }"
+        },
+        "export": {
+          "as": "${ $context + {status: .status} }"
+        }
+      }
+    },
+    {
+      "N3_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.status == \"active\" }",
+              "then": "N4_process"
+            }
+          },
+          {
+            "case": {
+              "then": "N5_skip"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N4_process": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/process"
+        },
+        "export": {
+          "as": "${ $context + {res: .} }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N5_skip": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/skip"
+        },
+        "export": {
+          "as": "${ $context + {res: .} }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

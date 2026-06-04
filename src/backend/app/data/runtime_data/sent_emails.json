@@ -1,0 +1,18 @@
+[
+  {
+    "message_id": "0fc2a83a-4da4-44e4-87d2-a71cc06a5625",
+    "to": "user@gmail.com",
+    "subject": "Welcome",
+    "body": "Hello, welcome to our service!",
+    "timestamp": "2026-06-02T05:59:53.468055+00:00",
+    "status": "sent"
+  },
+  {
+    "message_id": "9c51821f-0e62-49b3-b199-f1dd94601b95",
+    "to": "admin@company.com",
+    "subject": "Test",
+    "body": "This is a test email",
+    "timestamp": "2026-06-02T06:00:49.019045+00:00",
+    "status": "sent"
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "multi-action",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "item_id": "${ $input.item_id }"
+        },
+        "export": {
+          "as": "${ $context + {item_id: .item_id} }"
+        }
+      }
+    },
+    {
+      "N3_check_stock": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/check_stock",
+          "body": {
+            "item": "${ $context.item_id }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {is_available: .} }"
+        }
+      }
+    },
+    {
+      "N4_reserve_item": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/reserve_item",
+          "body": {
+            "item": "${ $context.item_id }"
+          }
+        },
+        "export": {
+          "as": "${ $context + {reservation_id: .} }"
+        }
+      }
+    },
+    {
+      "N5_expose": {
+        "set": {
+          "reservation_id": "${ $context.reservation_id }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

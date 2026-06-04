@@ -1,0 +1,108 @@
+{
+  "workflow_id": "conditional-routing",
+  "workflow_type": "routing",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "score",
+            "store_as": "user_score",
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "IF",
+      "data": {
+        "left": "user_score",
+        "operator": ">=",
+        "right": 70
+      }
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "auto_approve",
+        "inputs": {},
+        "output": "status"
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "auto_reject",
+        "inputs": {},
+        "output": "status"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "status",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N7",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4",
+      "branch": "true"
+    },
+    {
+      "id": "E4",
+      "source": "N3",
+      "target": "N5",
+      "branch": "false"
+    },
+    {
+      "id": "E5",
+      "source": "N4",
+      "target": "N6"
+    },
+    {
+      "id": "E6",
+      "source": "N5",
+      "target": "N6"
+    },
+    {
+      "id": "E7",
+      "source": "N6",
+      "target": "N7"
+    }
+  ]
+}

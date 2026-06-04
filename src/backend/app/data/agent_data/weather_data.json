@@ -1,0 +1,34 @@
+{
+  "hyderabad": {
+    "temperature": 35,
+    "condition": "Sunny"
+  },
+  "mumbai": {
+    "temperature": 31,
+    "condition": "Humid"
+  },
+  "delhi": {
+    "temperature": 39,
+    "condition": "Hot"
+  },
+  "bangalore": {
+    "temperature": 27,
+    "condition": "Pleasant"
+  },
+  "chennai": {
+    "temperature": 33,
+    "condition": "Hot and Humid"
+  },
+  "kolkata": {
+    "temperature": 32,
+    "condition": "Rainy"
+  },
+  "pune": {
+    "temperature": 29,
+    "condition": "Cloudy"
+  },
+  "jaipur": {
+    "temperature": 38,
+    "condition": "Dry and Hot"
+  }
+}

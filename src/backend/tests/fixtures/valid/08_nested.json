@@ -1,0 +1,131 @@
+{
+  "workflow_id": "nested-if",
+  "workflow_type": "nested",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "age",
+            "store_as": "age",
+            "type": "integer"
+          },
+          {
+            "field": "member",
+            "store_as": "is_member",
+            "type": "boolean"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "IF",
+      "data": {
+        "left": "age",
+        "operator": ">=",
+        "right": 18
+      }
+    },
+    {
+      "id": "N4",
+      "type": "IF",
+      "data": {
+        "left": "is_member",
+        "operator": "==",
+        "right": true
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "adult_member",
+        "inputs": {},
+        "output": "res"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "adult_nonmember",
+        "inputs": {},
+        "output": "res"
+      }
+    },
+    {
+      "id": "N7",
+      "type": "ACTION",
+      "data": {
+        "operation": "minor",
+        "inputs": {},
+        "output": "res"
+      }
+    },
+    {
+      "id": "N8",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4",
+      "branch": "true"
+    },
+    {
+      "id": "E4",
+      "source": "N3",
+      "target": "N7",
+      "branch": "false"
+    },
+    {
+      "id": "E5",
+      "source": "N4",
+      "target": "N5",
+      "branch": "true"
+    },
+    {
+      "id": "E6",
+      "source": "N4",
+      "target": "N6",
+      "branch": "false"
+    },
+    {
+      "id": "E7",
+      "source": "N5",
+      "target": "N8"
+    },
+    {
+      "id": "E8",
+      "source": "N6",
+      "target": "N8"
+    },
+    {
+      "id": "E9",
+      "source": "N7",
+      "target": "N8"
+    }
+  ]
+}

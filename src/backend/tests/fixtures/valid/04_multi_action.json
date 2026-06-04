@@ -1,0 +1,91 @@
+{
+  "workflow_id": "multi-action",
+  "workflow_type": "multi-action",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "item_id",
+            "store_as": "item_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "check_stock",
+        "inputs": {
+          "item": "item_id"
+        },
+        "output": "is_available"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "reserve_item",
+        "inputs": {
+          "item": "item_id"
+        },
+        "output": "reservation_id"
+      }
+    },
+    {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "reservation_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N6",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5"
+    },
+    {
+      "id": "E5",
+      "source": "N5",
+      "target": "N6"
+    }
+  ]
+}

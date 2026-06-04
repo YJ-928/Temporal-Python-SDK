@@ -1,0 +1,75 @@
+{
+  "workflow_id": "single-action",
+  "workflow_type": "action-pipeline",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "user_id",
+            "store_as": "id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "get_user",
+        "inputs": {
+          "id": "id"
+        },
+        "output": "user_profile"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "user_profile",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5"
+    }
+  ]
+}

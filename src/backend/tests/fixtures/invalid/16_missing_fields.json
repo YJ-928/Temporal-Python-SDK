@@ -1,0 +1,13 @@
+{
+  "workflow_id": "missing-fields",
+  "workflow_type": "invalid",
+  "nodes": [
+    { "id": "N1", "type": "START", "data": {} },
+    { "id": "N2", "type": "ACTION", "data": {} },
+    { "id": "N3", "type": "END", "data": {} }
+  ],
+  "edges": [
+    { "id": "E1", "source": "N1", "target": "N2" },
+    { "id": "E2", "source": "N2", "target": "N3" }
+  ]
+}

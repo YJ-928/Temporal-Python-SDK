@@ -1,0 +1,37 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "chain",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_agent": {
+        "run": {
+          "workflow": {
+            "type": "triage-agent",
+            "input": {}
+          }
+        },
+        "export": {
+          "as": "${ $context + {agent_result: .} }"
+        }
+      }
+    },
+    {
+      "N3_agent": {
+        "run": {
+          "workflow": {
+            "type": "resolution-agent",
+            "input": {}
+          }
+        },
+        "export": {
+          "as": "${ $context + {agent_result: .} }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

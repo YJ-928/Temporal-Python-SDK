@@ -1,0 +1,94 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "nested",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "age": "${ $input.age }",
+          "is_member": "${ $input.member }"
+        },
+        "export": {
+          "as": "${ $context + {age: .age, is_member: .is_member} }"
+        }
+      }
+    },
+    {
+      "N3_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.age >= 18 }",
+              "then": "N4_if"
+            }
+          },
+          {
+            "case": {
+              "then": "N7_minor"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N4_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.is_member == true }",
+              "then": "N5_adult_member"
+            }
+          },
+          {
+            "case": {
+              "then": "N6_adult_nonmember"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N5_adult_member": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/adult_member"
+        },
+        "export": {
+          "as": "${ $context + {res: .} }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N6_adult_nonmember": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/adult_nonmember"
+        },
+        "export": {
+          "as": "${ $context + {res: .} }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N7_minor": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/minor"
+        },
+        "export": {
+          "as": "${ $context + {res: .} }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

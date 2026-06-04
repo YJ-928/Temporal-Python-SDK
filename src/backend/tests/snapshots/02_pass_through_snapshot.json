@@ -1,0 +1,28 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "pass-through",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "name": "${ $input.name }"
+        },
+        "export": {
+          "as": "${ $context + {name: .name} }"
+        }
+      }
+    },
+    {
+      "N3_expose": {
+        "set": {
+          "name": "${ $context.name }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

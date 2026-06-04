@@ -1,0 +1,78 @@
+{
+  "workflow": {
+    "nodes": [
+      {
+        "id": "N1",
+        "type": "START",
+        "data": {}
+      },
+      {
+        "id": "N2",
+        "type": "INPUT",
+        "data": {
+          "inputs": [
+            {
+              "field": "username",
+              "store_as": "username",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "id": "N3",
+        "type": "ACTION",
+        "data": {
+          "operation": "process",
+          "inputs": {
+            "name": "username"
+          },
+          "output": "result"
+        }
+      },
+      {
+        "id": "N4",
+        "type": "OUTPUT",
+        "data": {
+          "outputs": [
+            {
+              "field": "result",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "id": "N5",
+        "type": "END",
+        "data": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "E1",
+        "source": "N1",
+        "target": "N2"
+      },
+      {
+        "id": "E2",
+        "source": "N2",
+        "target": "N3"
+      },
+      {
+        "id": "E3",
+        "source": "N3",
+        "target": "N4"
+      },
+      {
+        "id": "E4",
+        "source": "N4",
+        "target": "N5"
+      }
+    ]
+  },
+  "dsl_version": "1.0.0",
+  "version": "1.0.0",
+  "workflow_type": "contract-test-v1",
+  "task_queue": "default"
+}

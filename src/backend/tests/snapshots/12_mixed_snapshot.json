@@ -1,0 +1,36 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "mixed",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_fetch_info": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/fetch_info"
+        },
+        "export": {
+          "as": "${ $context + {info: .} }"
+        }
+      }
+    },
+    {
+      "N3_agent": {
+        "run": {
+          "workflow": {
+            "type": "summarizer-agent",
+            "input": {}
+          }
+        },
+        "export": {
+          "as": "${ $context + {agent_result: .} }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

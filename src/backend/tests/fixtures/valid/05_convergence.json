@@ -1,0 +1,91 @@
+{
+  "workflow_id": "simulated-convergence",
+  "workflow_type": "convergence",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "query",
+            "store_as": "query",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "vector_search",
+        "inputs": {
+          "q": "query"
+        },
+        "output": "results"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "ACTION",
+      "data": {
+        "operation": "rerank",
+        "inputs": {
+          "data": "results"
+        },
+        "output": "top_result"
+      }
+    },
+    {
+      "id": "N5",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "top_result",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N6",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5"
+    },
+    {
+      "id": "E5",
+      "source": "N5",
+      "target": "N6"
+    }
+  ]
+}

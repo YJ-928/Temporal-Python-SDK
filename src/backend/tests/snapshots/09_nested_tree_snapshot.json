@@ -1,0 +1,113 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "nested-tree",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.a == true }",
+              "then": "N3_if"
+            }
+          },
+          {
+            "case": {
+              "then": "N4_if"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N3_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.b == true }",
+              "then": "N5_A_true"
+            }
+          },
+          {
+            "case": {
+              "then": "N6_A_false"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N5_A_true": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/A_true"
+        },
+        "export": {
+          "as": "${ $context + {o: .} }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N6_A_false": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/A_false"
+        },
+        "export": {
+          "as": "${ $context + {o: .} }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N4_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.c == true }",
+              "then": "N7_B_true"
+            }
+          },
+          {
+            "case": {
+              "then": "N8_B_false"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N7_B_true": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/B_true"
+        },
+        "export": {
+          "as": "${ $context + {o: .} }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N8_B_false": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/B_false"
+        },
+        "export": {
+          "as": "${ $context + {o: .} }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

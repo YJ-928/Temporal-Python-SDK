@@ -1,0 +1,12 @@
+{
+  "workflow_id": "floating-node",
+  "workflow_type": "edge_case",
+  "nodes": [
+    { "id": "N1", "type": "START", "data": {} },
+    { "id": "N2", "type": "END", "data": {} },
+    { "id": "N3", "type": "ACTION", "data": { "operation": "float", "inputs": {}, "output": "a" } }
+  ],
+  "edges": [
+    { "id": "E1", "source": "N1", "target": "N2" }
+  ]
+}

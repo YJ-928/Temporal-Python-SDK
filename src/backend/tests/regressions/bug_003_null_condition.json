@@ -1,0 +1,27 @@
+{
+  "workflow": {
+    "nodes": [
+      { "id": "N1", "type": "START", "data": {} },
+      {
+        "id": "N2",
+        "type": "IF",
+        "data": {
+          "left": "email",
+          "operator": "==",
+          "right": null
+        }
+      },
+      { "id": "N3", "type": "END", "data": {} },
+      { "id": "N4", "type": "END", "data": {} }
+    ],
+    "edges": [
+      { "id": "E1", "source": "N1", "target": "N2" },
+      { "id": "E2", "source": "N2", "target": "N3", "branch": "true" },
+      { "id": "E3", "source": "N2", "target": "N4", "branch": "false" }
+    ]
+  },
+  "dsl_version": "1.0.0",
+  "version": "1.0.0",
+  "workflow_type": "bug-null-condition",
+  "task_queue": "default"
+}

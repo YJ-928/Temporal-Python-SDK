@@ -32,3 +32,8 @@ dependencies = [
     "werkzeug>=3.1.7",
     "yarl>=1.23.0",
 ]
+
+[tool.uv.workspace]
+members = [
+    "src/backend",
+]
