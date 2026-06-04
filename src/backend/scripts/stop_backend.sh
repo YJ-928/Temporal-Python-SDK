@@ -33,22 +33,23 @@ if [ -f "$PID_FILE" ]; then
         echo "Backend process (PID: $PID) is not running."
     fi
     rm -f "$PID_FILE"
-    # Fallback to general process killing
-    PIDS=$(pgrep -f "app.main:app" || true)
-    if [ ! -z "$PIDS" ]; then
-        for pid in $PIDS; do
-            echo "Stopping running FastAPI backend (PID: $pid)..."
-            kill "$pid" || true
-        done
-    fi
-
-    # Foolproof check on port 8000
-    PORT_PIDS=$(lsof -t -i:8000 2>/dev/null || true)
-    if [ ! -z "$PORT_PIDS" ]; then
-        for pid in $PORT_PIDS; do
-            echo "Killing remaining process on port 8000 (PID: $pid)..."
-            kill -9 "$pid" || true
-        done
-    fi
-    echo "FastAPI backend stopped."
 fi
+
+# Fallback to general process killing
+PIDS=$(pgrep -f "app.main:app" || true)
+if [ ! -z "$PIDS" ]; then
+    for pid in $PIDS; do
+        echo "Stopping running FastAPI backend (PID: $pid)..."
+        kill "$pid" || true
+    done
+fi
+
+# Foolproof check on port 8000
+PORT_PIDS=$(lsof -t -i:8000 2>/dev/null || true)
+if [ ! -z "$PORT_PIDS" ]; then
+    for pid in $PORT_PIDS; do
+        echo "Killing remaining process on port 8000 (PID: $pid)..."
+        kill -9 "$pid" || true
+    done
+fi
+echo "FastAPI backend stopped."

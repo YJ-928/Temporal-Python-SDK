@@ -13,24 +13,26 @@ echo -e "${BLUE}        Shutting Down Workflow Platform       ${NC}"
 echo -e "${BLUE}==============================================${NC}"
 echo ""
 
-# 1. Stop Zigflow Runtime Daemon
-echo -e "${BLUE}[1/4] Stopping Zigflow Runtime...${NC}"
-bash scripts/stop_runtime.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 1. Stop Backend
+echo -e "${BLUE}[1/4] Stopping FastAPI Backend...${NC}"
+bash "$SCRIPT_DIR/scripts/stop_backend.sh"
 echo ""
 
-# 2. Stop Agents
-echo -e "${BLUE}[2/4] Stopping Mock Agents...${NC}"
-bash scripts/stop_agents.sh
+# 2. Stop Zigflow Runtime Daemon
+echo -e "${BLUE}[2/4] Stopping Zigflow Runtime...${NC}"
+bash "$SCRIPT_DIR/scripts/stop_runtime.sh"
 echo ""
 
-# 3. Stop Backend
-echo -e "${BLUE}[3/4] Stopping FastAPI Backend...${NC}"
-bash scripts/stop_backend.sh
+# 3. Stop Agents
+echo -e "${BLUE}[3/4] Stopping Mock Agents...${NC}"
+bash "$SCRIPT_DIR/scripts/stop_agents.sh"
 echo ""
 
 # 4. Stop Temporal
 echo -e "${BLUE}[4/4] Stopping Temporal Server...${NC}"
-bash scripts/stop_temporal.sh
+bash "$SCRIPT_DIR/scripts/stop_temporal.sh"
 echo ""
 
 echo -e "${BLUE}==============================================${NC}"

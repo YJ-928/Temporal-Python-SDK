@@ -19,20 +19,20 @@ if curl -s http://localhost:11000/docs &>/dev/null && \
 fi
 
 echo "Starting Mock Agent Services..."
-cd "$WORKSPACE_DIR/src/backend/app/agents"
+cd "$WORKSPACE_DIR/app/agents"
 
 # Start Weather Agent (Port 11000)
-"$WORKSPACE_DIR/.venv/bin/python" weather_agent.py > "$WORKSPACE_DIR/runtime/agent_weather.log" 2>&1 &
+"$WORKSPACE_DIR/../../.venv/bin/python" weather_agent.py > "$WORKSPACE_DIR/runtime/logs/agent_weather.log" 2>&1 &
 WEATHER_PID=$!
 echo $WEATHER_PID > "$WORKSPACE_DIR/runtime/pids/agent_weather.pid"
 
 # Start Email Validator Agent (Port 11001)
-"$WORKSPACE_DIR/.venv/bin/python" email_validator_agent.py > "$WORKSPACE_DIR/runtime/agent_email_validator.log" 2>&1 &
+"$WORKSPACE_DIR/../../.venv/bin/python" email_validator_agent.py > "$WORKSPACE_DIR/runtime/logs/agent_email_validator.log" 2>&1 &
 VALIDATOR_PID=$!
 echo $VALIDATOR_PID > "$WORKSPACE_DIR/runtime/pids/agent_email_validator.pid"
 
 # Start Email Sender Agent (Port 11002)
-"$WORKSPACE_DIR/.venv/bin/python" email_sender_agent.py > "$WORKSPACE_DIR/runtime/agent_email_sender.log" 2>&1 &
+"$WORKSPACE_DIR/../../.venv/bin/python" email_sender_agent.py > "$WORKSPACE_DIR/runtime/logs/agent_email_sender.log" 2>&1 &
 SENDER_PID=$!
 echo $SENDER_PID > "$WORKSPACE_DIR/runtime/pids/agent_email_sender.pid"
 
@@ -53,5 +53,5 @@ for i in {1..10}; do
     sleep 1
 done
 
-echo "Failed to start one or more mock agents. Check log files under $WORKSPACE_DIR/runtime/"
+echo "Failed to start one or more mock agents. Check log files under $WORKSPACE_DIR/runtime/logs/"
 exit 1

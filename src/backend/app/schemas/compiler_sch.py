@@ -62,7 +62,7 @@ class CompileWorkflowResponse(BaseModel):
                         "name": "greeting-flow"
                     }
                 },
-                "file_path": "resources/compiled/2026/06/02/greeting-flow-a8d23e91c1bfe345.json",
+                "file_path": "runtime/compiled/2026/06/02/greeting-flow-a8d23e91c1bfe345.json",
                 "content_hash": "a8d23e91c1bfe345"
             }
         }
@@ -90,7 +90,7 @@ class GetWorkflowResponse(BaseModel):
                     },
                     "do": [],
                 },
-                "file_path": "resources/compiled/2026/06/02/greeting-flow_20260602_143052.json",
+                "file_path": "runtime/compiled/2026/06/02/greeting-flow_20260602_143052.json",
             }
         }
 

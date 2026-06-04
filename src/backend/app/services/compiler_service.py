@@ -145,7 +145,7 @@ class CompilerService:
             ...     workflow_id="order-001",
             ... )
             >>> print(result["file_path"])
-            'resources/compiled/2026/06/02/order-001_20260602_143052.json'
+            'runtime/compiled/2026/06/02/order-001_20260602_143052.json'
         """
         # Compile
         dsl = self.compile(

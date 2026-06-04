@@ -109,7 +109,7 @@ def register_routers(app: FastAPI) -> None:
         except Exception:
             body = {}
         logger.info(f"Mock action '{operation}' invoked with body: {body}")
-        
+
         if operation == "send_email":
             return {
                 "status": "success",
@@ -136,7 +136,7 @@ def register_routers(app: FastAPI) -> None:
                 "status": "success",
                 "case_id": "case-billing-888"
             }
-            
+
         return {
             "status": "success",
             "operation": operation,
@@ -154,27 +154,23 @@ def register_events(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
-    from .database import close_db
 
     @app.on_event("startup")
     async def startup_event():
         logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION}")
-        
+
         # Verify zigflow CLI is installed on PATH
         import shutil
         import subprocess
         if not shutil.which("zigflow"):
             logger.critical("❌ zigflow command-line tool is not installed or not found on PATH.")
             raise RuntimeError("zigflow CLI tool not found on PATH. Please install zigflow before starting the application.")
-        
+
         try:
             res = subprocess.run(["zigflow", "--version"], capture_output=True, text=True, check=True)
             logger.info(f"✓ zigflow CLI version: {res.stdout.strip() or 'unknown'}")
         except Exception as e:
             logger.warning(f"Unable to determine zigflow version: {e}")
-
-        if settings.DATABASE_URL:
-            logger.info("Database configured and ready")
 
         # Sync pre-existing compiled workflows
         from ..services.registration_service import registration_service
@@ -186,7 +182,6 @@ def register_events(app: FastAPI) -> None:
 
     @app.on_event("shutdown")
     async def shutdown_event():
-        await close_db()
         logger.info(f"Shutting down {settings.APP_NAME}")
 
     logger.info("Events registered")

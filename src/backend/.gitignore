@@ -34,11 +34,7 @@ env/
 *~
 
 # Logs
-resources/logs/
 *.log
-
-# Compiled DSL outputs (optional: remove if you want to track)
-resources/compiled/
 
 # Environment variables
 .env
@@ -52,3 +48,9 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime artifacts (compiled files, logs, database, and pids)
+runtime/
+!runtime/.gitkeep
+!runtime/*/
+!runtime/*/.gitkeep

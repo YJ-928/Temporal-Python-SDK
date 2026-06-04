@@ -18,11 +18,11 @@ fi
 
 echo "Starting Zigflow Runtime Daemon..."
 zigflow run \
-    --dir "$WORKSPACE_DIR/src/backend/resources/compiled" \
+    --dir "$WORKSPACE_DIR/runtime/compiled" \
     --glob "**/*.json" \
     --watch \
     --metrics-listen-address 127.0.0.1:9095 \
-    --health-listen-address 127.0.0.1:3005 > "$WORKSPACE_DIR/runtime/zigflow.log" 2>&1 &
+    --health-listen-address 127.0.0.1:3005 > "$WORKSPACE_DIR/runtime/logs/zigflow.log" 2>&1 &
 
 ZIGFLOW_PID=$!
 echo $ZIGFLOW_PID > "$WORKSPACE_DIR/runtime/pids/zigflow.pid"
@@ -36,5 +36,5 @@ for i in {1..10}; do
     sleep 1
 done
 
-echo "Failed to start Zigflow Runtime Daemon. Check $WORKSPACE_DIR/runtime/zigflow.log"
+echo "Failed to start Zigflow Runtime Daemon. Check $WORKSPACE_DIR/runtime/logs/zigflow.log"
 exit 1

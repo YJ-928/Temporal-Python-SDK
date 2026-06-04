@@ -21,7 +21,9 @@ class Settings(BaseSettings):
 
     BACKEND_ROOT: Path = Path(__file__).parent.parent.parent
     RESOURCES_DIR: Path = BACKEND_ROOT / "resources"
-    COMPILED_DIR: Path = RESOURCES_DIR / "compiled"
+    RUNTIME_DIR: Path = BACKEND_ROOT / "runtime"
+    COMPILED_DIR: Path = RUNTIME_DIR / "compiled"
+    LOGS_DIR: Path = RUNTIME_DIR / "logs"
 
     DEFAULT_DSL_VERSION: str = "1.0.0"
     DEFAULT_TASK_QUEUE: str = "workflow-builder"
@@ -31,10 +33,6 @@ class Settings(BaseSettings):
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: List[str] = ["*"]
     CORS_HEADERS: List[str] = ["*"]
-
-    DATABASE_URL: str = ""
-    DATABASE_POOL_SIZE: int = 10
-    DATABASE_MAX_OVERFLOW: int = 20
 
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000

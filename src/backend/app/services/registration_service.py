@@ -13,7 +13,7 @@ from .storage_service import calculate_dsl_hash, load_dsl
 
 logger = get_logger(__name__)
 
-WORKSPACE_ROOT = settings.BACKEND_ROOT.parent.parent
+WORKSPACE_ROOT = settings.BACKEND_ROOT
 REGISTRATIONS_FILE = WORKSPACE_ROOT / "runtime" / "registrations.json"
 
 
