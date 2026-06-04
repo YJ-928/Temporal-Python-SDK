@@ -29,6 +29,20 @@ env/
 # IDE
 .vscode/
 .idea/
+
+# Environment
+.env
+!.env.example
+.env.docker
+
+# Runtime data
+runtime/pids/
+runtime/logs/
+runtime/compiled/
+runtime/registrations.json
+temporal-dev.db
+*.log
+.idea/
 *.swp
 *.swo
 *~
