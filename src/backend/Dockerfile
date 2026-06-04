@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy project files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock .env.example docker-compose.yml ./
 COPY app/ app/
 COPY resources/ resources/
 COPY scripts/ scripts/
