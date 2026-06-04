@@ -1,0 +1,167 @@
+{
+  "workflow_id": "email-validation-sender",
+  "workflow_type": "email-validation-sender-type",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "email",
+            "store_as": "email",
+            "type": "string"
+          },
+          {
+            "field": "subject",
+            "store_as": "subject",
+            "type": "string"
+          },
+          {
+            "field": "message",
+            "store_as": "message",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "AGENT",
+      "data": {
+        "agent": "email-validator-agent",
+        "inputs": {
+          "email": "email"
+        },
+        "output": "email_validation"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "IF",
+      "data": {
+        "left": "email_validation.is_valid",
+        "operator": "==",
+        "right": true
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "send_email",
+        "inputs": {
+          "email": "email",
+          "subject": "subject",
+          "message": "message"
+        },
+        "output": "email_result"
+      }
+    },
+    {
+      "id": "N9",
+      "type": "ACTION",
+      "data": {
+        "operation": "noop",
+        "inputs": {},
+        "output": "noop_res"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "email",
+            "type": "string"
+          },
+          {
+            "field": "email_validation",
+            "type": "object"
+          },
+          {
+            "field": "email_result",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N7",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "email",
+            "type": "string"
+          },
+          {
+            "field": "email_validation",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N8",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5",
+      "branch": "true"
+    },
+    {
+      "id": "E5",
+      "source": "N4",
+      "target": "N9",
+      "branch": "false"
+    },
+    {
+      "id": "E6",
+      "source": "N5",
+      "target": "N6"
+    },
+    {
+      "id": "E7",
+      "source": "N9",
+      "target": "N7"
+    },
+    {
+      "id": "E8",
+      "source": "N6",
+      "target": "N8"
+    },
+    {
+      "id": "E9",
+      "source": "N7",
+      "target": "N8"
+    }
+  ]
+}

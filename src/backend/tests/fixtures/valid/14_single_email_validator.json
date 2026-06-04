@@ -1,0 +1,75 @@
+{
+  "workflow_id": "single-email-validator",
+  "workflow_type": "single-email-validator-type",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "email",
+            "store_as": "email",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "AGENT",
+      "data": {
+        "agent": "email-validator-agent",
+        "inputs": {
+          "email": "email"
+        },
+        "output": "email_validation"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "email_validation",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5"
+    }
+  ]
+}

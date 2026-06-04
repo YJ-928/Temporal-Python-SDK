@@ -1,0 +1,140 @@
+{
+  "workflow_id": "account-routing",
+  "workflow_type": "account-routing-type",
+  "task_queue": "default",
+  "nodes": [
+    {
+      "id": "N1",
+      "type": "START",
+      "data": {}
+    },
+    {
+      "id": "N2",
+      "type": "INPUT",
+      "data": {
+        "inputs": [
+          {
+            "field": "account_id",
+            "store_as": "account_id",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "type": "ACTION",
+      "data": {
+        "operation": "account_lookup",
+        "inputs": {
+          "account_id": "account_id"
+        },
+        "output": "account"
+      }
+    },
+    {
+      "id": "N4",
+      "type": "IF",
+      "data": {
+        "left": "account.active",
+        "operator": "==",
+        "right": true
+      }
+    },
+    {
+      "id": "N5",
+      "type": "ACTION",
+      "data": {
+        "operation": "assign_support_case",
+        "inputs": {
+          "account_id": "account_id"
+        },
+        "output": "support_case"
+      }
+    },
+    {
+      "id": "N6",
+      "type": "ACTION",
+      "data": {
+        "operation": "assign_billing_case",
+        "inputs": {
+          "account_id": "account_id"
+        },
+        "output": "billing_case"
+      }
+    },
+    {
+      "id": "N7",
+      "type": "OUTPUT",
+      "data": {
+        "outputs": [
+          {
+            "field": "account_id",
+            "type": "string"
+          },
+          {
+            "field": "account",
+            "type": "object"
+          },
+          {
+            "field": "support_case",
+            "type": "object"
+          },
+          {
+            "field": "billing_case",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "N8",
+      "type": "END",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "source": "N1",
+      "target": "N2"
+    },
+    {
+      "id": "E2",
+      "source": "N2",
+      "target": "N3"
+    },
+    {
+      "id": "E3",
+      "source": "N3",
+      "target": "N4"
+    },
+    {
+      "id": "E4",
+      "source": "N4",
+      "target": "N5",
+      "branch": "true"
+    },
+    {
+      "id": "E5",
+      "source": "N4",
+      "target": "N6",
+      "branch": "false"
+    },
+    {
+      "id": "E6",
+      "source": "N5",
+      "target": "N7"
+    },
+    {
+      "id": "E7",
+      "source": "N6",
+      "target": "N7"
+    },
+    {
+      "id": "E8",
+      "source": "N7",
+      "target": "N8"
+    }
+  ]
+}

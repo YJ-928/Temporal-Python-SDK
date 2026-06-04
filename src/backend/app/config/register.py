@@ -107,6 +107,34 @@ def register_routers(app: FastAPI) -> None:
         except Exception:
             body = {}
         logger.info(f"Mock action '{operation}' invoked with body: {body}")
+        
+        if operation == "send_email":
+            return {
+                "status": "success",
+                "message_id": "abc123"
+            }
+        elif operation == "account_lookup":
+            acct_id = body.get("account_id")
+            if acct_id == "active-123":
+                return {
+                    "active": True,
+                    "type": "support"
+                }
+            else:
+                return {
+                    "active": False
+                }
+        elif operation == "assign_support_case":
+            return {
+                "status": "success",
+                "case_id": "case-support-999"
+            }
+        elif operation == "assign_billing_case":
+            return {
+                "status": "success",
+                "case_id": "case-billing-888"
+            }
+            
         return {
             "status": "success",
             "operation": operation,

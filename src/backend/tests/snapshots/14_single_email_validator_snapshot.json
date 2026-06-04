@@ -1,0 +1,44 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "single-email-validator-type",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "email": "${ $input.email }"
+        },
+        "export": {
+          "as": "${ $context + {email: .email} }"
+        }
+      }
+    },
+    {
+      "N3_agent": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:11001/execute",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {email: $context.email} }"
+        },
+        "export": {
+          "as": "${ $context + {email_validation: .} }"
+        }
+      }
+    },
+    {
+      "N4_expose": {
+        "set": {
+          "email_validation": "${ $context.email_validation }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "email-validation-sender-type",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "email": "${ $input.email }",
+          "subject": "${ $input.subject }",
+          "message": "${ $input.message }"
+        },
+        "export": {
+          "as": "${ $context + {email: .email, subject: .subject, message: .message} }"
+        }
+      }
+    },
+    {
+      "N3_agent": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:11001/execute",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {email: $context.email} }"
+        },
+        "export": {
+          "as": "${ $context + {email_validation: .} }"
+        }
+      }
+    },
+    {
+      "N4_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.email_validation.is_valid == true }",
+              "then": "N5_send_email"
+            }
+          },
+          {
+            "default": {
+              "then": "N9_noop"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N5_send_email": {
+        "do": [
+          {
+            "N5_send_email_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/send_email",
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "body": "${ {email: $context.email, subject: $context.subject, message: $context.message} }"
+              },
+              "export": {
+                "as": "${ $context + {email_result: .} }"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N6_expose": {
+        "set": {
+          "email": "${ $context.email }",
+          "email_validation": "${ $context.email_validation }",
+          "email_result": "${ $context.email_result }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N9_noop": {
+        "do": [
+          {
+            "N9_noop_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/noop",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {noop_res: .} }"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N7_expose": {
+        "set": {
+          "email": "${ $context.email }",
+          "email_validation": "${ $context.email_validation }"
+        },
+        "then": "end"
+      }
+    }
+  ]
+}

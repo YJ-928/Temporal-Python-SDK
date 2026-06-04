@@ -1,0 +1,108 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "account-routing-type",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "account_id": "${ $input.account_id }"
+        },
+        "export": {
+          "as": "${ $context + {account_id: .account_id} }"
+        }
+      }
+    },
+    {
+      "N3_account_lookup": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:8000/api/v1/actions/account_lookup",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {account_id: $context.account_id} }"
+        },
+        "export": {
+          "as": "${ $context + {account: .} }"
+        }
+      }
+    },
+    {
+      "N4_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.account.active == true }",
+              "then": "N5_assign_support_case"
+            }
+          },
+          {
+            "default": {
+              "then": "N6_assign_billing_case"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N5_assign_support_case": {
+        "do": [
+          {
+            "N5_assign_support_case_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/assign_support_case",
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "body": "${ {account_id: $context.account_id} }"
+              },
+              "export": {
+                "as": "${ $context + {support_case: .} }"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N7_expose": {
+        "set": {
+          "account_id": "${ $context.account_id }",
+          "account": "${ $context.account }",
+          "support_case": "${ $context.support_case }",
+          "billing_case": "${ $context.billing_case }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N6_assign_billing_case": {
+        "do": [
+          {
+            "N6_assign_billing_case_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/assign_billing_case",
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "body": "${ {account_id: $context.account_id} }"
+              },
+              "export": {
+                "as": "${ $context + {billing_case: .} }"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
