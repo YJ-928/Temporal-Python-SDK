@@ -22,9 +22,10 @@
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8000/api/v1/actions/vector_search",
-          "body": {
-            "q": "${ $context.query }"
-          }
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {q: $context.query} }"
         },
         "export": {
           "as": "${ $context + {results: .} }"
@@ -37,9 +38,10 @@
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8000/api/v1/actions/rerank",
-          "body": {
-            "data": "${ $context.results }"
-          }
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {data: $context.results} }"
         },
         "export": {
           "as": "${ $context + {top_result: .} }"

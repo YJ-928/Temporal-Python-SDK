@@ -8,27 +8,33 @@
   "do": [
     {
       "N2_agent": {
-        "run": {
-          "workflow": {
-            "type": "triage-agent",
-            "input": {}
-          }
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:11001/execute",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {email: $context.email} }"
         },
         "export": {
-          "as": "${ $context + {agent_result: .} }"
+          "as": "${ $context + {validation_result: .is_valid} }"
         }
       }
     },
     {
       "N3_agent": {
-        "run": {
-          "workflow": {
-            "type": "resolution-agent",
-            "input": {}
-          }
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:11002/execute",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {to: $context.email, subject: $context.subject, body: $context.body} }"
         },
         "export": {
-          "as": "${ $context + {agent_result: .} }"
+          "as": "${ $context + {send_result: .message_id} }"
         },
         "then": "end"
       }

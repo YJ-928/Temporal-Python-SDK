@@ -76,7 +76,7 @@ def save_dsl(
 
     # If original ReactFlow JSON is provided, save it under same hash name
     if rf_json:
-        rf_filename = filename.replace(".json", ".rf.json")
+        rf_filename = filename.replace(".json", ".rf")
         rf_path = day_dir / rf_filename
         with open(rf_path, 'w', encoding='utf-8') as f:
             json.dump(rf_json, f, indent=2, ensure_ascii=False)

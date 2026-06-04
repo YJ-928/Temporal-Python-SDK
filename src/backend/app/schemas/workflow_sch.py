@@ -62,6 +62,9 @@ class ActionNodeData(NodeData):
 class AgentNodeData(NodeData):
     """Configuration data for AGENT node."""
     agent: str
+    inputs: Optional[Dict[str, str]] = None
+    output: Optional[str] = None
+    output_path: Optional[str] = None
 
 
 class IfNodeData(NodeData):

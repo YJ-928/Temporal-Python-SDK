@@ -44,9 +44,20 @@ def propagate_dag_states(
         }
 
     # Overlay explicit event states from history (activities/child workflows)
-    for node_id, state in event_states.items():
-        if node_id in final_states:
-            final_states[node_id] = {
+    # Map event_states keys (task names like N2_capture, N5_send_rain_alert_inner) back to ReactFlow node IDs (like N2, N5_send_rain_alert)
+    for task_name, state in event_states.items():
+        matched_node_id = None
+        if task_name in final_states:
+            matched_node_id = task_name
+        else:
+            # Sort by length descending to match the longest, most specific node ID prefix first
+            for nid in sorted(final_states.keys(), key=len, reverse=True):
+                if task_name.startswith(nid + "_"):
+                    matched_node_id = nid
+                    break
+
+        if matched_node_id:
+            final_states[matched_node_id] = {
                 "status": state.get("status", "running"),
                 "input": state.get("input"),
                 "output": state.get("output"),
@@ -62,7 +73,12 @@ def propagate_dag_states(
     for edge in edges:
         source = edge.get("source")
         target = edge.get("target")
-        condition = edge.get("data", {}).get("condition")
+        condition = edge.get("branch")
+        if not condition and edge.get("control"):
+            condition = edge.get("control", {}).get("branch")
+        if not condition:
+            condition = edge.get("data", {}).get("condition")
+            
         if source in outgoing and target in incoming:
             outgoing[source].append((target, condition))
             incoming[target].append(source)
@@ -92,8 +108,8 @@ def propagate_dag_states(
             if n["id"] not in seen:
                 topo_order.append(n["id"])
 
-    # Locate start node
-    start_node = next((n for n in nodes if n.get("type") == "start"), None)
+    # Locate start node (case-insensitive)
+    start_node = next((n for n in nodes if str(n.get("type", "")).lower() == "start"), None)
     if not start_node:
         logger.warning("No start node found in ReactFlow graph for trace replay")
         return final_states
@@ -125,13 +141,31 @@ def propagate_dag_states(
         node = node_by_id.get(node_id)
         if not node:
             continue
-        node_type = node.get("type")
+        node_type = str(node.get("type", "")).lower()
 
         # If it's the start node, it's already set to completed
         if node_id == start_id:
             continue
 
-        # 1. Overlay condition-based exclusions (IF nodes)
+        # 1. Propagate state to inline control nodes (input, output, if, end, start)
+        # These nodes don't produce activity completion events, so their status is inferred from parents.
+        if node_type in ["input", "output", "if", "end", "start"]:
+            current_status = final_states[node_id]["status"]
+            
+            # We only propagate status if it is not already resolved by an execution event
+            if current_status not in ["completed", "running", "failed"]:
+                parents = incoming[node_id]
+                if parents:
+                    # If ALL parents are skipped, this node is skipped
+                    if all(final_states[p]["status"] == "skipped" for p in parents):
+                        final_states[node_id]["status"] = "skipped"
+                    # If ALL non-skipped parents are completed, this node becomes completed
+                    else:
+                        non_skipped = [p for p in parents if final_states[p]["status"] != "skipped"]
+                        if non_skipped and all(final_states[p]["status"] == "completed" for p in non_skipped):
+                            final_states[node_id]["status"] = "completed"
+
+        # 2. Overlay condition-based exclusions (IF nodes)
         if node_type == "if":
             # If the IF node is completed, evaluate which branch was taken
             if final_states[node_id]["status"] == "completed":
@@ -156,28 +190,10 @@ def propagate_dag_states(
                         if cond == "true":
                             _mark_branch_skipped(target)
 
-        # 2. Propagate state to inline control nodes (input, output, if, end, start)
-        # These nodes don't produce activity completion events, so their status is inferred from parents.
-        if node_type in ["input", "output", "if", "end", "start"]:
-            current_status = final_states[node_id]["status"]
-            
-            # We only propagate status if it is not already resolved by an execution event
-            if current_status not in ["completed", "running", "failed"]:
-                parents = incoming[node_id]
-                if parents:
-                    # If ALL parents are skipped, this node is skipped
-                    if all(final_states[p]["status"] == "skipped" for p in parents):
-                        final_states[node_id]["status"] = "skipped"
-                    # If ALL non-skipped parents are completed, this node becomes completed
-                    else:
-                        non_skipped = [p for p in parents if final_states[p]["status"] != "skipped"]
-                        if non_skipped and all(final_states[p]["status"] == "completed" for p in non_skipped):
-                            final_states[node_id]["status"] = "completed"
-
     # Final cleanup on workflow completion
     if workflow_completed:
-        # Mark END node completed
-        end_node = next((n for n in nodes if n.get("type") == "end"), None)
+        # Mark END node completed (case-insensitive)
+        end_node = next((n for n in nodes if str(n.get("type", "")).lower() == "end"), None)
         if end_node:
             final_states[end_node["id"]]["status"] = "completed"
         

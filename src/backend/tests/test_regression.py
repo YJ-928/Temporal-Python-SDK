@@ -40,7 +40,7 @@ class TestRegressions(unittest.TestCase):
         # Verify the switch cases point to correct target task names
         switch_task = dsl["do"][0]["N2_if"]
         self.assertEqual(switch_task["switch"][0]["case"]["then"], "end")
-        self.assertEqual(switch_task["switch"][1]["case"]["then"], "end")
+        self.assertEqual(switch_task["switch"][1]["default"]["then"], "end")
 
     def test_bug_003_null_condition(self):
         """

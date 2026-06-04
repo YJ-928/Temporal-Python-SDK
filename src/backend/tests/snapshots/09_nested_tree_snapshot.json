@@ -16,7 +16,7 @@
             }
           },
           {
-            "case": {
+            "default": {
               "then": "N4_if"
             }
           }
@@ -25,16 +25,22 @@
     },
     {
       "N3_if": {
-        "switch": [
+        "do": [
           {
-            "case": {
-              "when": "${ $context.b == true }",
-              "then": "N5_A_true"
-            }
-          },
-          {
-            "case": {
-              "then": "N6_A_false"
+            "N3_if_inner": {
+              "switch": [
+                {
+                  "case": {
+                    "when": "${ $context.b == true }",
+                    "then": "N5_A_true"
+                  }
+                },
+                {
+                  "default": {
+                    "then": "N6_A_false"
+                  }
+                }
+              ]
             }
           }
         ]
@@ -42,42 +48,66 @@
     },
     {
       "N5_A_true": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/A_true"
-        },
-        "export": {
-          "as": "${ $context + {o: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N5_A_true_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/A_true",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {o: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     },
     {
       "N6_A_false": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/A_false"
-        },
-        "export": {
-          "as": "${ $context + {o: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N6_A_false_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/A_false",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {o: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     },
     {
       "N4_if": {
-        "switch": [
+        "do": [
           {
-            "case": {
-              "when": "${ $context.c == true }",
-              "then": "N7_B_true"
-            }
-          },
-          {
-            "case": {
-              "then": "N8_B_false"
+            "N4_if_inner": {
+              "switch": [
+                {
+                  "case": {
+                    "when": "${ $context.c == true }",
+                    "then": "N7_B_true"
+                  }
+                },
+                {
+                  "default": {
+                    "then": "N8_B_false"
+                  }
+                }
+              ]
             }
           }
         ]
@@ -85,28 +115,46 @@
     },
     {
       "N7_B_true": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/B_true"
-        },
-        "export": {
-          "as": "${ $context + {o: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N7_B_true_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/B_true",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {o: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     },
     {
       "N8_B_false": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/B_false"
-        },
-        "export": {
-          "as": "${ $context + {o: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N8_B_false_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/B_false",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {o: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     }
   ]

@@ -11,7 +11,10 @@
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/fetch_info"
+          "endpoint": "http://localhost:8000/api/v1/actions/fetch_info",
+          "headers": {
+            "Content-Type": "application/json"
+          }
         },
         "export": {
           "as": "${ $context + {info: .} }"
@@ -20,10 +23,12 @@
     },
     {
       "N3_agent": {
-        "run": {
-          "workflow": {
-            "type": "summarizer-agent",
-            "input": {}
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:11000/execute",
+          "headers": {
+            "Content-Type": "application/json"
           }
         },
         "export": {

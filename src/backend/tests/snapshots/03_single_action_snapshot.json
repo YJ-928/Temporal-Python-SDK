@@ -22,9 +22,10 @@
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8000/api/v1/actions/get_user",
-          "body": {
-            "id": "${ $context.id }"
-          }
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {id: $context.id} }"
         },
         "export": {
           "as": "${ $context + {user_profile: .} }"

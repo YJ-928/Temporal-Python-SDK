@@ -27,7 +27,7 @@
             }
           },
           {
-            "case": {
+            "default": {
               "then": "N7_minor"
             }
           }
@@ -36,16 +36,22 @@
     },
     {
       "N4_if": {
-        "switch": [
+        "do": [
           {
-            "case": {
-              "when": "${ $context.is_member == true }",
-              "then": "N5_adult_member"
-            }
-          },
-          {
-            "case": {
-              "then": "N6_adult_nonmember"
+            "N4_if_inner": {
+              "switch": [
+                {
+                  "case": {
+                    "when": "${ $context.is_member == true }",
+                    "then": "N5_adult_member"
+                  }
+                },
+                {
+                  "default": {
+                    "then": "N6_adult_nonmember"
+                  }
+                }
+              ]
             }
           }
         ]
@@ -53,41 +59,68 @@
     },
     {
       "N5_adult_member": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/adult_member"
-        },
-        "export": {
-          "as": "${ $context + {res: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N5_adult_member_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/adult_member",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {res: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     },
     {
       "N6_adult_nonmember": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/adult_nonmember"
-        },
-        "export": {
-          "as": "${ $context + {res: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N6_adult_nonmember_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/adult_nonmember",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {res: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     },
     {
       "N7_minor": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/minor"
-        },
-        "export": {
-          "as": "${ $context + {res: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N7_minor_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/minor",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {res: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     }
   ]

@@ -53,6 +53,9 @@ export interface RFNodeData {
 
   /** AGENT node */
   selectedAgentId?: string;
+  agentInputs?: string;
+  agentOutput?: string;
+  agentOutputPath?: string;
 }
 
 export interface RFEdgeData {

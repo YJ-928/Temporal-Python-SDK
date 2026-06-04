@@ -12,14 +12,26 @@
       "id": "N2",
       "type": "AGENT",
       "data": {
-        "agent": "triage-agent"
+        "agent": "email-validator-agent",
+        "inputs": {
+          "email": "email"
+        },
+        "output": "validation_result",
+        "output_path": "is_valid"
       }
     },
     {
       "id": "N3",
       "type": "AGENT",
       "data": {
-        "agent": "resolution-agent"
+        "agent": "email-sender-agent",
+        "inputs": {
+          "to": "email",
+          "subject": "subject",
+          "body": "body"
+        },
+        "output": "send_result",
+        "output_path": "message_id"
       }
     },
     {

@@ -99,6 +99,21 @@ def register_routers(app: FastAPI) -> None:
 
     app.include_router(workflow_router, prefix="/api/v1")
     app.include_router(execution_router, prefix="/api/v1")
+
+    @app.post("/api/v1/actions/{operation}", tags=["Actions"])
+    async def mock_action(operation: str, request: Request):
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        logger.info(f"Mock action '{operation}' invoked with body: {body}")
+        return {
+            "status": "success",
+            "operation": operation,
+            "city": body.get("city"),
+            "message": f"Action {operation} executed successfully for {body.get('city')}"
+        }
+
     logger.info("Routers registered")
 
 

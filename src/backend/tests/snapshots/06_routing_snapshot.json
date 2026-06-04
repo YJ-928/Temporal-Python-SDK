@@ -26,7 +26,7 @@
             }
           },
           {
-            "case": {
+            "default": {
               "then": "N5_auto_reject"
             }
           }
@@ -35,14 +35,23 @@
     },
     {
       "N4_auto_approve": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/auto_approve"
-        },
-        "export": {
-          "as": "${ $context + {status: .} }"
-        }
+        "do": [
+          {
+            "N4_auto_approve_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/auto_approve",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {status: .} }"
+              }
+            }
+          }
+        ]
       }
     },
     {
@@ -55,14 +64,23 @@
     },
     {
       "N5_auto_reject": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/auto_reject"
-        },
-        "export": {
-          "as": "${ $context + {status: .} }"
-        }
+        "do": [
+          {
+            "N5_auto_reject_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/auto_reject",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {status: .} }"
+              }
+            }
+          }
+        ]
       }
     }
   ]

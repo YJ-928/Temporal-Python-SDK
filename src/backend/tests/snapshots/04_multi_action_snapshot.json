@@ -22,9 +22,10 @@
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8000/api/v1/actions/check_stock",
-          "body": {
-            "item": "${ $context.item_id }"
-          }
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {item: $context.item_id} }"
         },
         "export": {
           "as": "${ $context + {is_available: .} }"
@@ -37,9 +38,10 @@
         "with": {
           "method": "post",
           "endpoint": "http://localhost:8000/api/v1/actions/reserve_item",
-          "body": {
-            "item": "${ $context.item_id }"
-          }
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {item: $context.item_id} }"
         },
         "export": {
           "as": "${ $context + {reservation_id: .} }"

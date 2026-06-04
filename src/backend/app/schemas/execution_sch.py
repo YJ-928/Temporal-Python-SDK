@@ -87,6 +87,7 @@ class ExecutionTraceResponse(BaseModel):
     )
 
     run_id: str = Field(..., description="Temporal execution Run ID being traced")
+    status: str = Field(..., description="Temporal workflow execution status (e.g. RUNNING, COMPLETED, FAILED)")
     steps: Dict[str, TraceStepResponse] = Field(
         default_factory=dict,
         description="Map of ReactFlow node IDs to their step execution statuses"

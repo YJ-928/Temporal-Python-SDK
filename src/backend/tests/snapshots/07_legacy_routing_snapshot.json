@@ -26,7 +26,7 @@
             }
           },
           {
-            "case": {
+            "default": {
               "then": "N5_skip"
             }
           }
@@ -35,28 +35,46 @@
     },
     {
       "N4_process": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/process"
-        },
-        "export": {
-          "as": "${ $context + {res: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N4_process_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/process",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {res: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     },
     {
       "N5_skip": {
-        "call": "http",
-        "with": {
-          "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/skip"
-        },
-        "export": {
-          "as": "${ $context + {res: .} }"
-        },
-        "then": "end"
+        "do": [
+          {
+            "N5_skip_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/skip",
+                "headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "export": {
+                "as": "${ $context + {res: .} }"
+              },
+              "then": "end"
+            }
+          }
+        ]
       }
     }
   ]

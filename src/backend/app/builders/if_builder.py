@@ -52,7 +52,7 @@ def build_if(node: dict, *, traversal_entry: dict | None = None) -> dict:
             }
         },
         {
-            "case": {
+            "default": {
                 "then": branch_map["false"]["task_name"],
             }
         },

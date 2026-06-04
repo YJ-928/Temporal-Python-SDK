@@ -28,13 +28,6 @@ def build_action(node: dict, *, traversal_entry: dict | None = None) -> dict:
 
     task_name = f"{node_id}_{operation}"
 
-    # Construct input body for HTTP call
-    # Each input maps to a $context variable
-    body_map = {}
-    if raw_inputs:
-        for input_key, context_var in raw_inputs.items():
-            body_map[input_key] = f"${{ $context.{context_var} }}"
-
     # Export the HTTP response into $context under the output name
     export_expr = f"${{ $context + {{{output_name}: .}} }}"
 
@@ -44,6 +37,9 @@ def build_action(node: dict, *, traversal_entry: dict | None = None) -> dict:
             "with": {
                 "method": "post",
                 "endpoint": f"http://localhost:8000/api/v1/actions/{operation}",
+                "headers": {
+                    "Content-Type": "application/json"
+                },
             },
             "export": {
                 "as": export_expr,
@@ -51,9 +47,16 @@ def build_action(node: dict, *, traversal_entry: dict | None = None) -> dict:
         }
     }
 
-    # Only add body if inputs exist
-    if body_map:
-        fragment[task_name]["with"]["body"] = body_map
+    # Construct input body for HTTP call.
+    # Zigflow call:http body must be a single JQ expression string, not a dict
+    # with per-field JQ strings (which Zigflow would JSON-encode as a string).
+    if raw_inputs:
+        jq_pairs = ", ".join(
+            f"{input_key}: $context.{context_var}"
+            for input_key, context_var in raw_inputs.items()
+        )
+        body_expr = f"${{ {{{jq_pairs}}} }}"
+        fragment[task_name]["with"]["body"] = body_expr
 
     if traversal_entry and traversal_entry.get("is_terminal"):
         fragment[task_name]["then"] = "end"

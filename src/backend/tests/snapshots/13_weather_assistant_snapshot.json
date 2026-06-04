@@ -1,0 +1,106 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "taskQueue": "default",
+    "workflowType": "weather-assistant-type",
+    "version": "1.0.0"
+  },
+  "do": [
+    {
+      "N2_capture": {
+        "set": {
+          "city": "${ $input.city }"
+        },
+        "export": {
+          "as": "${ $context + {city: .city} }"
+        }
+      }
+    },
+    {
+      "N3_agent": {
+        "call": "http",
+        "with": {
+          "method": "post",
+          "endpoint": "http://localhost:11000/execute",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": "${ {city: $context.city} }"
+        },
+        "export": {
+          "as": "${ $context + {weather: .condition} }"
+        }
+      }
+    },
+    {
+      "N4_if": {
+        "switch": [
+          {
+            "case": {
+              "when": "${ $context.weather == \"Rainy\" }",
+              "then": "N5_send_rain_alert"
+            }
+          },
+          {
+            "default": {
+              "then": "N6_send_weather_summary"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N5_send_rain_alert": {
+        "do": [
+          {
+            "N5_send_rain_alert_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/send_rain_alert",
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "body": "${ {city: $context.city} }"
+              },
+              "export": {
+                "as": "${ $context + {alert_status: .} }"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "N7_expose": {
+        "set": {
+          "alert_status": "${ $context.alert_status }",
+          "summary_status": "${ $context.summary_status }"
+        },
+        "then": "end"
+      }
+    },
+    {
+      "N6_send_weather_summary": {
+        "do": [
+          {
+            "N6_send_weather_summary_inner": {
+              "call": "http",
+              "with": {
+                "method": "post",
+                "endpoint": "http://localhost:8000/api/v1/actions/send_weather_summary",
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "body": "${ {city: $context.city} }"
+              },
+              "export": {
+                "as": "${ $context + {summary_status: .} }"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

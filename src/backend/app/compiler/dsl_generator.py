@@ -59,6 +59,25 @@ def generate_dsl(
         fragment = builder(node, traversal_entry=entry)
 
         if fragment is not None:
+            # Wrap conditional branch targets in subflow do blocks
+            incoming_control = entry.get("incoming_edge_control")
+            is_branch_target = (
+                incoming_control is not None
+                and incoming_control.get("branch") in ("true", "false")
+            )
+            if is_branch_target:
+                task_name = list(fragment.keys())[0]
+                task_body = fragment[task_name]
+                inner_name = f"{task_name}_inner"
+                fragment = {
+                    task_name: {
+                        "do": [
+                            {
+                                inner_name: task_body
+                            }
+                        ]
+                    }
+                }
             do_list.append(fragment)
 
     return {

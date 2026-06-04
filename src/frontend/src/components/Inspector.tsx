@@ -166,33 +166,65 @@ export const Inspector: React.FC<InspectorProps> = ({
           )}
 
           {type === 'agent' && (
-            <div className="form-group">
-              <label>Agent</label>
-              <select
-                className="form-select"
-                value={data.selectedAgentId || ''}
-                onChange={(e) => {
-                  const selectedAgentId = e.target.value;
-                  const agent = AVAILABLE_AGENTS.find((a) => a.id === selectedAgentId);
-                  patch({
-                    selectedAgentId,
-                    label: agent?.name ?? data.label,
-                  });
-                }}
-              >
-                <option value="">Select an agent…</option>
-                {AVAILABLE_AGENTS.map((agent) => (
-                  <option key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </option>
-                ))}
-              </select>
-              {data.selectedAgentId && (
-                <p className="form-hint">
-                  {AVAILABLE_AGENTS.find((a) => a.id === data.selectedAgentId)?.description}
-                </p>
-              )}
-            </div>
+            <>
+              <div className="form-group">
+                <label>Agent</label>
+                <select
+                  className="form-select"
+                  value={data.selectedAgentId || ''}
+                  onChange={(e) => {
+                    const selectedAgentId = e.target.value;
+                    const agent = AVAILABLE_AGENTS.find((a) => a.id === selectedAgentId);
+                    patch({
+                      selectedAgentId,
+                      label: agent?.name ?? data.label,
+                    });
+                  }}
+                >
+                  <option value="">Select an agent…</option>
+                  {AVAILABLE_AGENTS.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </option>
+                  ))}
+                </select>
+                {data.selectedAgentId && (
+                  <p className="form-hint">
+                    {AVAILABLE_AGENTS.find((a) => a.id === data.selectedAgentId)?.description}
+                  </p>
+                )}
+              </div>
+              <div className="form-group">
+                <label>Inputs</label>
+                <textarea
+                  className="form-textarea"
+                  value={data.agentInputs || ''}
+                  onChange={(e) => patch({ agentInputs: e.target.value })}
+                  placeholder='e.g. {"city": "city"}'
+                  rows={3}
+                />
+              </div>
+              <div className="form-group">
+                <label>Output Variable</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={data.agentOutput || ''}
+                  onChange={(e) => patch({ agentOutput: e.target.value })}
+                  placeholder="e.g. weather"
+                />
+              </div>
+              <div className="form-group">
+                <label>Output Path (optional)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={data.agentOutputPath || ''}
+                  onChange={(e) => patch({ agentOutputPath: e.target.value })}
+                  placeholder="e.g. condition"
+                />
+              </div>
+            </>
           )}
 
           {(type === 'start' || type === 'end') && (

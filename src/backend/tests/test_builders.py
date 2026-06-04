@@ -96,10 +96,15 @@ class TestBuilders(unittest.TestCase):
             res[task_name]["with"]["endpoint"],
             "http://localhost:8000/api/v1/actions/calculate_tax"
         )
-        self.assertEqual(res[task_name]["with"]["body"], {
-            "subtotal": "${ $context.order_subtotal }",
-            "state": "${ $context.user_state }"
-        })
+        self.assertEqual(
+            res[task_name]["with"]["headers"],
+            {"Content-Type": "application/json"}
+        )
+        # body is now a single JQ expression string (order of keys matches dict iteration order)
+        self.assertEqual(
+            res[task_name]["with"]["body"],
+            "${ {subtotal: $context.order_subtotal, state: $context.user_state} }"
+        )
         self.assertEqual(
             res[task_name]["export"]["as"],
             "${ $context + {tax_amount: .} }"
@@ -124,20 +129,55 @@ class TestBuilders(unittest.TestCase):
         self.assertEqual(res_term[task_name]["then"], "end")
 
     def test_build_agent(self):
+        # Fallback unregistered agent
         node = {
             "id": "N_agt",
             "type": "AGENT",
             "data": {
-                "agent": "support-classifier"
+                "agent": "support-classifier",
+                "inputs": {
+                    "text": "message"
+                },
+                "output": "classification",
+                "output_path": "label"
             }
         }
         res = build_agent(node)
         task_name = "N_agt_agent"
         self.assertIn(task_name, res)
-        self.assertEqual(res[task_name]["run"]["workflow"]["type"], "support-classifier")
-        self.assertEqual(res[task_name]["run"]["workflow"]["input"], {})
-        self.assertEqual(res[task_name]["export"]["as"], "${ $context + {agent_result: .} }")
+        self.assertEqual(res[task_name]["call"], "http")
+        self.assertEqual(res[task_name]["with"]["method"], "post")
+        self.assertEqual(res[task_name]["with"]["endpoint"], "http://localhost:11000/execute")
+        self.assertEqual(
+            res[task_name]["with"]["headers"],
+            {"Content-Type": "application/json"}
+        )
+        # body is now a single JQ expression string, not a dict with JQ values
+        self.assertEqual(res[task_name]["with"]["body"], "${ {text: $context.message} }")
+        self.assertEqual(res[task_name]["export"]["as"], "${ $context + {classification: .label} }")
         self.assertNotIn("then", res[task_name])
+
+        # Registered agent (weather-agent)
+        node_weather = {
+            "id": "N_agt",
+            "type": "AGENT",
+            "data": {
+                "agent": "weather-agent",
+                "inputs": {
+                    "city": "user_city"
+                },
+                "output": "weather_result"
+            }
+        }
+        res_weather = build_agent(node_weather)
+        self.assertEqual(res_weather[task_name]["with"]["endpoint"], "http://localhost:11000/execute")
+        self.assertEqual(res_weather[task_name]["with"]["method"], "post")
+        self.assertEqual(
+            res_weather[task_name]["with"]["headers"],
+            {"Content-Type": "application/json"}
+        )
+        self.assertEqual(res_weather[task_name]["with"]["body"], "${ {city: $context.user_city} }")
+        self.assertEqual(res_weather[task_name]["export"]["as"], "${ $context + {weather_result: .} }")
 
         # Terminal AGENT
         res_term = build_agent(node, traversal_entry={"is_terminal": True})
@@ -164,7 +204,7 @@ class TestBuilders(unittest.TestCase):
         self.assertIn(task_name, res)
         self.assertEqual(res[task_name]["switch"][0]["case"]["when"], "${ $context.is_active == true }")
         self.assertEqual(res[task_name]["switch"][0]["case"]["then"], "N_true_task")
-        self.assertEqual(res[task_name]["switch"][1]["case"]["then"], "N_false_task")
+        self.assertEqual(res[task_name]["switch"][1]["default"]["then"], "N_false_task")
         self.assertNotIn("then", res[task_name])
 
         # Terminal IF node

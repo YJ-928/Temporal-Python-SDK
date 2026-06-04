@@ -12,7 +12,12 @@
       "id": "N2",
       "type": "AGENT",
       "data": {
-        "agent": "billing-support-assistant"
+        "agent": "weather-agent",
+        "inputs": {
+          "city": "city"
+        },
+        "output": "weather_result",
+        "output_path": "condition"
       }
     },
     {

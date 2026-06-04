@@ -65,6 +65,9 @@ export type ExportedWorkflowNode =
       data: {
         label: string;
         agent: string;
+        inputs?: Record<string, string>;
+        output?: string;
+        output_path?: string;
       };
     };
 
@@ -159,12 +162,30 @@ export function serializeNodeForExport(node: Node<RFNodeData>): ExportedWorkflow
 
     case 'agent': {
       const agentRecord = getAgentById(node.data.selectedAgentId);
+      let parsedInputs: Record<string, string> = {};
+      if (node.data.agentInputs) {
+        try {
+          const parsed = JSON.parse(node.data.agentInputs);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            Object.keys(parsed).forEach((key) => {
+              const val = parsed[key];
+              parsedInputs[key] = typeof val === 'string' ? cleanVarName(val) : String(val);
+            });
+          }
+        } catch (e) {
+          parsedInputs = {};
+        }
+      }
+
       return {
         id: node.id,
         type: 'AGENT',
         data: {
           label,
           agent: agentRecord?.id ?? node.data.selectedAgentId ?? '',
+          inputs: parsedInputs,
+          output: cleanVarName(node.data.agentOutput ?? ''),
+          output_path: node.data.agentOutputPath ? cleanVarName(node.data.agentOutputPath) : undefined,
         },
       };
     }

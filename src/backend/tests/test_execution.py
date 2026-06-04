@@ -65,14 +65,15 @@ class TestExecutionServiceHelper:
     def tearDownHelper(self):
         if os.path.exists(self.saved_path):
             os.unlink(self.saved_path)
-        rf_path = self.saved_path.with_name(self.saved_path.name.replace(".json", ".rf.json"))
+        rf_path = self.saved_path.with_name(self.saved_path.name.replace(".json", ".rf"))
         if os.path.exists(rf_path):
             os.unlink(rf_path)
 
     async def run_execute_workflow(self, mock_connect):
         mock_client = MagicMock()
         mock_handle = MagicMock()
-        mock_handle.run_id = "run-12345"
+        mock_handle.run_id = None
+        mock_handle.first_execution_run_id = "run-12345"
         
         # start_workflow is a coroutine method
         mock_client.start_workflow = AsyncMock(return_value=mock_handle)
@@ -175,7 +176,7 @@ class TestExecutionServiceHelper:
         # Re-save the DSL and RF json for this run
         if os.path.exists(self.saved_path):
             os.unlink(self.saved_path)
-        rf_old_path = self.saved_path.with_name(self.saved_path.name.replace(".json", ".rf.json"))
+        rf_old_path = self.saved_path.with_name(self.saved_path.name.replace(".json", ".rf"))
         if os.path.exists(rf_old_path):
             os.unlink(rf_old_path)
 
@@ -272,23 +273,30 @@ class TestExecutionService(unittest.TestCase):
         asyncio.run(self.helper.run_terminate_workflow(mock_connect))
 
     def test_get_memo_value(self):
+        import asyncio
+        from unittest.mock import AsyncMock
         from app.services.execution_service import get_memo_value
-        
-        # Test None inputs
-        assert get_memo_value(None, "key") is None
-        
-        # Test missing key
-        mock_desc = MagicMock()
-        mock_desc.memo = {}
-        assert get_memo_value(mock_desc, "key") is None
-        
-        # Test string value
-        mock_desc.memo = {"key": "val"}
-        assert get_memo_value(mock_desc, "key") == "val"
-        
-        # Test bytes value
-        mock_desc.memo = {"key": b'"val-decoded"'}
-        assert get_memo_value(mock_desc, "key") == "val-decoded"
+
+        async def run_tests():
+            # Test None input
+            assert await get_memo_value(None, "key") is None
+
+            # Test memo_value returns value (primary path)
+            mock_desc = MagicMock()
+            mock_desc.memo_value = AsyncMock(return_value="val")
+            assert await get_memo_value(mock_desc, "key") == "val"
+
+            # Test fallback via await desc.memo() dict
+            mock_desc2 = MagicMock(spec=[])
+            mock_desc2.memo = AsyncMock(return_value={"key": "memo-val"})
+            assert await get_memo_value(mock_desc2, "key") == "memo-val"
+
+            # Test missing key via memo() fallback returns None
+            mock_desc3 = MagicMock(spec=[])
+            mock_desc3.memo = AsyncMock(return_value={"other": "x"})
+            assert await get_memo_value(mock_desc3, "key") is None
+
+        asyncio.run(run_tests())
 
     def test_replay_engine_dag_parallel_join(self):
         from app.services.replay_engine import propagate_dag_states

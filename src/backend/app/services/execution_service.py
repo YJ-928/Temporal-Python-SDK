@@ -8,34 +8,35 @@ from .storage_service import get_latest_workflow, load_dsl
 logger = get_logger(__name__)
 
 
-def get_memo_value(desc, key: str) -> Optional[Any]:
+async def get_memo_value(desc, key: str) -> Optional[Any]:
     """
     Retrieve and safely decode a value from a workflow description's memo.
+
+    desc.memo and desc.memo_value are both async coroutines in the
+    Temporal Python SDK (WorkflowExecutionDescription).
     """
-    if not desc or not desc.memo:
+    if not desc:
         return None
-    
-    val = desc.memo.get(key)
-    if val is None:
-        return None
-        
-    if isinstance(val, str):
-        return val
-        
-    if hasattr(val, "payload"):
+
+    # Primary: memo_value is the typed accessor (async)
+    if hasattr(desc, "memo_value"):
         try:
-            return json.loads(val.payload.data.decode("utf-8"))
+            val = await desc.memo_value(key, None)
+            if val is not None:
+                return val
         except Exception:
             pass
-            
-    # Try converting raw bytes directly
-    if isinstance(val, bytes):
+
+    # Fallback: await desc.memo() to get the full dict
+    if hasattr(desc, "memo"):
         try:
-            return json.loads(val.decode("utf-8"))
+            memo_dict = await desc.memo()
+            if memo_dict and hasattr(memo_dict, "get"):
+                return memo_dict.get(key)
         except Exception:
             pass
-            
-    return val
+
+    return None
 
 
 class ExecutionService:
@@ -104,7 +105,7 @@ class ExecutionService:
 
         return {
             "workflow_id": temporal_workflow_id,
-            "run_id": handle.run_id,
+            "run_id": handle.first_execution_run_id or handle.run_id,
             "workflow_type": workflow_type,
             "status": "RUNNING",
         }
@@ -166,8 +167,9 @@ class ExecutionService:
         
         # Describe workflow to fetch dsl_hash and visual_workflow_id from memo
         desc = await handle.describe()
-        dsl_hash = get_memo_value(desc, "dsl_hash")
-        visual_workflow_id = get_memo_value(desc, "visual_workflow_id")
+        workflow_status = desc.status.name if hasattr(desc.status, "name") else str(desc.status)
+        dsl_hash = await get_memo_value(desc, "dsl_hash")
+        visual_workflow_id = await get_memo_value(desc, "visual_workflow_id")
 
         # Fallback parsing for legacy/older executions without visual_workflow_id in memo
         if not visual_workflow_id:
@@ -245,7 +247,7 @@ class ExecutionService:
             # Child Workflow Initiated
             elif event.HasField("start_child_workflow_execution_initiated_event_attributes"):
                 attrs = event.start_child_workflow_execution_initiated_event_attributes
-                task_name = _extract_task_name(attrs.input.payloads)
+                task_name = attrs.workflow_type.name
                 if task_name:
                     scheduled_events[event.event_id] = task_name
                     input_data = None
@@ -294,7 +296,7 @@ class ExecutionService:
         from .storage_service import find_by_hash
         rf_json = None
         if dsl_hash:
-            rf_path = find_by_hash(visual_workflow_id, dsl_hash, ext=".rf.json")
+            rf_path = find_by_hash(visual_workflow_id, dsl_hash, ext=".rf")
             if rf_path and rf_path.exists():
                 try:
                     with open(rf_path, 'r', encoding='utf-8') as f:
@@ -302,17 +304,18 @@ class ExecutionService:
                 except Exception as e:
                     logger.warning(f"Failed to load versioned ReactFlow file {rf_path}: {e}")
 
-        # Fallback to latest visual workflow layout if hash-file is missing (e.g. for backward compatibility)
+        # Fallback to latest visual workflow layout if hash-file is missing (e.g. backward compatibility)
         if not rf_json:
             latest_path = get_latest_workflow(visual_workflow_id)
             if latest_path:
-                rf_path = latest_path.with_name(latest_path.name.replace(".json", ".rf.json"))
-                # If date-based naming didn't generate .rf.json, try finding any JSON with visual_workflow_id in compiled
+                # Primary fallback: look for .rf alongside the DSL file
+                rf_path = latest_path.with_suffix(".rf")
+                # Secondary fallback: glob for any .rf file matching the visual_workflow_id
                 if not rf_path.exists():
-                    latest_glob = list(settings.COMPILED_DIR.glob(f"**/*{visual_workflow_id}*.rf.json"))
+                    latest_glob = list(settings.COMPILED_DIR.glob(f"**/*{visual_workflow_id}*.rf"))
                     if latest_glob:
                         rf_path = latest_glob[-1]
-                
+
                 if rf_path.exists():
                     try:
                         with open(rf_path, 'r', encoding='utf-8') as f:
@@ -330,6 +333,7 @@ class ExecutionService:
 
         return {
             "run_id": run_id,
+            "status": workflow_status,
             "steps": final_steps
         }
 
