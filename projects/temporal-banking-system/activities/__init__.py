@@ -1,2 +1,0 @@
-from activities.deposit_money import credit_money
-from activities.withdraw_money import debit_money

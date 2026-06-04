@@ -1,6 +1,6 @@
 import sys
 import asyncio
-from workflow import GreetSomeone
+from temporal_101.samples.greeting.workflow import GreetSomeone
 
 
 async def main():
