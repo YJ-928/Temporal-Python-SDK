@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
-  MiniMap,
   Background,
   useNodesState,
   useEdgesState,
@@ -71,9 +70,33 @@ const FlowBuilder: React.FC = () => {
     description: 'Checks the weather using a Weather Agent, routes based on rain condition, and sends alerts or summary reports.',
   });
 
-  // Simulator Tabs and panel visibility state
-  const [isSimulatorOpen, setIsSimulatorOpen] = useState<boolean>(true);
+  // Simulator Tabs and panel visibility state (starts in peek status by default)
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState<boolean>(false);
   const [simulatorTab, setSimulatorTab] = useState<TabType>('execution');
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [inputJson, setInputJson] = useState<string>('{\n  "city": "kolkata"\n}');
+  const [panelHeight, setPanelHeight] = useState<number>(() => {
+    return parseInt(localStorage.getItem('workflow-runtime-height') || '300', 10);
+  });
+
+  const toggleSettings = () => {
+    setIsSettingsOpen(!isSettingsOpen);
+  };
+
+  useEffect(() => {
+    const wfId = metadata.workflow_id;
+    if (wfId === 'weather-assistant') {
+      setInputJson('{\n  "city": "kolkata"\n}');
+    } else if (wfId === 'email-validation-sender') {
+      setInputJson('{\n  "email": "test@domain.com",\n  "subject": "Greetings",\n  "message": "Hello from Workflow Builder!"\n}');
+    } else if (wfId === 'account-routing') {
+      setInputJson('{\n  "account_id": "ACC-789"\n}');
+    } else if (wfId === 'single-email-validator') {
+      setInputJson('{\n  "email": "verify-me@test.com"\n}');
+    } else {
+      setInputJson('{\n  "city": "kolkata"\n}');
+    }
+  }, [metadata.workflow_id]);
 
   const simulationTimeoutRef = useRef<number | null>(null);
 
@@ -347,6 +370,22 @@ const FlowBuilder: React.FC = () => {
       alert(`Execution failed: ${err.message}`);
     } finally {
       setIsTriggeringRun(false);
+    }
+  };
+
+  const handleHeaderExecute = () => {
+    setIsSimulatorOpen(true);
+    setSimulatorTab('trace');
+    const minHeight = Math.round(window.innerHeight * 0.55);
+    if (panelHeight < minHeight) {
+      setPanelHeight(minHeight);
+      localStorage.setItem('workflow-runtime-height', minHeight.toString());
+    }
+    try {
+      const parsed = JSON.parse(inputJson);
+      triggerTemporalRun(parsed);
+    } catch (e: any) {
+      alert(`Invalid JSON format: ${e.message}`);
     }
   };
 
@@ -636,15 +675,13 @@ const FlowBuilder: React.FC = () => {
         isCompiled={isCompiled}
         onValidateAndCompile={validateAndCompile}
         isCompiling={isCompiling}
-        onViewDslClick={handleViewDslClick}
-        onDownloadDsl={handleDownloadDsl}
-        onCopyDsl={handleCopyDsl}
-        onExportJson={handleExportJson}
-        onImportJson={handleImportJson}
+        onExecute={handleHeaderExecute}
+        isExecuting={isTriggeringRun}
         onZoomIn={() => reactFlowInstance?.zoomIn()}
         onZoomOut={() => reactFlowInstance?.zoomOut()}
         onFitView={() => reactFlowInstance?.fitView({ duration: 400 })}
-        isExample={!!EXAMPLES[metadata.workflow_id] || metadata.workflow_id === 'workflow-builder-demo'}
+        isSettingsOpen={isSettingsOpen}
+        onSettingsToggle={toggleSettings}
       />
       <div className="main-content">
         <Sidebar
@@ -731,21 +768,6 @@ const FlowBuilder: React.FC = () => {
             deleteKeyCode={null}
           >
             <Background color="#334155" gap={16} size={1} />
-            <MiniMap
-              nodeColor={(node) => {
-                switch (node.type) {
-                  case 'start': return 'var(--color-start)';
-                  case 'end': return 'var(--color-end)';
-                  case 'input': return 'var(--color-input)';
-                  case 'if': return 'var(--color-if)';
-                  case 'action': return 'var(--color-action)';
-                  case 'agent': return 'var(--color-agent)';
-                  case 'output': return 'var(--color-output)';
-                  default: return '#64748b';
-                }
-              }}
-              maskColor="rgba(8, 12, 20, 0.7)"
-            />
           </ReactFlow>
         </div>
 
@@ -757,6 +779,14 @@ const FlowBuilder: React.FC = () => {
           nodeTraceStates={nodeTraceStates}
           metadata={metadata}
           onChangeMetadata={handleUpdateMetadata}
+          isSettingsOpen={isSettingsOpen}
+          onSettingsToggle={toggleSettings}
+          onViewDslClick={handleViewDslClick}
+          onDownloadDsl={handleDownloadDsl}
+          onCopyDsl={handleCopyDsl}
+          onExportJson={handleExportJson}
+          onImportJson={handleImportJson}
+          isCompiled={isCompiled}
         />
 
         <Simulator
@@ -780,6 +810,11 @@ const FlowBuilder: React.FC = () => {
           setActiveTab={setSimulatorTab}
           isOpen={isSimulatorOpen}
           setIsOpen={setIsSimulatorOpen}
+          isSettingsOpen={isSettingsOpen}
+          inputJson={inputJson}
+          setInputJson={setInputJson}
+          panelHeight={panelHeight}
+          setPanelHeight={setPanelHeight}
         />
       </div>
     </div>

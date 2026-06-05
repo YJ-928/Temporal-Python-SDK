@@ -9,7 +9,7 @@
   --bg-input: rgba(30, 41, 59, 0.5);
   
   --sidebar-width: 220px;
-  --inspector-width: 280px;
+  --inspector-width: 320px;
   
   --border-color: rgba(255, 255, 255, 0.08);
   --border-focus: rgba(99, 102, 241, 0.5);
@@ -590,6 +590,17 @@ body, html, #root {
   gap: 20px;
   z-index: 10;
   overflow-y: auto;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.inspector.collapsed {
+  width: 0 !important;
+  padding: 20px 0 !important;
+  border-left: none !important;
+  opacity: 0 !important;
+  transform: translateX(100%) !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
 }
 
 .inspector-header {
@@ -792,6 +803,21 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.simulator-panel.drawer-collapsed {
+  right: 0 !important;
+}
+
+.simulator-panel.transition-height {
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.simulator-panel.fullscreen-expand {
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 100;
 }
 
 .simulator-header {
@@ -1134,5 +1160,14 @@ body, html, #root {
   font-size: 0.7rem;
   color: var(--text-muted);
   margin-left: auto;
+}
+
+/* ReactFlow Custom Nodes Override (Removes white background behind default input/output node wrappers) */
+.react-flow__node-input,
+.react-flow__node-output {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 

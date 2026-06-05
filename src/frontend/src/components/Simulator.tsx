@@ -37,6 +37,13 @@ interface SimulatorProps {
   setActiveTab: (tab: TabType) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  isSettingsOpen?: boolean;
+
+  // Lifted state
+  inputJson: string;
+  setInputJson: (input: string) => void;
+  panelHeight: number;
+  setPanelHeight: (height: number) => void;
 }
 
 export const Simulator: React.FC<SimulatorProps> = ({
@@ -60,15 +67,16 @@ export const Simulator: React.FC<SimulatorProps> = ({
   setActiveTab,
   isOpen,
   setIsOpen,
+  isSettingsOpen = false,
+  inputJson,
+  setInputJson,
+  panelHeight,
+  setPanelHeight,
 }) => {
   const consoleEndRef = useRef<HTMLDivElement>(null);
-  const [inputJson, setInputJson] = useState<string>('{\n  "city": "kolkata"\n}');
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
   // Layout resizing & collapse states
-  const [panelHeight, setPanelHeight] = useState<number>(() => {
-    return parseInt(localStorage.getItem('workflow-runtime-height') || '300', 10);
-  });
   const [isResizing, setIsResizing] = useState<boolean>(false);
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState<boolean>(false);
   const [isDslExpanded, setIsDslExpanded] = useState<boolean>(false);
@@ -172,10 +180,16 @@ export const Simulator: React.FC<SimulatorProps> = ({
     }));
   };
 
+  const panelClasses = [
+    'simulator-panel',
+    !isResizing ? 'transition-height' : '',
+    !isSettingsOpen ? 'drawer-collapsed' : ''
+  ].filter(Boolean).join(' ');
+
   return (
     <div 
-      className="simulator-panel" 
-      style={{ height: isOpen ? (isDslExpanded ? 'calc(100vh - 80px)' : `${panelHeight}px`) : '48px' }}
+      className={panelClasses} 
+      style={{ height: isOpen ? (isDslExpanded ? '88vh' : `${panelHeight}px`) : '48px' }}
     >
       {/* Draggable splitter handle */}
       {isOpen && !isDslExpanded && (
@@ -215,7 +229,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
       </div>
 
       {isOpen && (
-        <div style={{ display: 'flex', height: isDslExpanded ? 'calc(100vh - 120px)' : `${panelHeight - 40}px`, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', height: isDslExpanded ? 'calc(88vh - 40px)' : `${panelHeight - 40}px`, overflow: 'hidden' }}>
           {/* Run History Sidebar */}
           <div style={{
             width: isHistoryCollapsed ? '0px' : '220px',
@@ -252,9 +266,8 @@ export const Simulator: React.FC<SimulatorProps> = ({
             </div>
             <div style={{ overflowY: 'auto', flex: 1, padding: '4px' }}>
               {executionHistory.length === 0 ? (
-                <div style={{ padding: '24px 16px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', justifyContent: 'center' }}>
-                  <span>No executions yet.</span>
-                  <span style={{ fontSize: '10px', opacity: 0.6 }}>Compile and execute a workflow.</span>
+                <div style={{ padding: '24px 16px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', justifyContent: 'center', whiteSpace: 'pre-line' }}>
+                  {"No executions yet.\n\nCompile and execute a workflow."}
                 </div>
               ) : (
                 executionHistory.map((run) => {
@@ -381,7 +394,15 @@ export const Simulator: React.FC<SimulatorProps> = ({
                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600' }}>Workflow Input Payload (JSON)</span>
                     <button
                       className="btn btn-success"
-                      style={{ padding: '6px 16px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      style={{ 
+                        padding: '6px 16px', 
+                        fontSize: '11px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px',
+                        opacity: isCompiled && !isTriggeringRun ? 1 : 0.5,
+                        cursor: isCompiled && !isTriggeringRun ? 'pointer' : 'not-allowed'
+                      }}
                       onClick={handleExecute}
                       disabled={!isCompiled || isTriggeringRun}
                     >
@@ -712,7 +733,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
                       </div>
 
                       {/* DSL Code Display */}
-                      <pre className="dsl-pre" style={{ margin: 0, maxHeight: isDslExpanded ? 'calc(100vh - 280px)' : '160px', overflowY: 'auto', flex: isDslExpanded ? 1 : 'unset' }}>
+                      <pre className="dsl-pre" style={{ margin: 0, flex: 1, minHeight: 0, overflow: 'auto' }}>
                         <code>{JSON.stringify(compiledDsl, null, 2)}</code>
                       </pre>
                     </>
@@ -720,7 +741,6 @@ export const Simulator: React.FC<SimulatorProps> = ({
                     <div style={{ padding: '40px 24px', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', justifyContent: 'center', margin: 'auto 0' }}>
                       <span style={{ fontSize: '18px' }}>📝</span>
                       <strong>Compile a workflow to generate DSL.</strong>
-                      <span style={{ fontSize: '11px', opacity: 0.7 }}>Use the "Validate & Compile" button in the toolbar to run the compiler and inspect the output.</span>
                     </div>
                   )}
                 </div>

@@ -1,7 +1,5 @@
-import React, { useState, useRef } from 'react';
-import type { Node, Edge } from 'reactflow';
-import { Undo, Redo, GitMerge, Download, Code, RotateCcw, Upload, FileJson, Copy, ChevronDown, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
-import type { RFNodeData, RFEdgeData } from '../types';
+import React, { useState } from 'react';
+import { Undo, Redo, GitMerge, RotateCcw, ZoomIn, ZoomOut, Maximize, Settings, Play } from 'lucide-react';
 import { EXAMPLES } from '../constants/examples';
 
 interface HeaderProps {
@@ -14,15 +12,13 @@ interface HeaderProps {
   isCompiled: boolean;
   onValidateAndCompile: () => void;
   isCompiling: boolean;
-  onViewDslClick: () => void;
-  onDownloadDsl: () => void;
-  onCopyDsl: () => void;
-  onExportJson: () => void;
-  onImportJson: (nodes: Node<RFNodeData>[], edges: Edge<RFEdgeData>[], metadata: any) => void;
+  onExecute: () => void;
+  isExecuting: boolean;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onFitView?: () => void;
-  isExample?: boolean;
+  isSettingsOpen: boolean;
+  onSettingsToggle: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -35,63 +31,18 @@ export const Header: React.FC<HeaderProps> = ({
   isCompiled,
   onValidateAndCompile,
   isCompiling,
-  onViewDslClick,
-  onDownloadDsl,
-  onCopyDsl,
-  onExportJson,
-  onImportJson,
+  onExecute,
+  isExecuting,
   onZoomIn,
   onZoomOut,
   onFitView,
-  isExample,
+  isSettingsOpen,
+  onSettingsToggle,
 }) => {
   const [exampleOpen, setExampleOpen] = useState(false);
-  const [dslOpen, setDslOpen] = useState(false);
-  const [jsonOpen, setJsonOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleExample = () => {
     setExampleOpen(!exampleOpen);
-    setDslOpen(false);
-    setJsonOpen(false);
-  };
-  const toggleDsl = () => {
-    if (!isCompiled) return;
-    setDslOpen(!dslOpen);
-    setExampleOpen(false);
-    setJsonOpen(false);
-  };
-  const toggleJson = () => {
-    setJsonOpen(!jsonOpen);
-    setExampleOpen(false);
-    setDslOpen(false);
-  };
-
-  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target?.result as string);
-        if (data.nodes && data.edges) {
-          onImportJson(data.nodes, data.edges, data.metadata || {
-            workflow_id: data.workflow_id || 'imported-workflow',
-            workflow_type: data.workflow_type || 'imported-type',
-            task_queue: data.task_queue || 'default',
-            version: data.version || '1.0.0',
-            description: data.description || '',
-          });
-        } else {
-          alert('Invalid JSON: nodes or edges are missing.');
-        }
-      } catch (err: any) {
-        alert(`Failed to parse file: ${err.message}`);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = ''; // Reset file input
   };
 
   return (
@@ -105,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="header-actions" style={{ gap: '12px', alignItems: 'center' }}>
-        {/* Group 1 — Workflow */}
+        {/* Group 1 — Workflow Loader */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ position: 'relative' }}>
             <button 
@@ -115,67 +66,53 @@ export const Header: React.FC<HeaderProps> = ({
             >
               Load Example <ChevronDown size={14} />
             </button>
-          {exampleOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              background: '#1e293b',
-              border: '1px solid var(--border-color)',
-              borderRadius: '6px',
-              marginTop: '4px',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              minWidth: '200px',
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-              overflow: 'hidden'
-            }}>
-              {Object.entries(EXAMPLES).map(([key, item]) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    onLoadExample(key);
-                    setExampleOpen(false);
-                  }}
-                  style={{
-                    padding: '10px 16px',
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    width: '100%',
-                    transition: 'background 0.2s',
-                    borderBottom: '1px solid rgba(255,255,255,0.03)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                >
-                  {item.name}
-                </button>
-              ))}
-            </div>
-          )}
+            {exampleOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                background: '#1e293b',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                marginTop: '4px',
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: '200px',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                overflow: 'hidden'
+              }}>
+                {Object.entries(EXAMPLES).map(([key, item]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      onLoadExample(key);
+                      setExampleOpen(false);
+                    }}
+                    style={{
+                      padding: '10px 16px',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      width: '100%',
+                      transition: 'background 0.2s',
+                      borderBottom: '1px solid rgba(255,255,255,0.03)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        {isExample && (
-          <span style={{
-            fontSize: '9px',
-            background: 'rgba(99, 102, 241, 0.15)',
-            border: '1px solid rgba(99, 102, 241, 0.4)',
-            color: 'var(--accent)',
-            borderRadius: '4px',
-            padding: '2px 6px',
-            fontWeight: 'bold',
-            letterSpacing: '0.5px'
-          }}>
-            TEMPLATE
-          </span>
-        )}
-      </div>
 
-      <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
+        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
 
         {/* Group 2 — Editing & Canvas Controls */}
         <div style={{ display: 'flex', gap: '6px' }}>
@@ -191,11 +128,11 @@ export const Header: React.FC<HeaderProps> = ({
           
           <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px', alignSelf: 'center' }} />
           
-          <button className="btn btn-outline btn-icon" onClick={onZoomIn} title="Zoom In">
-            <ZoomIn size={15} />
-          </button>
           <button className="btn btn-outline btn-icon" onClick={onZoomOut} title="Zoom Out">
             <ZoomOut size={15} />
+          </button>
+          <button className="btn btn-outline btn-icon" onClick={onZoomIn} title="Zoom In">
+            <ZoomIn size={15} />
           </button>
           <button className="btn btn-outline btn-icon" onClick={onFitView} title="Fit View">
             <Maximize size={15} />
@@ -204,20 +141,14 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
 
-        {/* Group 3 — Compiler */}
+        {/* Group 3 — Compiler & Runner */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {!isCompiled && (
-            <span style={{ fontSize: '11px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600', marginRight: '4px', whiteSpace: 'nowrap' }} title="There are unsaved edits since the last compilation">
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
-              Changes Pending
-            </span>
-          )}
           <button 
             className="btn" 
             style={{ 
-              borderColor: isCompiled ? '#10b981' : 'var(--accent)', 
+              borderColor: 'var(--accent)', 
               color: '#ffffff',
-              background: isCompiled ? '#10b981' : 'var(--accent)',
+              background: 'var(--accent)',
               fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
@@ -230,202 +161,66 @@ export const Header: React.FC<HeaderProps> = ({
             <GitMerge size={15} className={isCompiling ? 'spin' : ''} />
             {isCompiling ? 'Compiling...' : 'Validate & Compile'}
           </button>
+
+          <button 
+            className="btn" 
+            style={{ 
+              borderColor: '#10b981', 
+              color: '#ffffff',
+              background: '#10b981',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              opacity: isCompiled ? 1 : 0.5,
+              cursor: isCompiled ? 'pointer' : 'not-allowed'
+            }} 
+            onClick={onExecute}
+            disabled={!isCompiled || isExecuting}
+            title={isCompiled ? "Execute Workflow" : "Compile workflow first to execute"}
+          >
+            <Play size={15} />
+            {isExecuting ? 'Running...' : 'Execute'}
+          </button>
         </div>
 
         <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
 
-        {/* Group 4 — DSL */}
-        <div style={{ position: 'relative' }}>
-          <button 
-            className="btn btn-outline" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            onClick={toggleDsl}
-            disabled={!isCompiled}
-            title={isCompiled ? "DSL Operations" : "Compile workflow first to use DSL"}
-          >
-            DSL <ChevronDown size={14} style={{ opacity: isCompiled ? 1 : 0.5 }} />
-          </button>
-          {dslOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              background: '#1e293b',
-              border: '1px solid var(--border-color)',
-              borderRadius: '6px',
-              marginTop: '4px',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              minWidth: '160px',
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-              overflow: 'hidden'
-            }}>
-              <button
-                onClick={() => {
-                  onViewDslClick();
-                  setDslOpen(false);
-                }}
-                style={{
-                  padding: '10px 16px',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  transition: 'background 0.2s',
-                  borderBottom: '1px solid rgba(255,255,255,0.03)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-              >
-                <Code size={12} /> View DSL
-              </button>
-              <button
-                onClick={() => {
-                  onDownloadDsl();
-                  setDslOpen(false);
-                }}
-                style={{
-                  padding: '10px 16px',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  transition: 'background 0.2s',
-                  borderBottom: '1px solid rgba(255,255,255,0.03)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-              >
-                <Download size={12} /> Download DSL
-              </button>
-              <button
-                onClick={() => {
-                  onCopyDsl();
-                  setDslOpen(false);
-                }}
-                style={{
-                  padding: '10px 16px',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-              >
-                <Copy size={12} /> Copy DSL
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
-
-        {/* Group 5 — JSON */}
-        <div style={{ position: 'relative' }}>
-          <button 
-            className="btn btn-outline" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            onClick={toggleJson}
-          >
-            JSON <ChevronDown size={14} />
-          </button>
-          {jsonOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              background: '#1e293b',
-              border: '1px solid var(--border-color)',
-              borderRadius: '6px',
-              marginTop: '4px',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              minWidth: '180px',
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-              overflow: 'hidden'
-            }}>
-              <button
-                onClick={() => {
-                  fileInputRef.current?.click();
-                  setJsonOpen(false);
-                }}
-                style={{
-                  padding: '10px 16px',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  transition: 'background 0.2s',
-                  borderBottom: '1px solid rgba(255,255,255,0.03)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-              >
-                <Upload size={12} /> Import Workflow JSON
-              </button>
-              <button
-                onClick={() => {
-                  onExportJson();
-                  setJsonOpen(false);
-                }}
-                style={{
-                  padding: '10px 16px',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-              >
-                <FileJson size={12} /> Export Workflow JSON
-              </button>
-            </div>
-          )}
-        </div>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          style={{ display: 'none' }} 
-          accept=".json" 
-          onChange={handleImportJson} 
-        />
+        {/* Group 4 — Settings Drawer Toggle */}
+        <button 
+          className={`btn btn-outline btn-icon ${isSettingsOpen ? 'active' : ''}`} 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            borderColor: isSettingsOpen ? 'var(--accent)' : 'var(--border-color)',
+            background: isSettingsOpen ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+            color: isSettingsOpen ? 'var(--accent)' : 'var(--text-primary)'
+          }}
+          onClick={onSettingsToggle}
+          title="Workflow Settings, DSL Actions, Import / Export"
+        >
+          <Settings size={15} />
+        </button>
       </div>
     </header>
   );
 };
+
+// Simple ChevronDown helper component for Loader dropdown since we removed other icon imports
+const ChevronDown: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 14, style }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    style={style}
+  >
+    <path d="m6 9 6 6 6-6"/>
+  </svg>
+);

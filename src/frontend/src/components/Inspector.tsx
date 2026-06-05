@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import type { Node, Edge } from 'reactflow';
-import { Settings, Plus, Trash2 } from 'lucide-react';
+import { Settings, Plus, Trash2, X, Code, Download, Copy, Upload } from 'lucide-react';
 import type {
   RFNodeData,
   RFEdgeData,
@@ -21,6 +21,14 @@ interface InspectorProps {
   nodeTraceStates?: Record<string, { status: string; input?: any; output?: any; error?: string }>;
   metadata: WorkflowMetadata;
   onChangeMetadata: (meta: Partial<WorkflowMetadata>) => void;
+  isSettingsOpen: boolean;
+  onSettingsToggle: () => void;
+  onViewDslClick: () => void;
+  onDownloadDsl: () => void;
+  onCopyDsl: () => void;
+  onExportJson: () => void;
+  onImportJson: (nodes: Node<RFNodeData>[], edges: Edge<RFEdgeData>[], metadata: any) => void;
+  isCompiled: boolean;
 }
 
 const newRowId = () => `row-${Math.random().toString(36).slice(2, 9)}`;
@@ -33,7 +41,44 @@ export const Inspector: React.FC<InspectorProps> = ({
   nodeTraceStates = {},
   metadata,
   onChangeMetadata,
+  isSettingsOpen,
+  onSettingsToggle,
+  onViewDslClick,
+  onDownloadDsl,
+  onCopyDsl,
+  onExportJson,
+  onImportJson,
+  isCompiled,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.nodes && data.edges) {
+          onImportJson(data.nodes, data.edges, data.metadata || {
+            workflow_id: data.workflow_id || 'imported-workflow',
+            workflow_type: data.workflow_type || 'imported-type',
+            task_queue: data.task_queue || 'default',
+            version: data.version || '1.0.0',
+            description: data.description || '',
+          });
+        } else {
+          alert('Invalid JSON: nodes or edges are missing.');
+        }
+      } catch (err: any) {
+        alert(`Failed to parse file: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   if (selectedNode) {
     const { id, type, data } = selectedNode;
 
@@ -41,17 +86,25 @@ export const Inspector: React.FC<InspectorProps> = ({
 
     const handleLabelChange = (value: string) => patch({ label: value });
     
-    // Check if there is trace state for this node
     const trace = nodeTraceStates[id];
 
     return (
-      <aside className="inspector">
+      <aside className={`inspector ${!isSettingsOpen ? 'collapsed' : ''}`}>
         <div className="inspector-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Settings size={18} style={{ color: 'var(--accent)' }} />
-            <h3 className="inspector-title">Node Inspector</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Settings size={18} style={{ color: 'var(--accent)' }} />
+              <h3 className="inspector-title">Node Inspector</h3>
+            </div>
+            <button 
+              onClick={onSettingsToggle} 
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+              title="Close Panel"
+            >
+              <X size={16} />
+            </button>
           </div>
-          <span className="inspector-subtitle">
+          <span className="inspector-subtitle" style={{ display: 'block', marginTop: '4px' }}>
             {String(type).toUpperCase()} · {id}
           </span>
         </div>
@@ -194,7 +247,7 @@ export const Inspector: React.FC<InspectorProps> = ({
                   ))}
                 </select>
                 {data.selectedAgentId && (
-                  <p className="form-hint">
+                  <p className="form-hint" style={{ marginTop: '4px' }}>
                     {AVAILABLE_AGENTS.find((a) => a.id === data.selectedAgentId)?.description}
                   </p>
                 )}
@@ -250,13 +303,22 @@ export const Inspector: React.FC<InspectorProps> = ({
     };
 
     return (
-      <aside className="inspector">
+      <aside className={`inspector ${!isSettingsOpen ? 'collapsed' : ''}`}>
         <div className="inspector-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Settings size={18} style={{ color: 'var(--accent)' }} />
-            <h3 className="inspector-title">Edge Inspector</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Settings size={18} style={{ color: 'var(--accent)' }} />
+              <h3 className="inspector-title">Edge Inspector</h3>
+            </div>
+            <button 
+              onClick={onSettingsToggle} 
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+              title="Close Panel"
+            >
+              <X size={16} />
+            </button>
           </div>
-          <span className="inspector-subtitle">ID: {id}</span>
+          <span className="inspector-subtitle" style={{ display: 'block', marginTop: '4px' }}>ID: {id}</span>
         </div>
 
         <div className="inspector-form">
@@ -264,19 +326,8 @@ export const Inspector: React.FC<InspectorProps> = ({
             Connection from <strong>{source}</strong> to <strong>{target}</strong>
           </div>
 
-          <div className="form-group">
-            <label>Edge Label</label>
-            <input
-              type="text"
-              className="form-input"
-              value={data.label || ''}
-              onChange={(e) => handleEdgeChange('label', e.target.value)}
-              placeholder="Optional label"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Branch (IF node targets)</label>
+          <div className="form-group" style={{ marginTop: '12px' }}>
+            <label>Edge Label / Branch</label>
             <select
               className="form-select"
               value={data.branch || ''}
@@ -304,31 +355,20 @@ export const Inspector: React.FC<InspectorProps> = ({
   }
 
   return (
-    <aside className="inspector">
+    <aside className={`inspector ${!isSettingsOpen ? 'collapsed' : ''}`}>
       <div className="inspector-header">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Settings size={18} style={{ color: 'var(--accent)' }} />
-            <h3 className="inspector-title">Workflow Configuration</h3>
+            <h3 className="inspector-title">Workflow Settings</h3>
           </div>
-          {(metadata.workflow_id === 'weather-assistant' || 
-            metadata.workflow_id === 'email-validation-sender' || 
-            metadata.workflow_id === 'account-routing' || 
-            metadata.workflow_id === 'single-email-validator' || 
-            metadata.workflow_id === 'workflow-builder-demo') && (
-              <span style={{
-                fontSize: '8px',
-                background: 'rgba(99, 102, 241, 0.15)',
-                border: '1px solid rgba(99, 102, 241, 0.4)',
-                color: 'var(--accent)',
-                borderRadius: '4px',
-                padding: '1px 5px',
-                fontWeight: 'bold',
-                letterSpacing: '0.5px'
-              }}>
-                TEMPLATE
-              </span>
-          )}
+          <button 
+            onClick={onSettingsToggle} 
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+            title="Close Panel"
+          >
+            <X size={16} />
+          </button>
         </div>
         <span 
           style={{ 
@@ -342,7 +382,7 @@ export const Inspector: React.FC<InspectorProps> = ({
             letterSpacing: '0.5px',
             border: '1px solid rgba(99, 102, 241, 0.3)',
             display: 'inline-block',
-            marginTop: '6px'
+            marginTop: '8px'
           }}
         >
           Global Settings
@@ -401,9 +441,66 @@ export const Inspector: React.FC<InspectorProps> = ({
             value={metadata.description || ''}
             onChange={(e) => onChangeMetadata({ description: e.target.value })}
             placeholder="Optional workflow description..."
-            rows={4}
+            rows={3}
           />
         </div>
+
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <h4 style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>DSL Actions</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button 
+              className="btn btn-outline" 
+              style={{ width: '100%', justifyContent: 'flex-start', gap: '8px', opacity: isCompiled ? 1 : 0.5, cursor: isCompiled ? 'pointer' : 'not-allowed' }}
+              disabled={!isCompiled}
+              onClick={onViewDslClick}
+            >
+              <Code size={14} /> View DSL
+            </button>
+            <button 
+              className="btn btn-outline" 
+              style={{ width: '100%', justifyContent: 'flex-start', gap: '8px', opacity: isCompiled ? 1 : 0.5, cursor: isCompiled ? 'pointer' : 'not-allowed' }}
+              disabled={!isCompiled}
+              onClick={onDownloadDsl}
+            >
+              <Download size={14} /> Download DSL
+            </button>
+            <button 
+              className="btn btn-outline" 
+              style={{ width: '100%', justifyContent: 'flex-start', gap: '8px', opacity: isCompiled ? 1 : 0.5, cursor: isCompiled ? 'pointer' : 'not-allowed' }}
+              disabled={!isCompiled}
+              onClick={onCopyDsl}
+            >
+              <Copy size={14} /> Copy DSL
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <h4 style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>JSON Actions</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button 
+              className="btn btn-outline" 
+              style={{ width: '100%', justifyContent: 'flex-start', gap: '8px' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload size={14} /> Import Workflow
+            </button>
+            <button 
+              className="btn btn-outline" 
+              style={{ width: '100%', justifyContent: 'flex-start', gap: '8px' }}
+              onClick={onExportJson}
+            >
+              <Download size={14} /> Export Workflow
+            </button>
+          </div>
+        </div>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          accept=".json" 
+          onChange={handleImportJson} 
+        />
       </div>
     </aside>
   );
