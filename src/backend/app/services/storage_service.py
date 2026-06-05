@@ -74,6 +74,21 @@ def save_dsl(
 
     logger.info(f"DSL saved to: {file_path} (hash: {dsl_hash})")
 
+    # Save active/latest version to flat 'active' directory
+    try:
+        active_dir = settings.COMPILED_DIR / "active"
+        active_dir.mkdir(parents=True, exist_ok=True)
+        if custom_filename:
+            active_filename = custom_filename if custom_filename.endswith('.json') else f"{custom_filename}.json"
+        else:
+            active_filename = f"{workflow_id or 'wf'}.json"
+        active_path = active_dir / active_filename
+        with open(active_path, 'w', encoding='utf-8') as f:
+            json.dump(dsl, f, indent=2, ensure_ascii=False)
+        logger.info(f"Active DSL saved to: {active_path}")
+    except Exception as e:
+        logger.error(f"Failed to save copy to active directory: {e}")
+
     # If original ReactFlow JSON is provided, save it under same hash name
     if rf_json:
         rf_filename = filename.replace(".json", ".rf")

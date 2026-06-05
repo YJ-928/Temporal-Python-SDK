@@ -195,6 +195,8 @@ class RegistrationService:
 
         # Scan recursively
         for path in compiled_dir.glob("**/*.json"):
+            if "active" in path.parts:
+                continue
             if path.name.endswith(".rf.json") or path.name.endswith("registrations.json"):
                 continue
             

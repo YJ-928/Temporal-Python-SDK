@@ -110,12 +110,14 @@ async def execute(request: EmailValidationRequest) -> EmailValidationResponse:
         logger.info(f"Email valid: {email} (domain: {domain})")
     else:
         logger.warning(f"Invalid email format: {email}")
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Invalid email format")
 
     response = EmailValidationResponse(
         success=True,
         is_valid=is_valid,
         domain=domain,
-        message="Email validated successfully" if is_valid else "Invalid email format"
+        message="Email validated successfully"
     )
 
     return response
