@@ -306,9 +306,29 @@ export const Inspector: React.FC<InspectorProps> = ({
   return (
     <aside className="inspector">
       <div className="inspector-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Settings size={18} style={{ color: 'var(--accent)' }} />
-          <h3 className="inspector-title">Workflow Configuration</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Settings size={18} style={{ color: 'var(--accent)' }} />
+            <h3 className="inspector-title">Workflow Configuration</h3>
+          </div>
+          {(metadata.workflow_id === 'weather-assistant' || 
+            metadata.workflow_id === 'email-validation-sender' || 
+            metadata.workflow_id === 'account-routing' || 
+            metadata.workflow_id === 'single-email-validator' || 
+            metadata.workflow_id === 'workflow-builder-demo') && (
+              <span style={{
+                fontSize: '8px',
+                background: 'rgba(99, 102, 241, 0.15)',
+                border: '1px solid rgba(99, 102, 241, 0.4)',
+                color: 'var(--accent)',
+                borderRadius: '4px',
+                padding: '1px 5px',
+                fontWeight: 'bold',
+                letterSpacing: '0.5px'
+              }}>
+                TEMPLATE
+              </span>
+          )}
         </div>
         <span 
           style={{ 

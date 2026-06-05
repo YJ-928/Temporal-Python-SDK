@@ -8,6 +8,9 @@
   --bg-card: rgba(15, 23, 42, 0.65);
   --bg-input: rgba(30, 41, 59, 0.5);
   
+  --sidebar-width: 220px;
+  --inspector-width: 280px;
+  
   --border-color: rgba(255, 255, 255, 0.08);
   --border-focus: rgba(99, 102, 241, 0.5);
   
@@ -186,7 +189,7 @@ body, html, #root {
    -------------------------------------------------------------------------- */
 
 .sidebar {
-  width: 220px;
+  width: var(--sidebar-width);
   background: var(--bg-card);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -576,7 +579,7 @@ body, html, #root {
    -------------------------------------------------------------------------- */
 
 .inspector {
-  width: 320px;
+  width: var(--inspector-width);
   background: var(--bg-card);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -780,15 +783,14 @@ body, html, #root {
 .simulator-panel {
   position: absolute;
   bottom: 0;
-  left: 280px;
-  right: 320px;
+  left: var(--sidebar-width);
+  right: var(--inspector-width);
   background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(12px);
   border-top: var(--glass-border);
   z-index: 50;
   display: flex;
   flex-direction: column;
-  transition: height 0.3s ease;
   box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
 }
 

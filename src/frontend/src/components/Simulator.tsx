@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Trash2, ChevronDown, ChevronUp, RefreshCw, Zap, History, Activity, ChevronRight, Gauge } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, RefreshCw, Zap, History, Activity, ChevronRight, Gauge, ChevronLeft, Copy, Maximize } from 'lucide-react';
 import type { WorkflowMetadata } from '../types';
 
 export interface LogEntry {
@@ -65,6 +65,48 @@ export const Simulator: React.FC<SimulatorProps> = ({
   const [inputJson, setInputJson] = useState<string>('{\n  "city": "kolkata"\n}');
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
+  // Layout resizing & collapse states
+  const [panelHeight, setPanelHeight] = useState<number>(() => {
+    return parseInt(localStorage.getItem('workflow-runtime-height') || '300', 10);
+  });
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = useState<boolean>(false);
+  const [isDslExpanded, setIsDslExpanded] = useState<boolean>(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newHeight = window.innerHeight - e.clientY;
+      const clampedHeight = Math.max(48, Math.min(newHeight, window.innerHeight * 0.7));
+      setPanelHeight(clampedHeight);
+      
+      if (clampedHeight <= 55) {
+        setIsOpen(false);
+      } else {
+        setIsOpen(true);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      localStorage.setItem('workflow-runtime-height', panelHeight.toString());
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, panelHeight, setIsOpen]);
+
   useEffect(() => {
     if (consoleEndRef.current && activeTab === 'compilation_log') {
       consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -100,6 +142,19 @@ export const Simulator: React.FC<SimulatorProps> = ({
     return null;
   };
 
+  // Freshness counter for DSL tab
+  const getFreshness = () => {
+    if (!compiledAt) return '';
+    const diffMs = Date.now() - new Date(compiledAt).getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 10) return 'just now';
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    return `${diffHr}h ago`;
+  };
+
   const handleExecute = () => {
     try {
       const parsed = JSON.parse(inputJson);
@@ -120,8 +175,27 @@ export const Simulator: React.FC<SimulatorProps> = ({
   return (
     <div 
       className="simulator-panel" 
-      style={{ height: isOpen ? '280px' : '48px' }}
+      style={{ height: isOpen ? (isDslExpanded ? 'calc(100vh - 80px)' : `${panelHeight}px`) : '48px' }}
     >
+      {/* Draggable splitter handle */}
+      {isOpen && !isDslExpanded && (
+        <div 
+          className="runtime-resize-handle"
+          onMouseDown={handleMouseDown}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '4px',
+            cursor: 'ns-resize',
+            zIndex: 100,
+            background: isResizing ? 'var(--accent)' : 'transparent',
+            transition: 'background 0.2s'
+          }}
+        />
+      )}
+
       <div className="simulator-header" style={{ background: '#0f172a' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div className="simulator-title" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
@@ -131,40 +205,56 @@ export const Simulator: React.FC<SimulatorProps> = ({
         </div>
 
         <div className="simulator-controls">
-          <button className="close-btn" onClick={() => setIsOpen(!isOpen)}>
+          <button className="close-btn" onClick={() => {
+            setIsOpen(!isOpen);
+            if (isOpen) setIsDslExpanded(false); // Restore if closing
+          }}>
             {isOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
         </div>
       </div>
 
       {isOpen && (
-        <div style={{ display: 'flex', height: '240px', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', height: isDslExpanded ? 'calc(100vh - 120px)' : `${panelHeight - 40}px`, overflow: 'hidden' }}>
           {/* Run History Sidebar */}
           <div style={{
-            width: '240px',
-            borderRight: '1px solid var(--border-color)',
+            width: isHistoryCollapsed ? '0px' : '220px',
+            borderRight: isHistoryCollapsed ? 'none' : '1px solid var(--border-color)',
             background: 'rgba(15, 23, 42, 0.4)',
             display: 'flex',
             flexDirection: 'column',
-            height: '100%'
+            height: '100%',
+            overflow: 'hidden',
+            transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-right 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            position: 'relative'
           }}>
-            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-color)', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 'bold' }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-color)', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <History size={12} />
                 <span>Execution History</span>
               </div>
-              <button 
-                onClick={onRefreshHistory} 
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                title="Refresh History"
-              >
-                <RefreshCw size={11} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button 
+                  onClick={onRefreshHistory} 
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                  title="Refresh History"
+                >
+                  <RefreshCw size={11} />
+                </button>
+                <button 
+                  onClick={() => setIsHistoryCollapsed(true)} 
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                  title="Collapse History"
+                >
+                  <ChevronLeft size={12} />
+                </button>
+              </div>
             </div>
             <div style={{ overflowY: 'auto', flex: 1, padding: '4px' }}>
               {executionHistory.length === 0 ? (
-                <div style={{ padding: '16px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  No past runs found.
+                <div style={{ padding: '24px 16px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', justifyContent: 'center' }}>
+                  <span>No executions yet.</span>
+                  <span style={{ fontSize: '10px', opacity: 0.6 }}>Compile and execute a workflow.</span>
                 </div>
               ) : (
                 executionHistory.map((run) => {
@@ -222,7 +312,28 @@ export const Simulator: React.FC<SimulatorProps> = ({
           {/* Main Workspace Area with Tabs */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', background: '#0b0f19' }}>
             {/* Tabs Bar */}
-            <div className="modal-tabs" style={{ marginBottom: 0, padding: '0 16px', background: '#0a0d16', borderBottom: '1px solid var(--border-color)' }}>
+            <div className="modal-tabs" style={{ marginBottom: 0, padding: '0 16px', background: '#0a0d16', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center' }}>
+              {isHistoryCollapsed && (
+                <button
+                  className="modal-tab-btn"
+                  style={{
+                    padding: '12px 16px',
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                    borderRight: '1px solid var(--border-color)',
+                    marginRight: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(255, 255, 255, 0.02)'
+                  }}
+                  onClick={() => setIsHistoryCollapsed(false)}
+                  title="Expand Execution History"
+                >
+                  <History size={11} />
+                  <span>History &nbsp;▶</span>
+                </button>
+              )}
               <button
                 className={`modal-tab-btn ${activeTab === 'execution' ? 'active' : ''}`}
                 style={{ padding: '12px 16px', fontSize: '12px' }}
@@ -569,19 +680,47 @@ export const Simulator: React.FC<SimulatorProps> = ({
                           <span style={{ fontFamily: 'monospace', color: 'var(--accent)' }}>{compiledHash}</span>
                         </div>
                         <div>
-                          <span style={{ color: 'var(--text-muted)', display: 'block' }}>Generated At</span>
-                          <span style={{ color: 'var(--text-secondary)' }}>{compiledAt ? new Date(compiledAt).toLocaleString() : '--'}</span>
+                          <span style={{ color: 'var(--text-muted)', display: 'block' }}>Freshness</span>
+                          <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{compiledAt ? getFreshness() : '--'}</span>
+                        </div>
+                      </div>
+
+                      {/* DSL Controls & Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Generated Backend DSL</span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '4px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            onClick={() => {
+                              navigator.clipboard.writeText(JSON.stringify(compiledDsl, null, 2));
+                              alert('DSL copied to clipboard!');
+                            }}
+                          >
+                            <Copy size={10} />
+                            Copy DSL
+                          </button>
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '4px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            onClick={() => setIsDslExpanded(!isDslExpanded)}
+                          >
+                            <Maximize size={10} />
+                            {isDslExpanded ? 'Restore View' : 'Expand View'}
+                          </button>
                         </div>
                       </div>
 
                       {/* DSL Code Display */}
-                      <pre className="dsl-pre" style={{ margin: 0, maxHeight: '160px', overflowY: 'auto' }}>
+                      <pre className="dsl-pre" style={{ margin: 0, maxHeight: isDslExpanded ? 'calc(100vh - 280px)' : '160px', overflowY: 'auto', flex: isDslExpanded ? 1 : 'unset' }}>
                         <code>{JSON.stringify(compiledDsl, null, 2)}</code>
                       </pre>
                     </>
                   ) : (
-                    <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-                      ⚠️ No compiled DSL available. Click "Validate & Compile" in the toolbar to generate and view the backend compiler output.
+                    <div style={{ padding: '40px 24px', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', justifyContent: 'center', margin: 'auto 0' }}>
+                      <span style={{ fontSize: '18px' }}>📝</span>
+                      <strong>Compile a workflow to generate DSL.</strong>
+                      <span style={{ fontSize: '11px', opacity: 0.7 }}>Use the "Validate & Compile" button in the toolbar to run the compiler and inspect the output.</span>
                     </div>
                   )}
                 </div>

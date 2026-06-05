@@ -2,7 +2,6 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   MiniMap,
-  Controls,
   Background,
   useNodesState,
   useEdgesState,
@@ -281,8 +280,13 @@ const FlowBuilder: React.FC = () => {
       setShowBanner(false);
       setLogs([]);
       addLog(`Loaded example workflow: "${example.name}"`, 'info');
+      
+      // Auto fit view after nodes render
+      setTimeout(() => {
+        reactFlowInstance?.fitView({ duration: 400 });
+      }, 100);
     }
-  }, [setNodes, setEdges, handleReset]);
+  }, [setNodes, setEdges, handleReset, reactFlowInstance]);
 
   // Undo operation
   const undo = () => {
@@ -397,6 +401,11 @@ const FlowBuilder: React.FC = () => {
     setMetadata(importedMetadata);
     invalidateCompilation();
     addLog(`Imported workflow design from JSON file.`, 'info');
+    
+    // Auto fit view after nodes render
+    setTimeout(() => {
+      reactFlowInstance?.fitView({ duration: 400 });
+    }, 100);
   };
 
   const handleExportJson = () => {
@@ -528,6 +537,66 @@ const FlowBuilder: React.FC = () => {
     };
   }, [activeRunId, executionHistory, nodes, refreshHistory, metadata.workflow_id]);
 
+  // Keyboard shortcuts listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.getAttribute('contenteditable') === 'true')
+      ) {
+        return;
+      }
+
+      // Ctrl + Enter or Cmd + Enter -> Validate & Compile
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        validateAndCompile();
+      }
+
+      // Ctrl + Z or Cmd + Z -> Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      }
+
+      // Ctrl + Y or Cmd + Y -> Redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+
+      // Ctrl + Shift + E -> Export JSON
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        handleExportJson();
+      }
+
+      // Delete -> Delete selected node or edge
+      if (e.key === 'Delete') {
+        if (selectedNodeId) {
+          e.preventDefault();
+          pushToUndo();
+          setNodes((nds) => nds.filter((n) => n.id !== selectedNodeId));
+          setEdges((eds) => eds.filter((edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId));
+          setSelectedNodeId(null);
+        } else if (selectedEdgeId) {
+          e.preventDefault();
+          pushToUndo();
+          setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdgeId));
+          setSelectedEdgeId(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [nodes, edges, selectedNodeId, selectedEdgeId, validateAndCompile, undo, redo, handleExportJson]);
+
   // Find selected elements
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || null;
@@ -572,6 +641,10 @@ const FlowBuilder: React.FC = () => {
         onCopyDsl={handleCopyDsl}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
+        onZoomIn={() => reactFlowInstance?.zoomIn()}
+        onZoomOut={() => reactFlowInstance?.zoomOut()}
+        onFitView={() => reactFlowInstance?.fitView({ duration: 400 })}
+        isExample={!!EXAMPLES[metadata.workflow_id] || metadata.workflow_id === 'workflow-builder-demo'}
       />
       <div className="main-content">
         <Sidebar
@@ -655,9 +728,9 @@ const FlowBuilder: React.FC = () => {
             nodeTypes={nodeTypes}
             onSelectionChange={onSelectionChange}
             fitView
+            deleteKeyCode={null}
           >
             <Background color="#334155" gap={16} size={1} />
-            <Controls />
             <MiniMap
               nodeColor={(node) => {
                 switch (node.type) {
