@@ -1,6 +1,6 @@
-# Temporal Python SDK + Zigflow — AI Agent Instructions
+# Temporal Python SDK + Zigflow — Claude Code Instructions
 
-> **Purpose:** Repository orientation for AI agents. This file defines WHAT exists, WHERE it lives, and HOW to begin work. For deep technical reference, read the authoritative feature documents listed below — do not duplicate their content here.
+> **Purpose:** Repository orientation for Claude Code. This file defines WHAT exists, WHERE it lives, and HOW to begin work. For deep technical reference, read the authoritative feature documents listed below — do not duplicate their content here.
 
 ---
 
@@ -10,9 +10,11 @@ For any task in this repository, **read the corresponding feature document first
 
 | Domain | Document | When to Read |
 |---|---|---|
-| DSL Compiler / Visual Workflow Builder | [`.github/features/compiler.md`](.github/features/compiler.md) | Any work on `src/backend/` — compiler, builders, schemas, services, API, registration, execution |
-| Temporal Python SDK | [`.github/features/temporal.md`](.github/features/temporal.md) | Any work on Temporal workflows, activities, workers, signals, queries, updates |
-| Zigflow YAML Workflows | [`.github/features/zigflow.md`](.github/features/zigflow.md) | Any work on Zigflow YAML files, DSL task types, runtime expressions, Zigflow CLI |
+| DSL Compiler / Visual Workflow Builder | [`.claude/features/compiler.md`](.claude/features/compiler.md) | Any work on `src/backend/` — compiler, builders, schemas, services, API, registration, execution |
+| Temporal Python SDK | [`.claude/features/temporal.md`](.claude/features/temporal.md) | Any work on Temporal workflows, activities, workers, signals, queries, updates |
+| Zigflow YAML Workflows | [`.claude/features/zigflow.md`](.claude/features/zigflow.md) | Any work on Zigflow YAML files, DSL task types, runtime expressions, Zigflow CLI |
+
+These documents are identical to `.github/features/compiler.md`, `.github/features/temporal.md`, and `.github/features/zigflow.md` respectively. The `.github/features/` copies are the canonical source; `.claude/features/` copies are provided for direct Claude Code access.
 
 **Rule:** Never duplicate these documents here. Read them first. Make changes second. If this file and a feature doc disagree, the feature doc wins. If a feature doc and the source code disagree, the code wins.
 
@@ -40,11 +42,10 @@ For any task in this repository, **read the corresponding feature document first
 .
 ├── demo/
 │   └── temporal-poc-demo/              # ★ Main showcase POC — exercises every Temporal feature
-│       ├── workflows.py                # TemporalShowcaseWorkflow (6 phases: counter, password,
-│       │                               #   file processor, calculator, media, resilience)
+│       ├── workflows.py                # TemporalShowcaseWorkflow (6 phases)
 │       ├── activities.py               # All activities
-│       ├── child_workflows.py          # FileProcessingChildWorkflow + VideoProcessingChildWorkflow
-│       ├── shared.py                   # Shared dataclasses (inputs, outputs, progress, results)
+│       ├── child_workflows.py          # FileProcessing + VideoProcessing child workflows
+│       ├── shared.py                   # Shared dataclasses
 │       ├── worker.py                   # Worker registration
 │       ├── starter.py                  # Workflow startup
 │       └── clients.py                  # CLI driver (signals, queries, updates)
@@ -72,60 +73,20 @@ For any task in this repository, **read the corresponding feature document first
 │
 ├── zigflow/                            # ★ Zigflow YAML workflow examples
 │   ├── Yaml/                           # Runnable YAML workflows
-│   │   ├── hello_world.yaml
-│   │   ├── http_call.yaml
-│   │   ├── signal_driven_workflow.yaml
-│   │   ├── parallel_task.yaml
-│   │   ├── error_handling.yaml
-│   │   ├── zigflow_temporal_heartbeat.yaml
-│   │   ├── zigflow_temporal_signal.yaml
-│   │   └── greet_user.yaml  (+ farewell_user variants, http_call_query_param, etc.)
-│   └── Json/                           # JSON equivalents of the same workflows
+│   └── Json/                           # JSON equivalents
 │
 ├── src/
 │   └── backend/                        # ★ Authoritative DSL Compiler + FastAPI backend
 │       ├── app/
 │       │   ├── compiler/               # Phase A: graph.py | Phase B: dsl_generator.py
-│       │   │   ├── graph.py            # validate_graph(), traverse_graph(), compile_workflow()
-│       │   │   ├── dsl_generator.py    # BUILDER_REGISTRY, register_builder(), generate_dsl()
-│       │   │   ├── workflow_compiler.py # compile_workflow_to_dsl(), initialize_builders()
-│       │   │   └── exceptions.py       # WorkflowValidationError → GraphValidationError
 │       │   ├── builders/               # Node builders registered into BUILDER_REGISTRY
-│       │   │   ├── __init__.py         # BUILDERS dict: START END INPUT OUTPUT ACTION AGENT IF
-│       │   │   ├── input_builder.py    # build_input() → set + export.as
-│       │   │   ├── output_builder.py   # build_output() → set (expose)
-│       │   │   ├── action_builder.py   # build_action() → call: http + export.as
-│       │   │   ├── agent_builder.py    # build_agent() → call: http (AgentRegistry lookup)
-│       │   │   ├── if_builder.py       # build_if() → switch task
-│       │   │   ├── condition_builder.py # build_condition_expression()
-│       │   │   └── terminal_builder.py # build_terminal() → None (START/END emit nothing)
-│       │   ├── schemas/
-│       │   │   └── workflow_sch.py     # Pydantic v2 models: WorkflowDefinition, Node union, Edge
-│       │   ├── services/
-│       │   │   ├── compiler_service.py    # CompilerService: compile(), compile_and_save()
-│       │   │   ├── registration_service.py # RegistrationService: register, hot-reload
-│       │   │   ├── execution_service.py   # ExecutionService: execute, list, trace, cancel
-│       │   │   └── storage_service.py     # Storage: save DSL, find by hash
-│       │   ├── agents/
-│       │   │   └── registry.py         # AgentRegistry: 4 agents (ports 11000–11003)
-│       │   ├── api/
-│       │   │   └── v1/                 # FastAPI route handlers
-│       │   └── config/
-│       │       ├── settings.py         # DEFAULT_TASK_QUEUE, TEMPORAL_ADDRESS, COMPILED_DIR
-│       │       └── compiler_settings.py # workflow_type, task_queue, dsl_version defaults
-│       ├── runtime/
-│       │   ├── compiled/               # Compiled DSL JSON files (organized by workflow ID)
-│       │   └── registrations.json      # Workflow registration registry
-│       ├── scripts/
-│       │   ├── start_runtime.sh        # Start Zigflow runtime daemon
-│       │   └── stop_runtime.sh         # Stop Zigflow runtime daemon
-│       └── tests/                      # Compiler test suite
-│           ├── test_compiler.py        # Snapshot tests (compile fixture → compare stored snapshot)
-│           ├── test_convergence.py     # 5 convergence scenarios
-│           ├── test_validation.py      # 7 invalid fixture rejection tests
-│           ├── test_builders.py        # Builder unit tests
-│           ├── test_services.py        # Service integration tests
-│           └── snapshots/              # Stored expected DSL output snapshots
+│       │   ├── schemas/                # Pydantic validation models (workflow_sch.py)
+│       │   ├── services/               # CompilerService, RegistrationService, ExecutionService
+│       │   ├── agents/                 # AgentRegistry (4 registered agents)
+│       │   └── api/                    # FastAPI routes (v1/)
+│       ├── runtime/                    # Compiled DSL files + registrations.json
+│       ├── scripts/                    # start_runtime.sh, stop_runtime.sh
+│       └── tests/                      # Compiler test suite (pytest)
 │
 ├── poc-dsl-compiler/                   # Historical POC (reference only — NOT authoritative)
 ├── poc-react-flow/                     # V0 prototype (historical reference)
@@ -138,15 +99,14 @@ For any task in this repository, **read the corresponding feature document first
 │   ├── Zigflow_CLI_Cheatsheet.md
 │   └── workflow_builder_architecture.md
 │
-├── docker-compose-postgres.yml         # Full local cluster with Postgres
-├── docker-compose-mysql.yml            # Full local cluster with MySQL
-├── start-temporal-dev.sh               # Installs Temporal CLI if missing, starts dev server
-├── pyproject.toml / uv.lock / requirements.txt
+├── docker-compose-postgres.yml
+├── docker-compose-mysql.yml
+├── start-temporal-dev.sh
 └── .github/
     └── features/
-        ├── compiler.md                 # ★ Authoritative compiler reference
-        ├── temporal.md                 # ★ Authoritative Temporal SDK reference
-        └── zigflow.md                  # ★ Authoritative Zigflow reference
+        ├── compiler.md                 # ★ Canonical compiler reference (identical to .claude/features/compiler.md)
+        ├── temporal.md                 # ★ Canonical Temporal SDK reference
+        └── zigflow.md                  # ★ Canonical Zigflow reference
 ```
 
 ---
@@ -159,9 +119,9 @@ For any task in this repository, follow these steps in order:
 
 | If working on… | Read first |
 |---|---|
-| Compiler pipeline, builders, schemas, services, API, registration, execution | `.github/features/compiler.md` |
-| Temporal workflows, activities, workers, signals, queries, updates, testing | `.github/features/temporal.md` |
-| Zigflow YAML files, DSL task types, expressions, CLI | `.github/features/zigflow.md` |
+| Compiler pipeline, builders, schemas, services, API, registration, execution | `.claude/features/compiler.md` |
+| Temporal workflows, activities, workers, signals, queries, updates, testing | `.claude/features/temporal.md` |
+| Zigflow YAML files, DSL task types, expressions, CLI | `.claude/features/zigflow.md` |
 
 **Step 2 — Read the corresponding feature document.**
 
@@ -169,7 +129,7 @@ For any task in this repository, follow these steps in order:
 
 **Step 4 — Make changes.** Source code is the source of truth. If documentation and code disagree, code wins.
 
-**Step 5 — If you changed the implementation, update the feature doc to match.** Feature documents must remain in sync with code.
+**Step 5 — If you changed the implementation, update the feature doc to match.** Feature documents in both `.github/features/` and `.claude/features/` must remain in sync with code.
 
 ---
 
@@ -181,10 +141,10 @@ For any task in this repository, follow these steps in order:
 | Add an activity | `demo/temporal-poc-demo/activities.py` — use `@activity.defn`, heartbeats for long tasks |
 | Add a signal/query/update | `demo/temporal-poc-demo/workflows.py` — all three patterns in one class |
 | Write a Temporal test | `temporal-python-learning/exercises/exercise_06_testing_workflow.py` |
-| Work on the compiler | `src/backend/app/compiler/` — read `.github/features/compiler.md` first |
-| Add a new compiler node type | See Section 15 of `.github/features/compiler.md` for the complete checklist |
+| Work on the compiler | `src/backend/app/compiler/` — read `.claude/features/compiler.md` first |
+| Add a new compiler node type | See Section 15 of `.claude/features/compiler.md` for the complete checklist |
 | Write a compiler test | `src/backend/tests/` — snapshot tests in `test_compiler.py` |
-| Write a Zigflow workflow | Copy from `zigflow/Yaml/` — read `.github/features/zigflow.md` for DSL reference |
+| Write a Zigflow workflow | Copy from `zigflow/Yaml/` — read `.claude/features/zigflow.md` for DSL reference |
 | Debug a Zigflow workflow | `zigflow validate workflow.yaml`, then `zigflow run -f workflow.yaml --log-level debug` |
 | Start everything locally | `./start-temporal-dev.sh`, then `cd src/backend && uvicorn app.main:app --reload` |
 | Understand parallel activities | `temporal-python-tutorial/parallel-file-processing-signals/` |
@@ -195,8 +155,6 @@ For any task in this repository, follow these steps in order:
 ## 5. Running Projects
 
 ### Demo — Temporal Showcase POC
-
-The most complete Temporal example. `TemporalShowcaseWorkflow` exercises all 6 major feature areas.
 
 ```bash
 # Terminal 1 — Start worker
@@ -245,11 +203,11 @@ uvicorn app.main:app --reload    # Runs at http://localhost:8000
 ## 6. Rules for Agents
 
 1. **Read the feature document for the task domain before making any changes.** Do not rely on memory or inference for compiler, Temporal, or Zigflow behavior.
-2. **Source code wins over documentation.** If `.github/features/compiler.md` and `src/backend/` disagree, trust the code.
+2. **Source code wins over documentation.** If `.claude/features/compiler.md` and `src/backend/` disagree, trust the code.
 3. **`poc-dsl-compiler/` is historical.** The authoritative compiler is `src/backend/`. Never use `poc-dsl-compiler/` as the basis for backend compiler changes.
 4. **Do not modify files in `documents/`.** These are reference material.
-5. **Do not invent compiler node types.** The backend supports exactly 7: `START`, `END`, `INPUT`, `OUTPUT`, `ACTION`, `AGENT`, `IF`. Full contracts in `.github/features/compiler.md` Section 9.
-6. **Update documentation when you change implementation.** Feature docs must remain in sync with code.
+5. **Do not invent compiler node types.** The backend supports exactly 7: `START`, `END`, `INPUT`, `OUTPUT`, `ACTION`, `AGENT`, `IF`. Full contracts in `.claude/features/compiler.md` Section 9.
+6. **Update documentation when you change implementation.** Both `.github/features/` and `.claude/features/` docs must remain in sync with code.
 7. **Do not duplicate feature doc content in this file.** This file is an orientation guide, not a knowledge base.
 
 ---

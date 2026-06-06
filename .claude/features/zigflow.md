@@ -1512,4 +1512,4 @@ temporal workflow show --workflow-id fetch-user-01 --detailed
 
 ---
 
-*Generated from: CNCF Serverless Workflow DSL v1.0.0, Zigflow examples in `Zigflow/Examples/`, and Temporal Python SDK conventions in this repository.*
+*Generated from: CNCF Serverless Workflow DSL v1.0.0, Zigflow examples in `zigflow/Yaml/`, and Temporal Python SDK conventions in this repository.*
