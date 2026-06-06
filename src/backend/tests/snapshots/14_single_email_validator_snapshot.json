@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "single-email-validator-type",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -13,7 +14,8 @@
         },
         "export": {
           "as": "${ $context + {email: .email} }"
-        }
+        },
+        "then": "N3_agent"
       }
     },
     {
@@ -29,7 +31,8 @@
         },
         "export": {
           "as": "${ $context + {email_validation: .} }"
-        }
+        },
+        "then": "N4_expose"
       }
     },
     {

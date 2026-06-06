@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "mixed",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -18,7 +19,8 @@
         },
         "export": {
           "as": "${ $context + {info: .} }"
-        }
+        },
+        "then": "N3_agent"
       }
     },
     {
@@ -26,7 +28,7 @@
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:11000/execute",
+          "endpoint": "http://localhost:11003/execute",
           "headers": {
             "Content-Type": "application/json"
           }

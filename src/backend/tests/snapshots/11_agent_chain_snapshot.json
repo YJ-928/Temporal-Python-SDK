@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "chain",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -19,7 +20,8 @@
         },
         "export": {
           "as": "${ $context + {validation_result: .is_valid} }"
-        }
+        },
+        "then": "N3_agent"
       }
     },
     {

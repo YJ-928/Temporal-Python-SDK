@@ -50,6 +50,7 @@ const FlowBuilder: React.FC = () => {
   // Unified Workflow Execution States
   const [executionHistory, setExecutionHistory] = useState<any[]>([]);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [activeRunStatus, setActiveRunStatus] = useState<string>('');
   const [nodeTraceStates, setNodeTraceStates] = useState<Record<string, any>>({});
   const [isTriggeringRun, setIsTriggeringRun] = useState(false);
 
@@ -363,6 +364,7 @@ const FlowBuilder: React.FC = () => {
       addLog(`Workflow triggered successfully! Run ID: ${res.run_id}`, 'success');
       
       setActiveRunId(res.run_id);
+      setActiveRunStatus('RUNNING');
       setSimulatorTab('trace');
       await refreshHistory();
     } catch (err: any) {
@@ -493,8 +495,12 @@ const FlowBuilder: React.FC = () => {
       setLogs([]);
       loggedStepsRef.current = {};
       setNodeTraceStates({});
+      const run = executionHistory.find(r => r.run_id === activeRunId);
+      setActiveRunStatus(run?.status || 'RUNNING');
+    } else {
+      setActiveRunStatus('');
     }
-  }, [activeRunId]);
+  }, [activeRunId, executionHistory]);
 
   useEffect(() => {
     refreshHistory();
@@ -536,6 +542,13 @@ const FlowBuilder: React.FC = () => {
         if (trace && trace.steps) {
           setNodeTraceStates(trace.steps);
           
+          if (trace.status && trace.status !== activeRunStatus) {
+            setActiveRunStatus(trace.status);
+            setExecutionHistory(prev =>
+              prev.map(r => r.run_id === activeRunId ? { ...r, status: trace.status } : r)
+            );
+          }
+
           Object.keys(trace.steps).forEach((nodeId) => {
             const step = trace.steps[nodeId];
             const prev = loggedStepsRef.current[nodeId];
@@ -562,7 +575,7 @@ const FlowBuilder: React.FC = () => {
 
     pollTrace();
     
-    const isCompleted = activeRun && (activeRun.status === 'COMPLETED' || activeRun.status === 'completed' || activeRun.status === 'FAILED' || activeRun.status === 'failed' || activeRun.status === 'CANCELED' || activeRun.status === 'canceled' || activeRun.status === 'TERMINATED' || activeRun.status === 'terminated');
+    const isCompleted = activeRunStatus === 'COMPLETED' || activeRunStatus === 'completed' || activeRunStatus === 'FAILED' || activeRunStatus === 'failed' || activeRunStatus === 'CANCELED' || activeRunStatus === 'canceled' || activeRunStatus === 'TERMINATED' || activeRunStatus === 'terminated';
 
     if (!isCompleted) {
       intervalId = setInterval(async () => {
@@ -574,7 +587,7 @@ const FlowBuilder: React.FC = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [activeRunId, executionHistory, nodes, refreshHistory, metadata.workflow_id]);
+  }, [activeRunId, executionHistory, nodes, refreshHistory, metadata.workflow_id, activeRunStatus]);
 
   // Keyboard shortcuts listener
   useEffect(() => {
@@ -806,6 +819,7 @@ const FlowBuilder: React.FC = () => {
           onCancelRun={handleCancelRun}
           onTerminateRun={handleTerminateRun}
           nodeTraceStates={nodeTraceStates}
+          activeRunStatus={activeRunStatus}
           activeTab={simulatorTab}
           setActiveTab={setSimulatorTab}
           isOpen={isSimulatorOpen}

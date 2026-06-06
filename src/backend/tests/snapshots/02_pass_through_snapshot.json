@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "pass-through",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -13,7 +14,8 @@
         },
         "export": {
           "as": "${ $context + {name: .name} }"
-        }
+        },
+        "then": "N3_expose"
       }
     },
     {

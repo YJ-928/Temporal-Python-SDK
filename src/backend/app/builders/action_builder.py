@@ -58,7 +58,11 @@ def build_action(node: dict, *, traversal_entry: dict | None = None) -> dict:
         body_expr = f"${{ {{{jq_pairs}}} }}"
         fragment[task_name]["with"]["body"] = body_expr
 
-    if traversal_entry and traversal_entry.get("is_terminal"):
-        fragment[task_name]["then"] = "end"
+    if traversal_entry:
+        then_val = traversal_entry.get("then_transition")
+        if not then_val and traversal_entry.get("is_terminal"):
+            then_val = "end"
+        if then_val:
+            fragment[task_name]["then"] = then_val
 
     return fragment

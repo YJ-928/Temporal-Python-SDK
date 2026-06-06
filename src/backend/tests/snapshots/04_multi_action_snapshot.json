@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "multi-action",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -13,7 +14,8 @@
         },
         "export": {
           "as": "${ $context + {item_id: .item_id} }"
-        }
+        },
+        "then": "N3_check_stock"
       }
     },
     {
@@ -29,7 +31,8 @@
         },
         "export": {
           "as": "${ $context + {is_available: .} }"
-        }
+        },
+        "then": "N4_reserve_item"
       }
     },
     {
@@ -45,7 +48,8 @@
         },
         "export": {
           "as": "${ $context + {reservation_id: .} }"
-        }
+        },
+        "then": "N5_expose"
       }
     },
     {

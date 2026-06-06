@@ -31,6 +31,7 @@ interface SimulatorProps {
   onCancelRun?: (workflowId: string, runId: string) => void;
   onTerminateRun?: (workflowId: string, runId: string, reason: string) => void;
   nodeTraceStates?: Record<string, { status: string; input?: any; output?: any; error?: string; duration_seconds?: number }>;
+  activeRunStatus?: string;
 
   // Control tabs and visibility
   activeTab: TabType;
@@ -63,6 +64,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
   onCancelRun,
   onTerminateRun,
   nodeTraceStates = {},
+  activeRunStatus,
   activeTab,
   setActiveTab,
   isOpen,
@@ -138,6 +140,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
   }, [metadata.workflow_id]);
 
   const activeRun = executionHistory.find((r) => r.run_id === activeRunId);
+  const currentStatus = activeRunStatus || activeRun?.status || 'UNKNOWN';
 
   // Compute duration for the run summary
   const getRunDuration = () => {
@@ -469,9 +472,9 @@ export const Simulator: React.FC<SimulatorProps> = ({
                         <div>
                           <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Status</span>
                           <strong style={{ 
-                            color: activeRun?.status === 'COMPLETED' || activeRun?.status === 'completed' ? '#10b981' : activeRun?.status === 'RUNNING' || activeRun?.status === 'running' ? '#3b82f6' : '#ef4444'
+                            color: currentStatus === 'COMPLETED' || currentStatus === 'completed' ? '#10b981' : currentStatus === 'RUNNING' || currentStatus === 'running' ? '#3b82f6' : '#ef4444'
                           }}>
-                            {activeRun?.status?.toUpperCase() || 'UNKNOWN'}
+                            {currentStatus.toUpperCase()}
                           </strong>
                         </div>
                         <div>
@@ -484,10 +487,10 @@ export const Simulator: React.FC<SimulatorProps> = ({
                           <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Duration</span>
                           <span style={{ color: 'var(--text-secondary)' }}>{getRunDuration() || '--'}</span>
                         </div>
-                        {activeRun && (activeRun.status === 'RUNNING' || activeRun.status === 'running') && (
+                        {(currentStatus === 'RUNNING' || currentStatus === 'running') && (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <button
-                              onClick={() => onCancelRun && onCancelRun(activeRun.workflow_id, activeRun.run_id)}
+                              onClick={() => onCancelRun && onCancelRun(activeRun?.workflow_id || metadata.workflow_id, activeRunId!)}
                               style={{
                                 padding: '4px 8px',
                                 fontSize: '10px',
@@ -504,7 +507,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
                               onClick={() => {
                                 const reason = prompt("Enter termination reason:", "Terminated by user");
                                 if (reason !== null && onTerminateRun) {
-                                  onTerminateRun(activeRun.workflow_id, activeRun.run_id, reason);
+                                  onTerminateRun(activeRun?.workflow_id || metadata.workflow_id, activeRunId!, reason);
                                 }
                               }}
                               style={{

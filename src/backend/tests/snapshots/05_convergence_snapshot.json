@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "convergence",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -13,7 +14,8 @@
         },
         "export": {
           "as": "${ $context + {query: .query} }"
-        }
+        },
+        "then": "N3_vector_search"
       }
     },
     {
@@ -29,7 +31,8 @@
         },
         "export": {
           "as": "${ $context + {results: .} }"
-        }
+        },
+        "then": "N4_rerank"
       }
     },
     {
@@ -45,7 +48,8 @@
         },
         "export": {
           "as": "${ $context + {top_result: .} }"
-        }
+        },
+        "then": "N5_expose"
       }
     },
     {

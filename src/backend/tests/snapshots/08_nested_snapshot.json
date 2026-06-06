@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "nested",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -14,7 +15,8 @@
         },
         "export": {
           "as": "${ $context + {age: .age, is_member: .is_member} }"
-        }
+        },
+        "then": "N3_if"
       }
     },
     {
@@ -72,11 +74,11 @@
               },
               "export": {
                 "as": "${ $context + {res: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     },
     {
@@ -94,11 +96,11 @@
               },
               "export": {
                 "as": "${ $context + {res: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     },
     {
@@ -116,11 +118,11 @@
               },
               "export": {
                 "as": "${ $context + {res: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     }
   ]

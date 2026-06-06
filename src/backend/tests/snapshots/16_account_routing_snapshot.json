@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "account-routing-type",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -13,7 +14,8 @@
         },
         "export": {
           "as": "${ $context + {account_id: .account_id} }"
-        }
+        },
+        "then": "N3_account_lookup"
       }
     },
     {
@@ -29,7 +31,8 @@
         },
         "export": {
           "as": "${ $context + {account: .} }"
-        }
+        },
+        "then": "N4_if"
       }
     },
     {
@@ -68,7 +71,8 @@
               }
             }
           }
-        ]
+        ],
+        "then": "N7_expose"
       }
     },
     {
@@ -101,7 +105,8 @@
               }
             }
           }
-        ]
+        ],
+        "then": "N7_expose"
       }
     }
   ]

@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "legacy-routing",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -13,7 +14,8 @@
         },
         "export": {
           "as": "${ $context + {status: .status} }"
-        }
+        },
+        "then": "N3_if"
       }
     },
     {
@@ -48,11 +50,11 @@
               },
               "export": {
                 "as": "${ $context + {res: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     },
     {
@@ -70,11 +72,11 @@
               },
               "export": {
                 "as": "${ $context + {res: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     }
   ]

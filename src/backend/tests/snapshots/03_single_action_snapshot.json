@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "action-pipeline",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -13,7 +14,8 @@
         },
         "export": {
           "as": "${ $context + {id: .id} }"
-        }
+        },
+        "then": "N3_get_user"
       }
     },
     {
@@ -29,7 +31,8 @@
         },
         "export": {
           "as": "${ $context + {user_profile: .} }"
-        }
+        },
+        "then": "N4_expose"
       }
     },
     {

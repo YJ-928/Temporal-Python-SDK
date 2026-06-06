@@ -39,6 +39,39 @@ async def get_memo_value(desc, key: str) -> Optional[Any]:
     return None
 
 
+def unwrap_temporal_failure(failure) -> str:
+    """
+    Recursively unwrap Temporal failure proto to extract the actual application error message.
+    """
+    if not failure:
+        return "Unknown error"
+    
+    # Check if there is a cause (nested failure) which is more specific
+    if hasattr(failure, "HasField") and failure.HasField("cause"):
+        cause_msg = unwrap_temporal_failure(failure.cause)
+        if cause_msg and cause_msg != "Encoded failure":
+            return cause_msg
+            
+    # Check application_failure_info
+    if hasattr(failure, "HasField") and failure.HasField("application_failure_info"):
+        app_msg = failure.application_failure_info.message
+        if app_msg and app_msg != "Encoded failure":
+            return app_msg
+            
+    # Check activity_failure_info
+    if hasattr(failure, "HasField") and failure.HasField("activity_failure_info") and failure.activity_failure_info.HasField("cause"):
+        act_msg = unwrap_temporal_failure(failure.activity_failure_info.cause)
+        if act_msg and act_msg != "Encoded failure":
+            return act_msg
+
+    # Fallback to the message field itself
+    msg = failure.message
+    if msg == "Encoded failure" and hasattr(failure, "HasField") and failure.HasField("application_failure_info"):
+        return failure.application_failure_info.message
+        
+    return msg or "Unknown error"
+
+
 class ExecutionService:
     """
     Service for managing workflow executions via Temporal.
@@ -246,7 +279,7 @@ class ExecutionService:
                 if task_name and task_name in event_states:
                     error_msg = "Activity failed"
                     if attrs.failure:
-                        error_msg = attrs.failure.message
+                        error_msg = unwrap_temporal_failure(attrs.failure)
                     event_states[task_name]["status"] = "failed"
                     event_states[task_name]["error"] = error_msg
                     start_t = scheduled_times.get(attrs.scheduled_event_id)
@@ -298,7 +331,7 @@ class ExecutionService:
                 if task_name and task_name in event_states:
                     error_msg = "Child workflow failed"
                     if attrs.failure:
-                        error_msg = attrs.failure.message
+                        error_msg = unwrap_temporal_failure(attrs.failure)
                     event_states[task_name]["status"] = "failed"
                     event_states[task_name]["error"] = error_msg
                     start_t = scheduled_times.get(attrs.initiated_event_id)

@@ -2,28 +2,28 @@
 Pydantic schemas for workflow JSON validation.
 """
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class InputField(BaseModel):
     """Individual input field mapping."""
     id: Optional[str] = None
-    field: str
-    store_as: str
-    type: str
+    field: str = Field(..., min_length=1)
+    store_as: str = Field(..., min_length=1)
+    type: Literal["string", "number", "boolean", "integer", "object", "array"]
 
 
 class OutputField(BaseModel):
     """Individual output field definition."""
     id: Optional[str] = None
-    field: str
-    type: str
+    field: str = Field(..., min_length=1)
+    type: Literal["string", "number", "boolean", "integer", "object", "array"]
 
 
 class IfCondition(BaseModel):
     """Conditional expression for IF nodes."""
-    left: str
-    operator: str
+    left: str = Field(..., min_length=1)
+    operator: Literal["==", "!=", ">", "<", ">=", "<="]
     right: Any
 
 
@@ -46,31 +46,55 @@ class InputNodeData(NodeData):
     """Configuration data for INPUT node."""
     inputs: List[InputField] = Field(..., min_length=1)
 
+    @model_validator(mode="after")
+    def validate_unique_fields(self) -> "InputNodeData":
+        fields = [f.field for f in self.inputs]
+        store_as_names = [f.store_as for f in self.inputs]
+        if len(fields) != len(set(fields)):
+            raise ValueError("Duplicate input field names are not allowed")
+        if len(store_as_names) != len(set(store_as_names)):
+            raise ValueError("Duplicate 'store_as' variable names are not allowed")
+        return self
+
 
 class OutputNodeData(NodeData):
     """Configuration data for OUTPUT node."""
     outputs: List[OutputField] = Field(..., min_length=1)
 
+    @model_validator(mode="after")
+    def validate_unique_fields(self) -> "OutputNodeData":
+        fields = [f.field for f in self.outputs]
+        if len(fields) != len(set(fields)):
+            raise ValueError("Duplicate output field names are not allowed")
+        return self
+
 
 class ActionNodeData(NodeData):
     """Configuration data for ACTION node."""
-    operation: str
+    operation: str = Field(..., min_length=1)
     inputs: Dict[str, str]
-    output: str
+    output: str = Field(..., min_length=1)
 
 
 class AgentNodeData(NodeData):
     """Configuration data for AGENT node."""
-    agent: str
+    agent: str = Field(..., min_length=1)
     inputs: Optional[Dict[str, str]] = None
-    output: Optional[str] = None
-    output_path: Optional[str] = None
+    output: Optional[str] = Field(None, min_length=1)
+    output_path: Optional[str] = Field(None, min_length=1)
+
+    @model_validator(mode="after")
+    def validate_agent(self) -> "AgentNodeData":
+        from app.agents.registry import AgentRegistry
+        if not AgentRegistry.has_agent(self.agent):
+            raise ValueError(f"Agent '{self.agent}' is not registered in the system")
+        return self
 
 
 class IfNodeData(NodeData):
     """Configuration data for IF node."""
-    left: str
-    operator: str
+    left: str = Field(..., min_length=1)
+    operator: Literal["==", "!=", ">", "<", ">=", "<="]
     right: Any
 
 

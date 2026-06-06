@@ -47,7 +47,11 @@ def build_input(node: dict, *, traversal_entry: dict | None = None) -> dict:
         }
     }
 
-    if traversal_entry and traversal_entry.get("is_terminal"):
-        fragment[task_name]["then"] = "end"
+    if traversal_entry:
+        then_val = traversal_entry.get("then_transition")
+        if not then_val and traversal_entry.get("is_terminal"):
+            then_val = "end"
+        if then_val:
+            fragment[task_name]["then"] = then_val
 
     return fragment

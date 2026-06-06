@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "routing",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -13,7 +14,8 @@
         },
         "export": {
           "as": "${ $context + {user_score: .user_score} }"
-        }
+        },
+        "then": "N3_if"
       }
     },
     {
@@ -51,7 +53,8 @@
               }
             }
           }
-        ]
+        ],
+        "then": "N6_expose"
       }
     },
     {
@@ -80,7 +83,8 @@
               }
             }
           }
-        ]
+        ],
+        "then": "N6_expose"
       }
     }
   ]

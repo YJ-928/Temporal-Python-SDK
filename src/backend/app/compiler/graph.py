@@ -124,6 +124,41 @@ def resolve_task_name(node: dict) -> str:
         )
 
 
+def resolve_successor_task(
+    node_id: str,
+    node_map: dict[str, dict],
+    adjacency: dict[str, list[tuple[str, dict | None]]],
+) -> str | None:
+    """
+    Find the visual successor for a non-IF node and resolve its compiled DSL task name.
+
+    Args:
+        node_id: ID of the node
+        node_map: node_id → node dict mapping
+        adjacency: source_id → [(target_id, control)] mapping
+
+    Returns:
+        Task name string (e.g. "N3_op", "end", etc.) or None if no successor.
+    """
+    neighbors = adjacency.get(node_id, [])
+    if not neighbors:
+        return None
+
+    # Since non-IF nodes have at most 1 outgoing edge, get the single target
+    target_id = neighbors[0][0]
+    target_node = node_map.get(target_id)
+    if not target_node:
+        return None
+
+    target_type = target_node["type"]
+    if target_type == "END":
+        return "end"
+    elif target_type == "START":
+        return None
+    else:
+        return resolve_task_name(target_node)
+
+
 def traverse_graph(
     entrypoint_id: str,
     node_map: dict[str, dict],
@@ -140,6 +175,7 @@ def traverse_graph(
     - successors: list[str] (target node IDs)
     - incoming_edge_control: dict | None (control metadata from parent edge)
     - branch_map: dict | None (pre-resolved IF branch routing)
+    - then_transition: str | None (pre-resolved explicit transition target)
 
     Args:
         entrypoint_id: ID of START node
@@ -185,6 +221,11 @@ def traverse_graph(
                         "task_name": task_name,
                     }
 
+        # Pre-resolve sequential successor task name for non-IF nodes
+        then_transition = None
+        if node_type != "IF" and node_type not in ("START", "END"):
+            then_transition = resolve_successor_task(node_id, node_map, adjacency)
+
         # Append TraversalEntry
         order.append({
             "node_id": node_id,
@@ -194,6 +235,7 @@ def traverse_graph(
             "successors": successors,
             "incoming_edge_control": parent_control,
             "branch_map": branch_map,
+            "then_transition": then_transition,
         })
 
         # Recurse to children
@@ -255,31 +297,33 @@ def validate_graph(
     if len(end_nodes) == 0:
         raise GraphValidationError("Workflow must have at least one END node (none found)")
 
-    # 3. END nodes cannot have outgoing edges
-    for node_id, node in node_map.items():
-        if node["type"] == "END":
-            if len(adjacency.get(node_id, [])) > 0:
-                raise GraphValidationError(f"END node '{node_id}' cannot have outgoing edges")
+    # 3. START node cannot have incoming edges
+    for edge in edges:
+        if edge.get("target") == start_id:
+            raise GraphValidationError(f"START node '{start_id}' cannot have incoming edges")
 
-    # 4. Every IF node has exactly one true branch and exactly one false branch (and no duplicate branch labels)
-    for node_id, node in node_map.items():
-        if node["type"] == "IF":
-            neighbors = adjacency.get(node_id, [])
-            true_branches = 0
-            false_branches = 0
-            for _, control in neighbors:
-                branch_val = control.get("branch") if control else None
-                if branch_val == "true":
-                    true_branches += 1
-                elif branch_val == "false":
-                    false_branches += 1
-            if true_branches != 1 or false_branches != 1:
-                raise MissingBranchError(
-                    f"IF node '{node_id}' must have exactly one 'true' branch and exactly one 'false' branch. "
-                    f"Found: true={true_branches}, false={false_branches}"
-                )
+    # 4. No self-loops (raise CycleDetectedError directly)
+    for edge in edges:
+        if edge.get("source") == edge.get("target"):
+            raise CycleDetectedError(f"Workflow contains a cycle involving node '{edge.get('source')}'")
 
-    # 5. No cycles
+    # 5. No duplicate connections
+    seen_connections = set()
+    for edge in edges:
+        source = edge.get("source")
+        target = edge.get("target")
+        branch = edge.get("branch")
+        if not branch and edge.get("control"):
+            branch = edge.get("control", {}).get("branch")
+        if not branch:
+            branch = edge.get("data", {}).get("condition")
+        
+        sig = (source, target, branch)
+        if sig in seen_connections:
+            raise GraphValidationError(f"Duplicate edge detected from '{source}' to '{target}' (branch={branch})")
+        seen_connections.add(sig)
+
+    # 6. No cycles
     visiting = set()
     visited = set()
     def dfs_cycle(curr_id: str) -> None:
@@ -301,10 +345,7 @@ def validate_graph(
         if node_id not in visited:
             dfs_cycle(node_id)
 
-    # 6. All nodes must be reachable from START
-    # We collect all visited nodes from dfs_cycle(start_id)
-    # But since we did dfs_cycle for disconnected nodes as well,
-    # let's recalculate reachability strictly from start_id
+    # 7. All nodes must be reachable from START
     reachable = set()
     def dfs_reach(curr_id: str) -> None:
         if curr_id in reachable:
@@ -319,4 +360,50 @@ def validate_graph(
     unreachable_nodes = all_nodes - reachable
     if unreachable_nodes:
         raise GraphValidationError(f"Unreachable nodes found in workflow: {sorted(unreachable_nodes)}")
+
+    # 8. END nodes cannot have outgoing edges
+    for node_id, node in node_map.items():
+        if node["type"] == "END":
+            if len(adjacency.get(node_id, [])) > 0:
+                raise GraphValidationError(f"END node '{node_id}' cannot have outgoing edges")
+
+    # 9. Non-IF and non-END nodes can have at most one outgoing edge
+    for node_id, node in node_map.items():
+        if node["type"] not in ("IF", "END"):
+            outgoing_neighbors = adjacency.get(node_id, [])
+            if len(outgoing_neighbors) > 1:
+                raise GraphValidationError(
+                    f"Node '{node_id}' of type '{node['type']}' cannot have multiple outgoing edges (found {len(outgoing_neighbors)})"
+                )
+
+    # 10. All non-END nodes must have at least one outgoing edge (no dead ends)
+    for node_id, node in node_map.items():
+        if node["type"] != "END":
+            if len(adjacency.get(node_id, [])) == 0:
+                raise GraphValidationError(
+                    f"Node '{node_id}' of type '{node['type']}' must have at least one outgoing edge (dead end)"
+                )
+
+    # 11. Every IF node has exactly one true branch and exactly one false branch
+    for node_id, node in node_map.items():
+        if node["type"] == "IF":
+            neighbors = adjacency.get(node_id, [])
+            if len(neighbors) != 2:
+                raise MissingBranchError(
+                    f"IF node '{node_id}' must have exactly 2 outgoing edges (found {len(neighbors)}). "
+                    f"Must have exactly one 'true' branch and exactly one 'false' branch."
+                )
+            true_branches = 0
+            false_branches = 0
+            for _, control in neighbors:
+                branch_val = control.get("branch") if control else None
+                if branch_val == "true":
+                    true_branches += 1
+                elif branch_val == "false":
+                    false_branches += 1
+            if true_branches != 1 or false_branches != 1:
+                raise MissingBranchError(
+                    f"IF node '{node_id}' must have exactly one 'true' branch and exactly one 'false' branch. "
+                    f"Found: true={true_branches}, false={false_branches}"
+                )
 

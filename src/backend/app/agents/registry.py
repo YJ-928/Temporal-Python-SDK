@@ -86,6 +86,18 @@ class AgentRegistry:
                 "success": "boolean",
                 "message_id": "string"
             }
+        },
+        "summarizer-agent": {
+            "url": "http://localhost:11003/execute",
+            "method": "POST",
+            "port": 11003,
+            "description": "Mock summarizing service",
+            "request_schema": {
+                "text": "string"
+            },
+            "response_schema": {
+                "summary": "string"
+            }
         }
     }
 

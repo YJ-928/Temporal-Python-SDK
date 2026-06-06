@@ -3,7 +3,8 @@
     "dsl": "1.0.0",
     "taskQueue": "default",
     "workflowType": "nested-tree",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "summary": ""
   },
   "do": [
     {
@@ -61,11 +62,11 @@
               },
               "export": {
                 "as": "${ $context + {o: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     },
     {
@@ -83,11 +84,11 @@
               },
               "export": {
                 "as": "${ $context + {o: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     },
     {
@@ -128,11 +129,11 @@
               },
               "export": {
                 "as": "${ $context + {o: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     },
     {
@@ -150,11 +151,11 @@
               },
               "export": {
                 "as": "${ $context + {o: .} }"
-              },
-              "then": "end"
+              }
             }
           }
-        ]
+        ],
+        "then": "end"
       }
     }
   ]
