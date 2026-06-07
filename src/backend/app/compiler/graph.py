@@ -8,7 +8,6 @@ Phase A: Graph Analysis and Traversal
 - Traverse graph in DFS preorder
 - Pre-compute execution metadata for builders
 """
-from typing import Any
 from .exceptions import (
     GraphValidationError,
     CycleDetectedError,

@@ -224,6 +224,10 @@ class TestStressAndFuzz(unittest.TestCase):
                 {"id": "e3", "source": "ACT", "target": "END2"}
             ]
         }
+        with self.assertRaises(GraphValidationError) as ctx:
+            compile_workflow_to_dsl(wf_multi_out)
+        self.assertIn("cannot have multiple outgoing edges", str(ctx.exception))
+
         # 5. IF node outgoing edges count != 2
         wf_if_one_out = {
             "nodes": [

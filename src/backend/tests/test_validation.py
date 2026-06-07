@@ -98,7 +98,7 @@ class TestCompilerValidation(unittest.TestCase):
                 {"id": "E3", "source": "N2", "target": "N4", "branch": "true"}
             ]
         }
-        with self.assertRaises(MissingBranchError) as ctx:
+        with self.assertRaises(MissingBranchError):
             compile_workflow_to_dsl(workflow)
 
     def test_end_outgoing_edges(self):

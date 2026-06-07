@@ -5,7 +5,6 @@ Centralized logger setup with support for external config files.
 """
 import logging
 import logging.config
-from pathlib import Path
 from .settings import settings
 
 

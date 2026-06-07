@@ -1,8 +1,6 @@
 """
 Runtime Failure Unwrapping and Registration Lifecycle Tests.
 """
-import os
-import json
 import asyncio
 import unittest
 from pathlib import Path
@@ -106,8 +104,8 @@ class TestRegistrationLifecycle(unittest.TestCase):
 
         # Register a workflow
         with patch.object(service_instance_1, "_validate_dsl_file", return_value=True), \
-             patch.object(service_instance_1, "trigger_reload", return_value=AsyncMock()) as mock_reload, \
-             patch("asyncio.create_task") as mock_create_task:
+             patch.object(service_instance_1, "trigger_reload", return_value=AsyncMock()), \
+             patch("asyncio.create_task"):
             entry = service_instance_1.register_workflow(
                 dsl_hash="hash-123",
                 workflow_id="wf-test",

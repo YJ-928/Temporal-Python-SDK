@@ -14,6 +14,7 @@ from .graph import (
 from .dsl_generator import generate_dsl, register_builder
 from ..builders import BUILDERS
 from ..schemas.workflow_sch import WorkflowDefinition
+from ..config import compiler_settings
 
 
 def initialize_builders() -> None:
@@ -50,9 +51,6 @@ def validate_workflow_structure(workflow: dict) -> None:
     node_map = generate_node_map(workflow["nodes"])
     adjacency = generate_adjacency_list(workflow["edges"])
     validate_graph(workflow["nodes"], workflow["edges"], node_map, adjacency)
-
-
-from ..config import compiler_settings
 
 
 def compile_workflow_to_dsl(

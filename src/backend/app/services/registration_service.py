@@ -1,13 +1,12 @@
 """
 Registration service for tracking and reloading Zigflow workflows.
 """
-import os
 import json
 import asyncio
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from ..config import settings, get_logger
 from .storage_service import calculate_dsl_hash, load_dsl
 

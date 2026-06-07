@@ -3,7 +3,7 @@ Health check routes.
 """
 import urllib.request
 import json
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from temporalio.client import Client
 from ...config import settings, get_logger
 from ...services.registration_service import registration_service
@@ -16,9 +16,7 @@ router = APIRouter(prefix="/health", tags=["Health"])
 async def check_temporal_health():
     """Check health of the Temporal server."""
     try:
-        client = await Client.connect(settings.TEMPORAL_ADDRESS)
-        # Verify connection by attempting to list namespaces (lightweight)
-        # If connect works, we are healthy
+        await Client.connect(settings.TEMPORAL_ADDRESS)
         return {"healthy": True}
     except Exception as e:
         logger.warning(f"Temporal health check failed: {e}")
