@@ -1,10 +1,12 @@
-import type { ExportedWorkflowNode } from '../utils/exportWorkflow';
+import type { ExportedWorkflowNode, ExportedWorkflowPayload } from '../utils/exportWorkflow';
+import type { ExecutionRun, NodeTraceState } from '../types';
+import { ApiError } from '../utils/errorHandler';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 export interface CompilePayload {
   nodes: ExportedWorkflowNode[];
-  edges: any[];
+  edges: ExportedWorkflowPayload['edges'];
   workflow_id?: string;
   workflow_type?: string;
   task_queue?: string;
@@ -15,24 +17,65 @@ export interface CompilePayload {
 export interface CompileResponse {
   success: boolean;
   workflow_id: string;
-  dsl: Record<string, any>;
+  dsl: Record<string, unknown>;
   file_path: string;
   content_hash: string;
   generated_at?: string;
 }
 
+export interface ExecuteResponse {
+  run_id: string;
+  workflow_id: string;
+  status?: string;
+}
+
+export interface HistoryResponse {
+  executions: ExecutionRun[];
+}
+
+export interface TraceResponse {
+  steps: Record<string, NodeTraceState>;
+  status: string;
+}
+
+interface PydanticErrorItem {
+  loc?: unknown[];
+  msg?: string;
+}
+
+async function parseError(response: Response): Promise<ApiError> {
+  let detail: string | undefined;
+  try {
+    const data = await response.json();
+    const raw = data.detail || data.message;
+    if (Array.isArray(raw)) {
+      detail = (raw as PydanticErrorItem[])
+        .map((e) => {
+          const last = Array.isArray(e.loc) ? e.loc.at(-1) : undefined;
+          const field = (typeof last === 'string' || typeof last === 'number') ? String(last) : '';
+          const msg: string = e.msg || 'Invalid value';
+          return field ? `${field}: ${msg}` : msg;
+        })
+        .join('; ');
+    } else if (typeof raw === 'string') {
+      detail = raw;
+    }
+  } catch {
+    // body not JSON
+  }
+  return new ApiError(
+    detail || `HTTP error ${response.status}`,
+    response.status,
+    detail,
+  );
+}
+
 export const compilerApi = {
-  /**
-   * Send the exported workflow JSON to the backend API for DSL compilation.
-   */
   async compileWorkflow(payload: CompilePayload): Promise<CompileResponse> {
     const url = `${API_BASE_URL}/api/v1/workflows/compile`;
-    
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         nodes: payload.nodes,
         edges: payload.edges,
@@ -43,103 +86,52 @@ export const compilerApi = {
         description: payload.description || '',
       }),
     });
-
-    if (!response.ok) {
-      let errorMessage = `HTTP error ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.detail || errorData.message || errorMessage;
-      } catch {
-        // Fallback if parsing fails
-      }
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
+    if (!response.ok) throw await parseError(response);
+    return response.json() as Promise<CompileResponse>;
   },
 
-  /**
-   * Trigger a workflow execution on Temporal using a specific compiled content hash.
-   */
-  async executeWorkflow(workflowId: string, dslHash: string, input: Record<string, any> = {}): Promise<any> {
+  async executeWorkflow(workflowId: string, dslHash: string, input: Record<string, unknown> = {}): Promise<ExecuteResponse> {
     const url = `${API_BASE_URL}/api/v1/executions/${workflowId}/execute`;
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        dsl_hash: dslHash,
-        input: input
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dsl_hash: dslHash, input }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to execute: ${response.statusText}`);
-    }
-    return response.json();
+    if (!response.ok) throw await parseError(response);
+    return response.json() as Promise<ExecuteResponse>;
   },
 
-  /**
-   * Retrieve historical executions for a workflow ID from Temporal.
-   */
-  async getHistory(workflowId: string): Promise<any> {
+  async getHistory(workflowId: string): Promise<HistoryResponse> {
     const url = `${API_BASE_URL}/api/v1/executions/${workflowId}/history`;
     const response = await fetch(url);
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to fetch history: ${response.statusText}`);
-    }
-    return response.json();
+    if (!response.ok) throw await parseError(response);
+    return response.json() as Promise<HistoryResponse>;
   },
 
-  /**
-   * Fetch trace history details (step-by-step statuses) for a given run ID and workflow ID.
-   */
-  async getTrace(workflowId: string, runId: string): Promise<any> {
+  async getTrace(workflowId: string, runId: string): Promise<TraceResponse> {
     const url = `${API_BASE_URL}/api/v1/executions/${workflowId}/${runId}/trace`;
     const response = await fetch(url);
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to fetch trace: ${response.statusText}`);
-    }
-    return response.json();
+    if (!response.ok) throw await parseError(response);
+    return response.json() as Promise<TraceResponse>;
   },
 
-  /**
-   * Request cancellation of a running workflow execution.
-   */
-  async cancelWorkflow(workflowId: string, runId: string): Promise<any> {
+  async cancelWorkflow(workflowId: string, runId: string): Promise<{ success: boolean }> {
     const url = `${API_BASE_URL}/api/v1/executions/${workflowId}/${runId}/cancel`;
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      }
+      headers: { 'Content-Type': 'application/json' },
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to cancel workflow: ${response.statusText}`);
-    }
-    return response.json();
+    if (!response.ok) throw await parseError(response);
+    return response.json() as Promise<{ success: boolean }>;
   },
 
-  /**
-   * Forcefully terminate a running workflow execution.
-   */
-  async terminateWorkflow(workflowId: string, runId: string, reason = "Terminated by user"): Promise<any> {
+  async terminateWorkflow(workflowId: string, runId: string, reason = 'Terminated by user'): Promise<{ success: boolean }> {
     const url = `${API_BASE_URL}/api/v1/executions/${workflowId}/${runId}/terminate?reason=${encodeURIComponent(reason)}`;
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      }
+      headers: { 'Content-Type': 'application/json' },
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Failed to terminate workflow: ${response.statusText}`);
-    }
-    return response.json();
+    if (!response.ok) throw await parseError(response);
+    return response.json() as Promise<{ success: boolean }>;
   },
 };

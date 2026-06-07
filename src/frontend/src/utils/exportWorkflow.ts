@@ -143,7 +143,7 @@ export function serializeNodeForExport(node: Node<RFNodeData>): ExportedWorkflow
               parsedInputs[key] = typeof val === 'string' ? cleanVarName(val) : String(val);
             });
           }
-        } catch (e) {
+        } catch {
           parsedInputs = {};
         }
       }
@@ -172,7 +172,7 @@ export function serializeNodeForExport(node: Node<RFNodeData>): ExportedWorkflow
               parsedInputs[key] = typeof val === 'string' ? cleanVarName(val) : String(val);
             });
           }
-        } catch (e) {
+        } catch {
           parsedInputs = {};
         }
       }

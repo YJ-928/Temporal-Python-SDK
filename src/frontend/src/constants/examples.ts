@@ -386,7 +386,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
       workflow_type: 'single-email-validator-type',
       task_queue: 'default',
       version: '1.0.0',
-      description: 'A simple linear validation pipe that accepts an email address and evaluates it via validation agent model rules.',
+      description: 'Validates an email address using the Email Validator Agent, then branches: valid emails produce a success output, invalid emails produce a rejection output.',
     },
     nodes: [
       {
@@ -409,7 +409,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
       {
         id: 'N3',
         type: 'agent',
-        position: { x: 250, y: 220 },
+        position: { x: 250, y: 230 },
         data: {
           label: 'Email Validator',
           selectedAgentId: 'email-validator-agent',
@@ -419,93 +419,41 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
       },
       {
         id: 'N4',
-        type: 'output',
-        position: { x: 250, y: 340 },
+        type: 'if',
+        position: { x: 250, y: 370 },
         data: {
-          label: 'Email Verification Output',
-          outputFields: [
-            { id: 'o1', field: 'email_validation', type: 'object' },
-          ],
-        },
-      },
-      {
-        id: 'N5',
-        type: 'end',
-        position: { x: 250, y: 460 },
-        data: { label: 'END' },
-      },
-    ],
-    edges: [
-      { id: 'E1', source: 'N1', target: 'N2', animated: true },
-      { id: 'E2', source: 'N2', target: 'N3', animated: true },
-      { id: 'E3', source: 'N3', target: 'N4', animated: true },
-      { id: 'E4', source: 'N4', target: 'N5', animated: true },
-    ],
-  },
-  workflow_builder_demo: {
-    name: 'Workflow Builder Demo',
-    metadata: {
-      workflow_id: 'mixed-pipeline',
-      workflow_type: 'mixed',
-      task_queue: 'default',
-      version: '1.0.0',
-      description: 'A rich demonstrative workflow showcasing various actions, inputs, data mappings, agent calls, outputs, and terminals.',
-    },
-    nodes: [
-      {
-        id: 'N1',
-        type: 'start',
-        position: { x: 250, y: 0 },
-        data: { label: 'START' },
-      },
-      {
-        id: 'N2',
-        type: 'input',
-        position: { x: 250, y: 100 },
-        data: {
-          label: 'Topic Input',
-          inputFields: [
-            { id: 'f1', field: 'city', store_as: 'city', type: 'string' },
-          ],
-        },
-      },
-      {
-        id: 'N3',
-        type: 'action',
-        position: { x: 250, y: 220 },
-        data: {
-          label: 'Fetch Info',
-          actionOperation: 'fetch_info',
-          actionInputs: '{\n  "city": "city"\n}',
-          actionOutput: 'info',
-        },
-      },
-      {
-        id: 'N4',
-        type: 'agent',
-        position: { x: 250, y: 340 },
-        data: {
-          label: 'Summarizer Agent',
-          selectedAgentId: 'summarizer-agent',
-          agentInputs: '{\n  "text": "info"\n}',
-          agentOutput: 'summary',
+          label: 'Valid?',
+          ifCondition: { left: 'email_validation.is_valid', operator: '==', right: 'true' },
         },
       },
       {
         id: 'N5',
         type: 'output',
-        position: { x: 250, y: 460 },
+        position: { x: 70, y: 510 },
         data: {
-          label: 'Summary Output',
+          label: 'Valid Email Output',
           outputFields: [
-            { id: 'o1', field: 'summary', type: 'string' },
+            { id: 'o1', field: 'email', type: 'string' },
+            { id: 'o2', field: 'email_validation', type: 'object' },
           ],
         },
       },
       {
         id: 'N6',
+        type: 'output',
+        position: { x: 430, y: 510 },
+        data: {
+          label: 'Invalid Email Output',
+          outputFields: [
+            { id: 'o3', field: 'email', type: 'string' },
+            { id: 'o4', field: 'email_validation', type: 'object' },
+          ],
+        },
+      },
+      {
+        id: 'N7',
         type: 'end',
-        position: { x: 250, y: 580 },
+        position: { x: 250, y: 650 },
         data: { label: 'END' },
       },
     ],
@@ -513,8 +461,26 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
       { id: 'E1', source: 'N1', target: 'N2', animated: true },
       { id: 'E2', source: 'N2', target: 'N3', animated: true },
       { id: 'E3', source: 'N3', target: 'N4', animated: true },
-      { id: 'E4', source: 'N4', target: 'N5', animated: true },
-      { id: 'E5', source: 'N5', target: 'N6', animated: true },
+      {
+        id: 'E4',
+        source: 'N4',
+        target: 'N5',
+        sourceHandle: 'branch1',
+        label: 'true',
+        data: { branch: 'branch1', label: 'true' },
+        animated: true,
+      },
+      {
+        id: 'E5',
+        source: 'N4',
+        target: 'N6',
+        sourceHandle: 'branch2',
+        label: 'false',
+        data: { branch: 'branch2', label: 'false' },
+        animated: true,
+      },
+      { id: 'E6', source: 'N5', target: 'N7', animated: true },
+      { id: 'E7', source: 'N6', target: 'N7', animated: true },
     ],
   },
 };

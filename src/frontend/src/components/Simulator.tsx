@@ -1,6 +1,32 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { Trash2, ChevronDown, ChevronUp, RefreshCw, Zap, History, Activity, ChevronRight, Gauge, ChevronLeft, Copy, Maximize } from 'lucide-react';
-import type { WorkflowMetadata } from '../types';
+import { notify } from '../utils/notify';
+
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const EMAIL_WORKFLOW_IDS = new Set(['email-validation-sender', 'single-email-validator']);
+
+interface StatusStyle { color: string; label: string }
+const STATUS_CONFIG: Record<string, StatusStyle> = {
+  COMPLETED:  { color: '#10b981', label: 'Completed' },
+  RUNNING:    { color: '#3b82f6', label: 'Running' },
+  FAILED:     { color: '#ef4444', label: 'Failed' },
+  CANCELED:   { color: '#f59e0b', label: 'Canceled' },
+  TERMINATED: { color: '#f97316', label: 'Terminated' },
+  TIMED_OUT:  { color: '#f97316', label: 'Timed Out' },
+};
+const STEP_STATUS_CONFIG: Record<string, string> = {
+  completed: '#10b981',
+  running:   '#3b82f6',
+  failed:    '#ef4444',
+  skipped:   '#64748b',
+};
+function getStatusStyle(raw: string): StatusStyle {
+  return STATUS_CONFIG[raw?.toUpperCase()] ?? { color: '#64748b', label: raw || 'Unknown' };
+}
+function getStepColor(status: string): string {
+  return STEP_STATUS_CONFIG[status] ?? '#64748b';
+}
+import type { WorkflowMetadata, ExecutionRun, NodeTraceState } from '../types';
 
 export interface LogEntry {
   timestamp: string;
@@ -16,21 +42,21 @@ interface SimulatorProps {
 
   // Compilation state
   isCompiled: boolean;
-  compiledDsl: any;
+  compiledDsl: Record<string, unknown> | null;
   compiledHash: string;
   compiledAt: string;
   metadata: WorkflowMetadata;
 
   // Temporal runner
-  executionHistory: any[];
+  executionHistory: ExecutionRun[];
   activeRunId: string | null;
   setActiveRunId: (runId: string | null) => void;
-  onTriggerTemporalRun: (inputData: Record<string, any>) => void;
+  onTriggerTemporalRun: (inputData: Record<string, unknown>) => void;
   onRefreshHistory: () => void;
   isTriggeringRun: boolean;
   onCancelRun?: (workflowId: string, runId: string) => void;
   onTerminateRun?: (workflowId: string, runId: string, reason: string) => void;
-  nodeTraceStates?: Record<string, { status: string; input?: any; output?: any; error?: string; duration_seconds?: number }>;
+  nodeTraceStates?: Record<string, NodeTraceState>;
   activeRunStatus?: string;
 
   // Control tabs and visibility
@@ -108,14 +134,14 @@ export const Simulator: React.FC<SimulatorProps> = ({
       localStorage.setItem('workflow-runtime-height', panelHeight.toString());
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    globalThis.addEventListener('mousemove', handleMouseMove);
+    globalThis.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      globalThis.removeEventListener('mousemove', handleMouseMove);
+      globalThis.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, panelHeight, setIsOpen]);
+  }, [isResizing, panelHeight, setIsOpen, setPanelHeight]);
 
   useEffect(() => {
     if (consoleEndRef.current && activeTab === 'compilation_log') {
@@ -137,43 +163,42 @@ export const Simulator: React.FC<SimulatorProps> = ({
     } else {
       setInputJson('{\n  "city": "kolkata"\n}');
     }
-  }, [metadata.workflow_id]);
+  }, [metadata.workflow_id, setInputJson]);
 
   const activeRun = executionHistory.find((r) => r.run_id === activeRunId);
   const currentStatus = activeRunStatus || activeRun?.status || 'UNKNOWN';
 
-  // Compute duration for the run summary
-  const getRunDuration = () => {
-    if (!activeRun) return null;
-    if (activeRun.start_time) {
-      const start = new Date(activeRun.start_time).getTime();
-      const end = activeRun.close_time ? new Date(activeRun.close_time).getTime() : Date.now();
-      return `${((end - start) / 1000).toFixed(2)}s`;
-    }
-    return null;
-  };
+  const runDuration = useMemo(() => {
+    if (!activeRun?.start_time || !activeRun.close_time) return null;
+    const start = new Date(activeRun.start_time).getTime();
+    const end = new Date(activeRun.close_time).getTime();
+    return `${((end - start) / 1000).toFixed(2)}s`;
+  }, [activeRun]);
 
-  // Freshness counter for DSL tab
-  const getFreshness = () => {
+  const freshness = useMemo(() => {
     if (!compiledAt) return '';
-    const diffMs = Date.now() - new Date(compiledAt).getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    if (diffSec < 10) return 'just now';
-    if (diffSec < 60) return `${diffSec}s ago`;
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHr = Math.floor(diffMin / 60);
-    return `${diffHr}h ago`;
-  };
+    return new Date(compiledAt).toLocaleTimeString();
+  }, [compiledAt]);
 
   const handleExecute = () => {
+    let parsed: Record<string, unknown>;
     try {
-      const parsed = JSON.parse(inputJson);
-      onTriggerTemporalRun(parsed);
-      setActiveTab('trace');
-    } catch (e: any) {
-      alert(`Invalid JSON format: ${e.message}`);
+      parsed = JSON.parse(inputJson) as Record<string, unknown>;
+    } catch (e) {
+      notify.error(`Invalid JSON format: ${(e as Error).message}`);
+      return;
     }
+
+    if (EMAIL_WORKFLOW_IDS.has(metadata.workflow_id)) {
+      const email = parsed.email;
+      if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
+        notify.error('Invalid email address. Please enter a valid email before executing.');
+        return;
+      }
+    }
+
+    onTriggerTemporalRun(parsed);
+    setActiveTab('trace');
   };
 
   const toggleExpandNode = (nodeId: string) => {
@@ -275,9 +300,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
               ) : (
                 executionHistory.map((run) => {
                   const isSelected = run.run_id === activeRunId;
-                  const statusColor = 
-                    run.status === 'COMPLETED' || run.status === 'completed' ? '#10b981' :
-                    run.status === 'RUNNING' || run.status === 'running' ? '#3b82f6' : '#ef4444';
+                  const { color: statusColor, label: statusLabel } = getStatusStyle(run.status);
                   
                   return (
                     <div
@@ -302,16 +325,16 @@ export const Simulator: React.FC<SimulatorProps> = ({
                         <span style={{ fontSize: '11px', fontWeight: '600', color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }} title={run.workflow_id}>
                           {run.workflow_id}
                         </span>
-                        <span style={{ 
-                          fontSize: '8px', 
-                          color: statusColor, 
+                        <span style={{
+                          fontSize: '8px',
+                          color: statusColor,
                           fontWeight: 'bold',
                           border: `1px solid ${statusColor}40`,
                           borderRadius: '4px',
                           padding: '1px 4px',
                           background: `${statusColor}10`
                         }}>
-                          {run.status.toLowerCase()}
+                          {statusLabel}
                         </span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)' }}>
@@ -471,10 +494,8 @@ export const Simulator: React.FC<SimulatorProps> = ({
                         </div>
                         <div>
                           <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Status</span>
-                          <strong style={{ 
-                            color: currentStatus === 'COMPLETED' || currentStatus === 'completed' ? '#10b981' : currentStatus === 'RUNNING' || currentStatus === 'running' ? '#3b82f6' : '#ef4444'
-                          }}>
-                            {currentStatus.toUpperCase()}
+                          <strong style={{ color: getStatusStyle(currentStatus).color }}>
+                            {getStatusStyle(currentStatus).label}
                           </strong>
                         </div>
                         <div>
@@ -485,7 +506,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
                         </div>
                         <div>
                           <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Duration</span>
-                          <span style={{ color: 'var(--text-secondary)' }}>{getRunDuration() || '--'}</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{runDuration ?? '--'}</span>
                         </div>
                         {(currentStatus === 'RUNNING' || currentStatus === 'running') && (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -505,9 +526,8 @@ export const Simulator: React.FC<SimulatorProps> = ({
                             </button>
                             <button
                               onClick={() => {
-                                const reason = prompt("Enter termination reason:", "Terminated by user");
-                                if (reason !== null && onTerminateRun) {
-                                  onTerminateRun(activeRun?.workflow_id || metadata.workflow_id, activeRunId!, reason);
+                                if (onTerminateRun) {
+                                  onTerminateRun(activeRun?.workflow_id || metadata.workflow_id, activeRunId!, 'Terminated by user');
                                 }
                               }}
                               style={{
@@ -549,10 +569,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
                               Object.keys(nodeTraceStates).map((nodeId) => {
                                 const step = nodeTraceStates[nodeId];
                                 const isExpanded = expandedNodes[nodeId];
-                                const statColor = 
-                                  step.status === 'completed' ? '#10b981' :
-                                  step.status === 'running' ? '#3b82f6' :
-                                  step.status === 'failed' ? '#ef4444' : '#64748b';
+                                const statColor = getStepColor(step.status);
 
                                 return (
                                   <React.Fragment key={nodeId}>
@@ -705,7 +722,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
                         </div>
                         <div>
                           <span style={{ color: 'var(--text-muted)', display: 'block' }}>Freshness</span>
-                          <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{compiledAt ? getFreshness() : '--'}</span>
+                          <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{compiledAt ? freshness : '--'}</span>
                         </div>
                       </div>
 
@@ -717,8 +734,9 @@ export const Simulator: React.FC<SimulatorProps> = ({
                             className="btn btn-outline"
                             style={{ padding: '4px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
                             onClick={() => {
-                              navigator.clipboard.writeText(JSON.stringify(compiledDsl, null, 2));
-                              alert('DSL copied to clipboard!');
+                              navigator.clipboard.writeText(JSON.stringify(compiledDsl, null, 2))
+                                .then(() => notify.success('DSL copied to clipboard.'))
+                                .catch(() => notify.error('Failed to copy DSL to clipboard.'));
                             }}
                           >
                             <Copy size={10} />

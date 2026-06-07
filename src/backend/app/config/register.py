@@ -97,12 +97,29 @@ def register_routers(app: FastAPI) -> None:
     from ..api.v1.workflow_routes import router as workflow_router
     from ..api.v1.execution_routes import router as execution_router
     from ..api.v1.health_routes import router as health_router
+    from ..api.v1.catalog_routes import router as catalog_router
 
-    app.include_router(workflow_router, prefix="/api/v1")
-    app.include_router(execution_router, prefix="/api/v1")
-    app.include_router(health_router, prefix="/api/v1")
+    _v1 = settings.API_V1_PREFIX
+    app.include_router(workflow_router, prefix=_v1)
+    app.include_router(execution_router, prefix=_v1)
+    app.include_router(health_router, prefix=_v1)
+    app.include_router(catalog_router, prefix=_v1)
 
-    @app.post("/api/v1/actions/{operation}", tags=["Actions"])
+    @app.get(
+        f"{_v1}/actions",
+        tags=["Actions"],
+        summary="List available mock operations",
+        description=(
+            "Returns all valid operation identifiers that can be used as the `{operation}` "
+            "path parameter in `POST /api/v1/actions/{operation}`. "
+            "Use this to discover which operations are available when configuring an ACTION node."
+        ),
+    )
+    async def list_actions():
+        from ..api.v1.catalog_routes import MOCK_OPERATIONS
+        return MOCK_OPERATIONS
+
+    @app.post(f"{_v1}/actions/{{operation}}", tags=["Actions"])
     async def mock_action(operation: str, request: Request):
         try:
             body = await request.json()
@@ -144,6 +161,36 @@ def register_routers(app: FastAPI) -> None:
             "message": f"Action {operation} executed successfully for {body.get('city')}"
         }
 
+    @app.get(
+        f"{_v1}/agents",
+        tags=["Agents"],
+        summary="List registered agents",
+        description=(
+            "Returns all agents registered in AgentRegistry. "
+            "Use this to discover which agents are available when configuring an AGENT node. "
+            "Each agent entry includes its ID, execute URL, expected inputs, and outputs."
+        ),
+    )
+    async def list_agents():
+        from ..agents.registry import AgentRegistry
+
+        def _display_name(agent_id: str) -> str:
+            return agent_id.replace("-", " ").title()
+
+        return [
+            {
+                "id": agent_id,
+                "name": _display_name(agent_id),
+                "url": meta.get("url", ""),
+                "method": meta.get("method", "POST"),
+                "port": meta.get("port"),
+                "description": meta.get("description", ""),
+                "request_schema": meta.get("request_schema", {}),
+                "response_schema": meta.get("response_schema", {}),
+            }
+            for agent_id, meta in AgentRegistry._agents.items()
+        ]
+
     logger.info("Routers registered")
 
 
@@ -161,14 +208,19 @@ def register_events(app: FastAPI) -> None:
 
         # Verify zigflow CLI is installed on PATH
         import shutil
-        import subprocess
+        import asyncio
         if not shutil.which("zigflow"):
             logger.critical("❌ zigflow command-line tool is not installed or not found on PATH.")
             raise RuntimeError("zigflow CLI tool not found on PATH. Please install zigflow before starting the application.")
 
         try:
-            res = subprocess.run(["zigflow", "--version"], capture_output=True, text=True, check=True)
-            logger.info(f"✓ zigflow CLI version: {res.stdout.strip() or 'unknown'}")
+            proc = await asyncio.create_subprocess_exec(
+                "zigflow", "--version",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await proc.communicate()
+            logger.info(f"✓ zigflow CLI version: {stdout.decode().strip() or 'unknown'}")
         except Exception as e:
             logger.warning(f"Unable to determine zigflow version: {e}")
 

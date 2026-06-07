@@ -39,37 +39,60 @@ async def get_memo_value(desc, key: str) -> Optional[Any]:
     return None
 
 
-def unwrap_temporal_failure(failure) -> str:
+def _decode_failure_encoded_attrs(failure) -> str:
     """
-    Recursively unwrap Temporal failure proto to extract the actual application error message.
+    Decode GoSDK/Zigflow encoded_attributes.data (JSON blob) to extract the real error message.
+    GoSDK sets failure.message = 'Encoded failure' and puts the real message in encoded_attributes.
     """
-    if not failure:
-        return "Unknown error"
-    
-    # Check if there is a cause (nested failure) which is more specific
-    if hasattr(failure, "HasField") and failure.HasField("cause"):
-        cause_msg = unwrap_temporal_failure(failure.cause)
-        if cause_msg and cause_msg != "Encoded failure":
-            return cause_msg
-            
-    # Check application_failure_info
-    if hasattr(failure, "HasField") and failure.HasField("application_failure_info"):
-        app_msg = failure.application_failure_info.message
-        if app_msg and app_msg != "Encoded failure":
-            return app_msg
-            
-    # Check activity_failure_info
-    if hasattr(failure, "HasField") and failure.HasField("activity_failure_info") and failure.activity_failure_info.HasField("cause"):
-        act_msg = unwrap_temporal_failure(failure.activity_failure_info.cause)
-        if act_msg and act_msg != "Encoded failure":
-            return act_msg
+    try:
+        ea = getattr(failure, 'encoded_attributes', None)
+        if not ea:
+            return ""
+        data = getattr(ea, 'data', b'')
+        if not data:
+            return ""
+        decoded = json.loads(data.decode('utf-8'))
+        if isinstance(decoded, dict):
+            return decoded.get('message', '')
+    except Exception:
+        pass
+    return ""
 
-    # Fallback to the message field itself
-    msg = failure.message
-    if msg == "Encoded failure" and hasattr(failure, "HasField") and failure.HasField("application_failure_info"):
-        return failure.application_failure_info.message
-        
-    return msg or "Unknown error"
+
+_TRIVIAL_MESSAGES = frozenset({"Encoded failure", "Unknown error", "Workflow execution failed", ""})
+
+
+def _get_cause_message(failure, depth: int) -> str:
+    """Recurse into a Temporal failure's cause and return its unwrapped message, or ''."""
+    try:
+        if hasattr(failure, "HasField") and failure.HasField("cause"):
+            msg = unwrap_temporal_failure(failure.cause, depth + 1)
+            return msg if msg not in _TRIVIAL_MESSAGES else ""
+    except Exception:
+        pass
+    return ""
+
+
+def unwrap_temporal_failure(failure, _depth: int = 0) -> str:
+    """
+    Recursively unwrap Temporal failure proto to extract the actual error message.
+    Handles GoSDK (Zigflow) encoded failures where the real message is in encoded_attributes.data.
+    ApplicationFailureInfo has no .message field — never access it directly.
+    """
+    if not failure or _depth > 10:
+        return "Unknown error"
+
+    # GoSDK: real message is in encoded_attributes.data (JSON); prefer deeper cause if present
+    ea_msg = _decode_failure_encoded_attrs(failure)
+    if ea_msg not in _TRIVIAL_MESSAGES:
+        return _get_cause_message(failure, _depth) or ea_msg
+
+    # Python SDK: plain message field
+    msg = getattr(failure, 'message', '') or ''
+    if msg not in _TRIVIAL_MESSAGES:
+        return msg
+
+    return _get_cause_message(failure, _depth) or "Workflow execution failed"
 
 
 class ExecutionService:

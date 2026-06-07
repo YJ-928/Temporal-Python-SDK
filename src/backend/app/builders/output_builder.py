@@ -4,6 +4,16 @@ OUTPUT node builder.
 Converts OUTPUT node into a Zigflow `set` task that exposes named workflow
 variables as the final workflow result.
 """
+import re
+
+
+def _sanitize_field_name(name: str) -> str:
+    """Convert a raw field name into a valid jq identifier (letters, digits, underscores)."""
+    sanitized = re.sub(r'\W', '_', name.strip())
+    # Ensure it starts with a letter or underscore
+    if sanitized and sanitized[0].isdigit():
+        sanitized = f"_{sanitized}"
+    return sanitized or "field"
 
 
 def build_output(node: dict, *, traversal_entry: dict | None = None) -> dict:
@@ -28,8 +38,9 @@ def build_output(node: dict, *, traversal_entry: dict | None = None) -> dict:
     set_map = {}
     for entry in raw_outputs:
         field = entry["field"]
-        # Read from context since ACTION nodes export their outputs there
-        set_map[field] = f"${{ $context.{field} }}"
+        # jq identifiers cannot contain spaces or special chars — sanitize to underscores
+        safe_field = _sanitize_field_name(field)
+        set_map[safe_field] = f"${{ $context.{safe_field} }}"
 
     task_name = f"{node_id}_expose"
 

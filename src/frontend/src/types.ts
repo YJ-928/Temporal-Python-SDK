@@ -94,3 +94,20 @@ export interface WorkflowMetadata {
   version: string;
   description: string;
 }
+
+export interface ExecutionRun {
+  run_id: string;
+  workflow_id: string;
+  status: string;
+  start_time?: string;
+  close_time?: string | null;
+  workflow_type?: string;
+}
+
+export interface NodeTraceState {
+  status: string;
+  input?: unknown;
+  output?: unknown;
+  error?: string;
+  duration_seconds?: number;
+}

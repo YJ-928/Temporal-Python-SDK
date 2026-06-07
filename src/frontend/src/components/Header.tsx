@@ -12,6 +12,7 @@ interface HeaderProps {
   isCompiled: boolean;
   onValidateAndCompile: () => void;
   isCompiling: boolean;
+  hasNodes: boolean;
   onExecute: () => void;
   isExecuting: boolean;
   onZoomIn?: () => void;
@@ -31,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   isCompiled,
   onValidateAndCompile,
   isCompiling,
+  hasNodes,
   onExecute,
   isExecuting,
   onZoomIn,
@@ -155,8 +157,8 @@ export const Header: React.FC<HeaderProps> = ({
               gap: '6px'
             }} 
             onClick={onValidateAndCompile}
-            disabled={isCompiling}
-            title="Validate & Compile (Ctrl+Enter)"
+            disabled={isCompiling || !hasNodes}
+            title={hasNodes ? 'Validate & Compile (Ctrl+Enter)' : 'Add nodes to begin building a workflow'}
           >
             <GitMerge size={15} className={isCompiling ? 'spin' : ''} />
             {isCompiling ? 'Compiling...' : 'Validate & Compile'}

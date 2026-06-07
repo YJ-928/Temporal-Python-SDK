@@ -79,16 +79,19 @@ async def compile_workflow(request: CompileWorkflowRequest):
         )
 
     except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
+        msg = str(e)
+        logger.error(f"Validation error: {msg}")
+        # Zigflow DSL validation errors may contain internal temp file paths — sanitize them
+        display = "Workflow structure is invalid. Check your node configurations." if msg.startswith("Zigflow validation failed") else msg
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=display,
         )
     except Exception as e:
-        logger.error(f"Compilation failed: {str(e)}")
+        logger.error(f"Compilation failed: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Compilation failed: {str(e)}",
+            detail="Compilation failed.",
         )
 
 
@@ -133,8 +136,8 @@ async def get_workflow(workflow_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to load workflow: {str(e)}")
+        logger.error(f"Failed to load workflow: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to load workflow: {str(e)}",
+            detail="Failed to load workflow.",
         )

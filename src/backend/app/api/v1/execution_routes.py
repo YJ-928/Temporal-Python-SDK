@@ -1,4 +1,6 @@
+import re
 from fastapi import APIRouter, HTTPException, status
+from temporalio.service import RPCError, RPCStatusCode
 from ...config import get_logger
 from ...schemas.execution_sch import (
     ExecuteWorkflowRequest,
@@ -10,6 +12,51 @@ from ...services.execution_service import execution_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/executions", tags=["Executions"])
+
+_EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
+
+
+def _check_field(field: str, rules: dict, value) -> str | None:
+    """Return an error string for a single contract field, or None if valid."""
+    required = rules.get("required", False)
+    if required and (value is None or value == ""):
+        return f"'{field}' is required."
+    if value is not None and rules.get("type") == "email":
+        if not isinstance(value, str) or not _EMAIL_RE.match(value.strip()):
+            return f"'{field}' must be a valid email address (got: {value!r})."
+    return None
+
+
+def _validate_contract(workflow_id: str, dsl_hash: str, input_data: dict) -> None:
+    """
+    Load the compiled DSL for this workflow version and validate input_data against
+    the metadata.contract block if one is present. Raises HTTP 422 on violations.
+    """
+    from ...services.storage_service import find_by_hash, load_dsl
+    path = find_by_hash(workflow_id, dsl_hash)
+    if path is None:
+        return
+
+    try:
+        dsl = load_dsl(path)
+    except Exception:
+        return
+
+    contract = dsl.get("document", {}).get("metadata", {}).get("contract", {})
+    if not contract:
+        return
+
+    errors = [
+        msg
+        for field, rules in contract.items()
+        if (msg := _check_field(field, rules, input_data.get(field))) is not None
+    ]
+
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Input validation failed: {'; '.join(errors)}",
+        )
 
 
 @router.post(
@@ -25,14 +72,14 @@ async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
     if not registration_service.is_registered(request.dsl_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Workflow version (hash {request.dsl_hash}) is not registered."
+            detail="Workflow version is not registered. Please recompile and try again."
         )
 
     # 2. Check if it's hot-reloaded/runtime-loaded into the worker
     if not registration_service.is_runtime_loaded(request.dsl_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Workflow version (hash {request.dsl_hash}) is still pending runtime loading."
+            detail="Workflow is warming up. Please try again in a few seconds."
         )
 
     # 3. Check if runtime is healthy
@@ -50,8 +97,11 @@ async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
     if not runtime_healthy:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Zigflow Runtime Daemon is offline or unhealthy."
+            detail="Workflow runtime is offline. Please contact support or try again later."
         )
+
+    # Validate input against compiled DSL contract (email format, required fields)
+    _validate_contract(workflow_id, request.dsl_hash, request.input)
 
     try:
         result = await execution_service.execute_workflow(
@@ -64,19 +114,19 @@ async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
         logger.warning(f"Compiled workflow not found: {e}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail="Compiled workflow not found."
         )
     except ValueError as e:
         logger.warning(f"Invalid DSL configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Invalid workflow configuration."
         )
     except Exception as e:
         logger.error(f"Failed to execute workflow {workflow_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start workflow execution: {e}"
+            detail="Failed to start workflow execution."
         )
 
 
@@ -94,7 +144,7 @@ async def list_executions(workflow_id: str):
         logger.error(f"Failed to retrieve history for {workflow_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch execution history: {e}"
+            detail="Failed to fetch execution history."
         )
 
 
@@ -108,11 +158,22 @@ async def get_execution_trace(workflow_id: str, run_id: str):
     try:
         trace = await execution_service.get_execution_trace(workflow_id, run_id)
         return ExecutionTraceResponse(**trace)
+    except RPCError as e:
+        if e.status == RPCStatusCode.NOT_FOUND:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workflow execution not found."
+            )
+        logger.error(f"Temporal RPC error fetching trace for {workflow_id}/{run_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch execution trace."
+        )
     except Exception as e:
         logger.error(f"Failed to retrieve trace for workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch execution trace: {e}"
+            detail="Failed to fetch execution trace."
         )
 
 
@@ -130,7 +191,7 @@ async def cancel_workflow(workflow_id: str, run_id: str):
         logger.error(f"Failed to cancel workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to cancel workflow: {e}"
+            detail="Failed to cancel workflow."
         )
 
 
@@ -148,5 +209,5 @@ async def terminate_workflow(workflow_id: str, run_id: str, reason: str = "Termi
         logger.error(f"Failed to terminate workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to terminate workflow: {e}"
+            detail="Failed to terminate workflow."
         )

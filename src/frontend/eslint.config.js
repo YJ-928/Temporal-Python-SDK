@@ -18,5 +18,12 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // React Compiler rules (react-hooks v7+) that require full compiler adoption —
+      // downgraded to warnings since patterns like initializing state in effects are
+      // valid React idioms that the React Compiler is overly strict about.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/preserve-manual-memoization': 'off',
+    },
   },
 ])

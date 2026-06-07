@@ -206,12 +206,3 @@ export const AgentNode: React.FC<NodeProps> = ({ data, selected }) => {
   );
 };
 
-export const nodeTypes = {
-  start: StartNode,
-  end: EndNode,
-  input: InputNode,
-  if: IfNode,
-  action: ActionNode,
-  output: OutputNode,
-  agent: AgentNode,
-};

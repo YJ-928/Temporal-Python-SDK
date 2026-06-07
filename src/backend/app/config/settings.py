@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
+    API_V1_PREFIX: str = "/api/v1"
 
     class Config:
         env_file = ".env"

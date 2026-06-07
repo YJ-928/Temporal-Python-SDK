@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useId } from 'react';
 import type { Node, Edge } from 'reactflow';
+import { notify } from '../utils/notify';
 import { Settings, Plus, Trash2, X, Code, Download, Copy, Upload } from 'lucide-react';
 import type {
   RFNodeData,
@@ -9,16 +10,24 @@ import type {
   FieldDataType,
   IfCondition,
   WorkflowMetadata,
+  NodeTraceState,
 } from '../types';
 import { FIELD_TYPE_OPTIONS, IF_OPERATOR_OPTIONS } from '../types';
-import { AVAILABLE_AGENTS } from '../constants/agents';
+import { catalogApi, type CatalogAgent, type CatalogOperation } from '../services/catalogApi';
+
+/** Strip any character that is invalid in a jq identifier, replacing with underscore. */
+function toValidFieldName(raw: string): string {
+  let out = raw.replace(/\W/g, '_');
+  if (out && /^\d/.test(out)) out = `_${out}`;
+  return out;
+}
 
 interface InspectorProps {
   selectedNode: Node<RFNodeData> | null;
   selectedEdge: Edge<RFEdgeData> | null;
   onUpdateNode: (nodeId: string, updatedData: Partial<RFNodeData>) => void;
   onUpdateEdge: (edgeId: string, updatedData: Partial<RFEdgeData>) => void;
-  nodeTraceStates?: Record<string, { status: string; input?: any; output?: any; error?: string }>;
+  nodeTraceStates?: Record<string, NodeTraceState>;
   metadata: WorkflowMetadata;
   onChangeMetadata: (meta: Partial<WorkflowMetadata>) => void;
   isSettingsOpen: boolean;
@@ -27,7 +36,7 @@ interface InspectorProps {
   onDownloadDsl: () => void;
   onCopyDsl: () => void;
   onExportJson: () => void;
-  onImportJson: (nodes: Node<RFNodeData>[], edges: Edge<RFEdgeData>[], metadata: any) => void;
+  onImportJson: (nodes: Node<RFNodeData>[], edges: Edge<RFEdgeData>[], metadata: WorkflowMetadata) => void;
   isCompiled: boolean;
 }
 
@@ -52,30 +61,45 @@ export const Inspector: React.FC<InspectorProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [catalogAgents, setCatalogAgents] = useState<CatalogAgent[]>([]);
+  const [catalogOperations, setCatalogOperations] = useState<CatalogOperation[]>([]);
+
+  useEffect(() => {
+    catalogApi.getAgents().then(setCatalogAgents);
+    catalogApi.getOperations().then(setCatalogOperations);
+  }, []);
+
   const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
+    file.text().then((text) => {
       try {
-        const data = JSON.parse(event.target?.result as string);
+        const data = JSON.parse(text) as {
+          nodes?: Node<RFNodeData>[];
+          edges?: Edge<RFEdgeData>[];
+          metadata?: WorkflowMetadata;
+          workflow_id?: string;
+          workflow_type?: string;
+          task_queue?: string;
+          version?: string;
+          description?: string;
+        };
         if (data.nodes && data.edges) {
-          onImportJson(data.nodes, data.edges, data.metadata || {
-            workflow_id: data.workflow_id || 'imported-workflow',
-            workflow_type: data.workflow_type || 'imported-type',
-            task_queue: data.task_queue || 'default',
-            version: data.version || '1.0.0',
-            description: data.description || '',
+          onImportJson(data.nodes, data.edges, data.metadata ?? {
+            workflow_id: data.workflow_id ?? 'imported-workflow',
+            workflow_type: data.workflow_type ?? 'imported-type',
+            task_queue: data.task_queue ?? 'default',
+            version: data.version ?? '1.0.0',
+            description: data.description ?? '',
           });
         } else {
-          alert('Invalid JSON: nodes or edges are missing.');
+          notify.error('Invalid JSON: nodes or edges are missing.');
         }
-      } catch (err: any) {
-        alert(`Failed to parse file: ${err.message}`);
+      } catch (err) {
+        notify.error(`Failed to parse file: ${(err as Error).message}`);
       }
-    };
-    reader.readAsText(file);
+    });
     e.target.value = '';
   };
 
@@ -85,19 +109,19 @@ export const Inspector: React.FC<InspectorProps> = ({
     const patch = (updated: Partial<RFNodeData>) => onUpdateNode(id, updated);
 
     const handleLabelChange = (value: string) => patch({ label: value });
-    
+
     const trace = nodeTraceStates[id];
 
     return (
-      <aside className={`inspector ${!isSettingsOpen ? 'collapsed' : ''}`}>
+      <aside className={`inspector ${isSettingsOpen ? '' : 'collapsed'}`}>
         <div className="inspector-header">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Settings size={18} style={{ color: 'var(--accent)' }} />
               <h3 className="inspector-title">Node Inspector</h3>
             </div>
-            <button 
-              onClick={onSettingsToggle} 
+            <button
+              onClick={onSettingsToggle}
               style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
               title="Close Panel"
             >
@@ -125,7 +149,7 @@ export const Inspector: React.FC<InspectorProps> = ({
                   {trace.status.toUpperCase()}
                 </span>
               </h4>
-              
+
               {trace.input && (
                 <div style={{ marginTop: '8px' }}>
                   <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Input:</span>
@@ -156,8 +180,9 @@ export const Inspector: React.FC<InspectorProps> = ({
           )}
           {type !== 'start' && type !== 'end' && (
             <div className="form-group">
-              <label>Display Label</label>
+              <label htmlFor={`${id}-label`}>Display Label</label>
               <input
+                id={`${id}-label`}
                 type="text"
                 className="form-input"
                 value={data.label || ''}
@@ -191,18 +216,33 @@ export const Inspector: React.FC<InspectorProps> = ({
           {type === 'action' && (
             <>
               <div className="form-group">
-                <label>Operation</label>
-                <input
-                  type="text"
-                  className="form-input"
+                <label htmlFor={`${id}-op`}>Operation</label>
+                <select
+                  id={`${id}-op`}
+                  className="form-select"
                   value={data.actionOperation || ''}
-                  onChange={(e) => patch({ actionOperation: e.target.value })}
-                  placeholder="e.g. transform, http_call, script"
-                />
+                  onChange={(e) => {
+                    const op = catalogOperations.find((o) => o.id === e.target.value);
+                    patch({ actionOperation: e.target.value, label: op?.name ?? data.label });
+                  }}
+                >
+                  <option value="">Select an operation…</option>
+                  {catalogOperations.map((op) => (
+                    <option key={op.id} value={op.id}>
+                      {op.name}
+                    </option>
+                  ))}
+                </select>
+                {data.actionOperation && (
+                  <p className="form-hint" style={{ marginTop: '4px' }}>
+                    {catalogOperations.find((o) => o.id === data.actionOperation)?.description}
+                  </p>
+                )}
               </div>
               <div className="form-group">
-                <label>Inputs</label>
+                <label htmlFor={`${id}-action-inputs`}>Inputs</label>
                 <textarea
+                  id={`${id}-action-inputs`}
                   className="form-textarea"
                   value={data.actionInputs || ''}
                   onChange={(e) => patch({ actionInputs: e.target.value })}
@@ -211,13 +251,14 @@ export const Inspector: React.FC<InspectorProps> = ({
                 />
               </div>
               <div className="form-group">
-                <label>Output</label>
+                <label htmlFor={`${id}-action-output`}>Output Variable</label>
                 <input
+                  id={`${id}-action-output`}
                   type="text"
                   className="form-input"
                   value={data.actionOutput || ''}
-                  onChange={(e) => patch({ actionOutput: e.target.value })}
-                  placeholder="e.g. result.payload"
+                  onChange={(e) => patch({ actionOutput: toValidFieldName(e.target.value) })}
+                  placeholder="e.g. weather_result"
                 />
               </div>
             </>
@@ -226,21 +267,19 @@ export const Inspector: React.FC<InspectorProps> = ({
           {type === 'agent' && (
             <>
               <div className="form-group">
-                <label>Agent</label>
+                <label htmlFor={`${id}-agent-sel`}>Agent</label>
                 <select
+                  id={`${id}-agent-sel`}
                   className="form-select"
                   value={data.selectedAgentId || ''}
                   onChange={(e) => {
                     const selectedAgentId = e.target.value;
-                    const agent = AVAILABLE_AGENTS.find((a) => a.id === selectedAgentId);
-                    patch({
-                      selectedAgentId,
-                      label: agent?.name ?? data.label,
-                    });
+                    const agent = catalogAgents.find((a) => a.id === selectedAgentId);
+                    patch({ selectedAgentId, label: agent?.name ?? data.label });
                   }}
                 >
                   <option value="">Select an agent…</option>
-                  {AVAILABLE_AGENTS.map((agent) => (
+                  {catalogAgents.map((agent) => (
                     <option key={agent.id} value={agent.id}>
                       {agent.name}
                     </option>
@@ -248,13 +287,14 @@ export const Inspector: React.FC<InspectorProps> = ({
                 </select>
                 {data.selectedAgentId && (
                   <p className="form-hint" style={{ marginTop: '4px' }}>
-                    {AVAILABLE_AGENTS.find((a) => a.id === data.selectedAgentId)?.description}
+                    {catalogAgents.find((a) => a.id === data.selectedAgentId)?.description}
                   </p>
                 )}
               </div>
               <div className="form-group">
-                <label>Inputs</label>
+                <label htmlFor={`${id}-agent-inputs`}>Inputs</label>
                 <textarea
+                  id={`${id}-agent-inputs`}
                   className="form-textarea"
                   value={data.agentInputs || ''}
                   onChange={(e) => patch({ agentInputs: e.target.value })}
@@ -263,18 +303,20 @@ export const Inspector: React.FC<InspectorProps> = ({
                 />
               </div>
               <div className="form-group">
-                <label>Output Variable</label>
+                <label htmlFor={`${id}-agent-output`}>Output Variable</label>
                 <input
+                  id={`${id}-agent-output`}
                   type="text"
                   className="form-input"
                   value={data.agentOutput || ''}
-                  onChange={(e) => patch({ agentOutput: e.target.value })}
+                  onChange={(e) => patch({ agentOutput: toValidFieldName(e.target.value) })}
                   placeholder="e.g. weather"
                 />
               </div>
               <div className="form-group">
-                <label>Output Path (optional)</label>
+                <label htmlFor={`${id}-agent-path`}>Output Path (optional)</label>
                 <input
+                  id={`${id}-agent-path`}
                   type="text"
                   className="form-input"
                   value={data.agentOutputPath || ''}
@@ -303,15 +345,15 @@ export const Inspector: React.FC<InspectorProps> = ({
     };
 
     return (
-      <aside className={`inspector ${!isSettingsOpen ? 'collapsed' : ''}`}>
+      <aside className={`inspector ${isSettingsOpen ? '' : 'collapsed'}`}>
         <div className="inspector-header">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Settings size={18} style={{ color: 'var(--accent)' }} />
               <h3 className="inspector-title">Edge Inspector</h3>
             </div>
-            <button 
-              onClick={onSettingsToggle} 
+            <button
+              onClick={onSettingsToggle}
               style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
               title="Close Panel"
             >
@@ -327,8 +369,9 @@ export const Inspector: React.FC<InspectorProps> = ({
           </div>
 
           <div className="form-group" style={{ marginTop: '12px' }}>
-            <label>Edge Label / Branch</label>
+            <label htmlFor={`${id}-branch`}>Edge Label / Branch</label>
             <select
+              id={`${id}-branch`}
               className="form-select"
               value={data.branch || ''}
               onChange={(e) => handleEdgeChange('branch', e.target.value)}
@@ -340,8 +383,9 @@ export const Inspector: React.FC<InspectorProps> = ({
           </div>
 
           <div className="form-group">
-            <label>Routing Condition</label>
+            <label htmlFor={`${id}-condition`}>Routing Condition</label>
             <input
+              id={`${id}-condition`}
               type="text"
               className="form-input"
               value={data.condition || ''}
@@ -355,28 +399,28 @@ export const Inspector: React.FC<InspectorProps> = ({
   }
 
   return (
-    <aside className={`inspector ${!isSettingsOpen ? 'collapsed' : ''}`}>
+    <aside className={`inspector ${isSettingsOpen ? '' : 'collapsed'}`}>
       <div className="inspector-header">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Settings size={18} style={{ color: 'var(--accent)' }} />
             <h3 className="inspector-title">Workflow Settings</h3>
           </div>
-          <button 
-            onClick={onSettingsToggle} 
+          <button
+            onClick={onSettingsToggle}
             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
             title="Close Panel"
           >
             <X size={16} />
           </button>
         </div>
-        <span 
-          style={{ 
-            fontSize: '9px', 
-            background: 'rgba(99, 102, 241, 0.15)', 
-            color: '#a5b4fc', 
-            padding: '3px 8px', 
-            borderRadius: '12px', 
+        <span
+          style={{
+            fontSize: '9px',
+            background: 'rgba(99, 102, 241, 0.15)',
+            color: '#a5b4fc',
+            padding: '3px 8px',
+            borderRadius: '12px',
             fontWeight: 'bold',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
@@ -391,8 +435,9 @@ export const Inspector: React.FC<InspectorProps> = ({
 
       <div className="inspector-form">
         <div className="form-group">
-          <label>Workflow Name / ID</label>
+          <label htmlFor="wf-id">Workflow Name / ID</label>
           <input
+            id="wf-id"
             type="text"
             className="form-input"
             value={metadata.workflow_id}
@@ -402,8 +447,9 @@ export const Inspector: React.FC<InspectorProps> = ({
         </div>
 
         <div className="form-group">
-          <label>Workflow Type</label>
+          <label htmlFor="wf-type">Workflow Type</label>
           <input
+            id="wf-type"
             type="text"
             className="form-input"
             value={metadata.workflow_type}
@@ -413,8 +459,9 @@ export const Inspector: React.FC<InspectorProps> = ({
         </div>
 
         <div className="form-group">
-          <label>Task Queue</label>
+          <label htmlFor="wf-queue">Task Queue</label>
           <input
+            id="wf-queue"
             type="text"
             className="form-input"
             value={metadata.task_queue}
@@ -424,8 +471,9 @@ export const Inspector: React.FC<InspectorProps> = ({
         </div>
 
         <div className="form-group">
-          <label>Version</label>
+          <label htmlFor="wf-version">Version</label>
           <input
+            id="wf-version"
             type="text"
             className="form-input"
             value={metadata.version}
@@ -435,8 +483,9 @@ export const Inspector: React.FC<InspectorProps> = ({
         </div>
 
         <div className="form-group">
-          <label>Description</label>
+          <label htmlFor="wf-desc">Description</label>
           <textarea
+            id="wf-desc"
             className="form-textarea"
             value={metadata.description || ''}
             onChange={(e) => onChangeMetadata({ description: e.target.value })}
@@ -448,24 +497,24 @@ export const Inspector: React.FC<InspectorProps> = ({
         <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <h4 style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>DSL Actions</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button 
-              className="btn btn-outline" 
+            <button
+              className="btn btn-outline"
               style={{ width: '100%', justifyContent: 'flex-start', gap: '8px', opacity: isCompiled ? 1 : 0.5, cursor: isCompiled ? 'pointer' : 'not-allowed' }}
               disabled={!isCompiled}
               onClick={onViewDslClick}
             >
               <Code size={14} /> View DSL
             </button>
-            <button 
-              className="btn btn-outline" 
+            <button
+              className="btn btn-outline"
               style={{ width: '100%', justifyContent: 'flex-start', gap: '8px', opacity: isCompiled ? 1 : 0.5, cursor: isCompiled ? 'pointer' : 'not-allowed' }}
               disabled={!isCompiled}
               onClick={onDownloadDsl}
             >
               <Download size={14} /> Download DSL
             </button>
-            <button 
-              className="btn btn-outline" 
+            <button
+              className="btn btn-outline"
               style={{ width: '100%', justifyContent: 'flex-start', gap: '8px', opacity: isCompiled ? 1 : 0.5, cursor: isCompiled ? 'pointer' : 'not-allowed' }}
               disabled={!isCompiled}
               onClick={onCopyDsl}
@@ -478,15 +527,15 @@ export const Inspector: React.FC<InspectorProps> = ({
         <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <h4 style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>JSON Actions</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button 
-              className="btn btn-outline" 
+            <button
+              className="btn btn-outline"
               style={{ width: '100%', justifyContent: 'flex-start', gap: '8px' }}
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload size={14} /> Import Workflow
             </button>
-            <button 
-              className="btn btn-outline" 
+            <button
+              className="btn btn-outline"
               style={{ width: '100%', justifyContent: 'flex-start', gap: '8px' }}
               onClick={onExportJson}
             >
@@ -494,12 +543,12 @@ export const Inspector: React.FC<InspectorProps> = ({
             </button>
           </div>
         </div>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          style={{ display: 'none' }} 
-          accept=".json" 
-          onChange={handleImportJson} 
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          accept=".json"
+          onChange={handleImportJson}
         />
       </div>
     </aside>
@@ -509,10 +558,10 @@ export const Inspector: React.FC<InspectorProps> = ({
 function InputFieldsEditor({
   fields,
   onChange,
-}: {
+}: Readonly<{
   fields: InputFieldRow[];
   onChange: (fields: InputFieldRow[]) => void;
-}) {
+}>) {
   const updateRow = (rowId: string, patch: Partial<InputFieldRow>) => {
     onChange(fields.map((r) => (r.id === rowId ? { ...r, ...patch } : r)));
   };
@@ -542,17 +591,19 @@ function InputFieldsEditor({
             </button>
           </div>
           <div className="form-group">
-            <label>Field</label>
+            <label htmlFor={`inp-field-${row.id}`}>Field</label>
             <input
+              id={`inp-field-${row.id}`}
               className="form-input"
               value={row.field}
-              onChange={(e) => updateRow(row.id, { field: e.target.value })}
+              onChange={(e) => updateRow(row.id, { field: toValidFieldName(e.target.value) })}
               placeholder="e.g. user_message"
             />
           </div>
           <div className="form-group">
-            <label>Store As</label>
+            <label htmlFor={`inp-store-${row.id}`}>Store As</label>
             <input
+              id={`inp-store-${row.id}`}
               className="form-input"
               value={row.store_as}
               onChange={(e) => updateRow(row.id, { store_as: e.target.value })}
@@ -572,10 +623,10 @@ function InputFieldsEditor({
 function OutputFieldsEditor({
   fields,
   onChange,
-}: {
+}: Readonly<{
   fields: OutputFieldRow[];
   onChange: (fields: OutputFieldRow[]) => void;
-}) {
+}>) {
   const updateRow = (rowId: string, patch: Partial<OutputFieldRow>) => {
     onChange(fields.map((r) => (r.id === rowId ? { ...r, ...patch } : r)));
   };
@@ -602,11 +653,12 @@ function OutputFieldsEditor({
             </button>
           </div>
           <div className="form-group">
-            <label>Field</label>
+            <label htmlFor={`out-field-${row.id}`}>Field</label>
             <input
+              id={`out-field-${row.id}`}
               className="form-input"
               value={row.field}
-              onChange={(e) => updateRow(row.id, { field: e.target.value })}
+              onChange={(e) => updateRow(row.id, { field: toValidFieldName(e.target.value) })}
               placeholder="e.g. response_text"
             />
           </div>
@@ -623,10 +675,10 @@ function OutputFieldsEditor({
 function IfConditionEditor({
   condition,
   onChange,
-}: {
+}: Readonly<{
   condition: IfCondition;
   onChange: (condition: IfCondition) => void;
-}) {
+}>) {
   const set = (key: keyof IfCondition, value: string) => {
     onChange({ ...condition, [key]: value });
   };
@@ -634,8 +686,9 @@ function IfConditionEditor({
   return (
     <>
       <div className="form-group">
-        <label>Left</label>
+        <label htmlFor="if-left">Left</label>
         <input
+          id="if-left"
           className="form-input"
           value={condition.left}
           onChange={(e) => set('left', e.target.value)}
@@ -643,8 +696,9 @@ function IfConditionEditor({
         />
       </div>
       <div className="form-group">
-        <label>Operator</label>
+        <label htmlFor="if-operator">Operator</label>
         <select
+          id="if-operator"
           className="form-select"
           value={condition.operator}
           onChange={(e) => set('operator', e.target.value)}
@@ -657,8 +711,9 @@ function IfConditionEditor({
         </select>
       </div>
       <div className="form-group">
-        <label>Right</label>
+        <label htmlFor="if-right">Right</label>
         <input
+          id="if-right"
           className="form-input"
           value={condition.right}
           onChange={(e) => set('right', e.target.value)}
@@ -672,14 +727,16 @@ function IfConditionEditor({
 function TypeSelect({
   value,
   onChange,
-}: {
+}: Readonly<{
   value: FieldDataType;
   onChange: (type: FieldDataType) => void;
-}) {
+}>) {
+  const selectId = useId();
   return (
     <div className="form-group">
-      <label>Type</label>
+      <label htmlFor={selectId}>Type</label>
       <select
+        id={selectId}
         className="form-select"
         value={value}
         onChange={(e) => onChange(e.target.value as FieldDataType)}
@@ -698,15 +755,15 @@ function ArraySection({
   title,
   onAdd,
   children,
-}: {
+}: Readonly<{
   title: string;
   onAdd: () => void;
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <div className="array-section">
       <div className="array-section-header">
-        <label>{title}</label>
+        <span>{title}</span>
         <button type="button" className="btn btn-outline btn-sm" onClick={onAdd}>
           <Plus size={12} /> Add
         </button>
