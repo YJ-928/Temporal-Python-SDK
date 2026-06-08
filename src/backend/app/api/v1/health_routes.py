@@ -1,6 +1,7 @@
 """
 Health check routes.
 """
+import asyncio
 import urllib.request
 import json
 from fastapi import APIRouter
@@ -10,6 +11,22 @@ from ...services.registration_service import registration_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/health", tags=["Health"])
+
+
+def _http_get_json(url: str, timeout: int) -> dict | None:
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url), timeout=timeout) as r:  # noqa: S310
+            return json.loads(r.read())
+    except Exception:
+        return None
+
+
+def _http_check_ok(url: str, timeout: int) -> bool:
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url), timeout=timeout) as r:  # noqa: S310
+            return r.status == 200
+    except Exception:
+        return False
 
 
 @router.get("/temporal")
@@ -26,14 +43,12 @@ async def check_temporal_health():
 @router.get("/runtime")
 async def check_runtime_health():
     """Check health of the Zigflow runtime daemon and registrations count."""
-    zigflow_ok = False
-    try:
-        req = urllib.request.Request("http://localhost:3005/health")
-        with urllib.request.urlopen(req, timeout=2) as r:
-            res = json.loads(r.read())
-            zigflow_ok = res.get("healthy", False)
-    except Exception as e:
-        logger.warning(f"Zigflow runtime health check failed: {e}")
+    res = await asyncio.to_thread(_http_get_json, "http://localhost:3005/health", 2)
+    if res is None:
+        logger.warning("Zigflow runtime health check failed")
+        zigflow_ok = False
+    else:
+        zigflow_ok = res.get("healthy", False)
 
     regs = registration_service.get_all_registrations()
     registered_count = len([k for k, v in regs.items() if v.get("registered")])
@@ -52,18 +67,12 @@ async def check_system_health():
     try:
         await Client.connect(settings.TEMPORAL_ADDRESS)
         temporal_ok = True
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     # Check Runtime
-    runtime_ok = False
-    try:
-        req = urllib.request.Request("http://localhost:3005/health")
-        with urllib.request.urlopen(req, timeout=1) as r:
-            res = json.loads(r.read())
-            runtime_ok = res.get("healthy", False)
-    except Exception:
-        pass
+    res = await asyncio.to_thread(_http_get_json, "http://localhost:3005/health", 1)
+    runtime_ok = res.get("healthy", False) if res else False
 
     # Check Agents individually
     agent_health = {}
@@ -73,14 +82,7 @@ async def check_system_health():
         "email_sender": 11002,
     }
     for name, port in ports.items():
-        ok = False
-        try:
-            req = urllib.request.Request(f"http://localhost:{port}/docs")
-            with urllib.request.urlopen(req, timeout=1) as r:
-                if r.status == 200:
-                    ok = True
-        except Exception:
-            pass
+        ok = await asyncio.to_thread(_http_check_ok, f"http://localhost:{port}/docs", 1)
         agent_health[name] = ok
 
     return {

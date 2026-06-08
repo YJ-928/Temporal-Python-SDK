@@ -343,7 +343,7 @@ const FlowBuilder: React.FC = () => {
       )
     );
     invalidateCompilation();
-  }, [nodes, setEdges, invalidateCompilation]);
+  }, [nodes, setEdges, invalidateCompilation, pushToUndo]);
 
   // Drag and drop mechanics
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -378,7 +378,7 @@ const FlowBuilder: React.FC = () => {
       setNodes((nds) => nds.concat(newNode));
       invalidateCompilation();
     },
-    [reactFlowInstance, setNodes, invalidateCompilation]
+    [reactFlowInstance, setNodes, invalidateCompilation, pushToUndo]
   );
 
   // Click palette to add node directly to viewport center
@@ -400,7 +400,7 @@ const FlowBuilder: React.FC = () => {
 
     setNodes((nds) => nds.concat(newNode));
     invalidateCompilation();
-  }, [reactFlowInstance, setNodes, invalidateCompilation]);
+  }, [reactFlowInstance, setNodes, invalidateCompilation, pushToUndo]);
 
   // Reset flow builder
   const handleReset = useCallback(() => {
@@ -427,7 +427,7 @@ const FlowBuilder: React.FC = () => {
     if (simulationTimeoutRef.current) {
       clearTimeout(simulationTimeoutRef.current);
     }
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, pushToUndo]);
 
   // Load a preset template
   const handleLoadExample = useCallback((key: string) => {
@@ -453,10 +453,10 @@ const FlowBuilder: React.FC = () => {
         reactFlowInstance?.fitView({ duration: 400 });
       }, 100);
     }
-  }, [setNodes, setEdges, handleReset, reactFlowInstance, addLog]);
+  }, [setNodes, setEdges, handleReset, reactFlowInstance, addLog, pushToUndo]);
 
   // Undo operation
-  const undo = () => {
+  const undo = useCallback(() => {
     if (undoStack.length === 0) return;
     const previous = undoStack.at(-1)!;
     setRedoStack((prev) => [...prev, { nodes, edges }]);
@@ -464,10 +464,10 @@ const FlowBuilder: React.FC = () => {
     setEdges(previous.edges);
     setUndoStack((prev) => prev.slice(0, -1));
     invalidateCompilation();
-  };
+  }, [undoStack, nodes, edges, setNodes, setEdges, invalidateCompilation]);
 
   // Redo operation
-  const redo = () => {
+  const redo = useCallback(() => {
     if (redoStack.length === 0) return;
     const next = redoStack.at(-1)!;
     setUndoStack((prev) => [...prev, { nodes, edges }]);
@@ -475,7 +475,7 @@ const FlowBuilder: React.FC = () => {
     setEdges(next.edges);
     setRedoStack((prev) => prev.slice(0, -1));
     invalidateCompilation();
-  };
+  }, [redoStack, nodes, edges, setNodes, setEdges, invalidateCompilation]);
 
   // Temporal live execution functions
   const refreshHistory = useCallback(async () => {
@@ -535,7 +535,7 @@ const FlowBuilder: React.FC = () => {
     }
   };
 
-  const validateAndCompile = async () => {
+  const validateAndCompile = useCallback(async () => {
     // Graph topology checks (no API call for structural errors)
     const graphErrors = validateGraphTopology(nodes, edges);
 
@@ -595,7 +595,7 @@ const FlowBuilder: React.FC = () => {
     } finally {
       setIsCompiling(false);
     }
-  };
+  }, [nodes, edges, metadata, addLog]);
 
   const handleUpdateMetadata = (updated: Partial<WorkflowMetadata>) => {
     setMetadata((prev) => ({
@@ -624,7 +624,7 @@ const FlowBuilder: React.FC = () => {
     }, 100);
   };
 
-  const handleExportJson = () => {
+  const handleExportJson = useCallback(() => {
     const payload = {
       nodes,
       edges,
@@ -638,7 +638,7 @@ const FlowBuilder: React.FC = () => {
     downloadAnchor.click();
     downloadAnchor.remove();
     addLog("Exported workflow design JSON file.", 'info');
-  };
+  }, [nodes, edges, metadata, addLog]);
 
   const handleViewDslClick = () => {
     setIsSimulatorOpen(true);
@@ -667,7 +667,7 @@ const FlowBuilder: React.FC = () => {
 
   useEffect(() => {
     if (activeRunId) {
-      setLogs([]);
+      setLogs([]); // eslint-disable-line react-hooks/set-state-in-effect
       loggedStepsRef.current = {};
       setNodeTraceStates({});
       const run = executionHistory.find(r => r.run_id === activeRunId);
@@ -678,7 +678,7 @@ const FlowBuilder: React.FC = () => {
   }, [activeRunId, executionHistory]);
 
   useEffect(() => {
-    refreshHistory();
+    refreshHistory(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [refreshHistory]);
 
   const handleCancelRun = async (workflowId: string, runId: string) => {
@@ -793,7 +793,7 @@ const FlowBuilder: React.FC = () => {
     return () => {
       if (intervalId !== undefined) clearInterval(intervalId);
     };
-  }, [activeRunId, nodes, refreshHistory, metadata.workflow_id, activeRunStatus]);
+  }, [activeRunId, nodes, refreshHistory, metadata.workflow_id, activeRunStatus, addLog]);
 
   // Keyboard shortcuts listener
   useEffect(() => {
@@ -853,7 +853,7 @@ const FlowBuilder: React.FC = () => {
     return () => {
       globalThis.removeEventListener('keydown', handleKeyDown);
     };
-  }, [nodes, edges, selectedNodeId, selectedEdgeId, validateAndCompile, undo, redo, handleExportJson]);
+  }, [nodes, edges, selectedNodeId, selectedEdgeId, validateAndCompile, undo, redo, handleExportJson, pushToUndo, setNodes, setEdges]);
 
   // Find selected elements
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;

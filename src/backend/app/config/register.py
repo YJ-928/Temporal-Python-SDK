@@ -132,23 +132,22 @@ def register_routers(app: FastAPI) -> None:
                 "status": "success",
                 "message_id": "abc123"
             }
-        elif operation == "account_lookup":
+        if operation == "account_lookup":
             acct_id = body.get("account_id")
             if acct_id == "active-123":
                 return {
                     "active": True,
                     "type": "support"
                 }
-            else:
-                return {
-                    "active": False
-                }
-        elif operation == "assign_support_case":
+            return {
+                "active": False
+            }
+        if operation == "assign_support_case":
             return {
                 "status": "success",
                 "case_id": "case-support-999"
             }
-        elif operation == "assign_billing_case":
+        if operation == "assign_billing_case":
             return {
                 "status": "success",
                 "case_id": "case-billing-888"
@@ -211,7 +210,9 @@ def register_events(app: FastAPI) -> None:
         import asyncio
         if not shutil.which("zigflow"):
             logger.critical("❌ zigflow command-line tool is not installed or not found on PATH.")
-            raise RuntimeError("zigflow CLI tool not found on PATH. Please install zigflow before starting the application.")
+            raise RuntimeError(
+                "zigflow CLI tool not found on PATH. Please install zigflow before starting the application."
+            )
 
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -230,7 +231,7 @@ def register_events(app: FastAPI) -> None:
             await registration_service.sync_pre_existing()
             logger.info("✓ Sync of pre-existing compiled workflows complete")
         except Exception as e:
-            logger.error(f"Failed to sync compiled workflows on startup: {e}")
+            logger.exception(f"Failed to sync compiled workflows on startup: {e}")
 
     @app.on_event("shutdown")
     async def shutdown_event():

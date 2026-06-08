@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import json
 import uuid
 from typing import List, Dict, Optional, Any
@@ -20,21 +22,17 @@ async def get_memo_value(desc, key: str) -> Optional[Any]:
 
     # Primary: memo_value is the typed accessor (async)
     if hasattr(desc, "memo_value"):
-        try:
+        with contextlib.suppress(Exception):
             val = await desc.memo_value(key, None)
             if val is not None:
                 return val
-        except Exception:
-            pass
 
     # Fallback: await desc.memo() to get the full dict
     if hasattr(desc, "memo"):
-        try:
+        with contextlib.suppress(Exception):
             memo_dict = await desc.memo()
             if memo_dict and hasattr(memo_dict, "get"):
                 return memo_dict.get(key)
-        except Exception:
-            pass
 
     return None
 
@@ -44,7 +42,7 @@ def _decode_failure_encoded_attrs(failure) -> str:
     Decode GoSDK/Zigflow encoded_attributes.data (JSON blob) to extract the real error message.
     GoSDK sets failure.message = 'Encoded failure' and puts the real message in encoded_attributes.
     """
-    try:
+    with contextlib.suppress(Exception):
         ea = getattr(failure, 'encoded_attributes', None)
         if not ea:
             return ""
@@ -54,22 +52,21 @@ def _decode_failure_encoded_attrs(failure) -> str:
         decoded = json.loads(data.decode('utf-8'))
         if isinstance(decoded, dict):
             return decoded.get('message', '')
-    except Exception:
-        pass
     return ""
 
 
-_TRIVIAL_MESSAGES = frozenset({"Encoded failure", "Unknown error", "Workflow execution failed", ""})
+_TRIVIAL_MESSAGES = frozenset({
+    "Encoded failure", "Unknown error", "Workflow execution failed",
+    "Activity task failed", "activity error", "",
+})
 
 
 def _get_cause_message(failure, depth: int) -> str:
     """Recurse into a Temporal failure's cause and return its unwrapped message, or ''."""
-    try:
+    with contextlib.suppress(Exception):
         if hasattr(failure, "HasField") and failure.HasField("cause"):
             msg = unwrap_temporal_failure(failure.cause, depth + 1)
             return msg if msg not in _TRIVIAL_MESSAGES else ""
-    except Exception:
-        pass
     return ""
 
 
@@ -139,7 +136,7 @@ class ExecutionService:
 
         # 3. Connect to Temporal and trigger execution
         client = await self._get_client()
-        
+
         # Format Temporal workflow ID: rf-{visual_id}-{short_uuid}
         temporal_workflow_id = f"rf-{workflow_id}-{uuid.uuid4().hex[:8]}"
 
@@ -195,7 +192,7 @@ class ExecutionService:
                 })
         except Exception as e:
             logger.error(f"Failed to list executions from Temporal: {e}")
-            raise RuntimeError(f"Temporal visibility query failed: {e}")
+            raise RuntimeError(f"Temporal visibility query failed: {e}") from e
 
         # Return sorted by start time descending
         return sorted(
@@ -220,7 +217,7 @@ class ExecutionService:
 
         # Connect to Temporal workflow handle directly without visibility search lookup
         handle = client.get_workflow_handle(workflow_id, run_id=run_id)
-        
+
         # Describe workflow to fetch dsl_hash and visual_workflow_id from memo
         desc = await handle.describe()
         workflow_status = desc.status.name if hasattr(desc.status, "name") else str(desc.status)
@@ -246,14 +243,12 @@ class ExecutionService:
             if not payloads:
                 return None
             for p in payloads:
-                try:
+                with contextlib.suppress(Exception):
                     val = json.loads(p.data.decode("utf-8"))
                     if isinstance(val, dict):
                         name = val.get("data", {}).get("task", {}).get("name")
                         if name:
                             return name
-                except Exception:
-                    continue
             return None
 
         async for event in handle.fetch_history_events():
@@ -266,10 +261,8 @@ class ExecutionService:
                     scheduled_times[event.event_id] = event.event_time.ToDatetime()
                     input_data = None
                     if attrs.input.payloads:
-                        try:
+                        with contextlib.suppress(Exception):
                             input_data = json.loads(attrs.input.payloads[0].data.decode("utf-8"))
-                        except Exception:
-                            pass
                     event_states[task_name] = {
                         "status": "running",
                         "input": input_data,
@@ -285,15 +278,14 @@ class ExecutionService:
                 if task_name and task_name in event_states:
                     output_data = None
                     if attrs.result and attrs.result.payloads:
-                        try:
+                        with contextlib.suppress(Exception):
                             output_data = json.loads(attrs.result.payloads[0].data.decode("utf-8"))
-                        except Exception:
-                            pass
                     event_states[task_name]["status"] = "completed"
                     event_states[task_name]["output"] = output_data
                     start_t = scheduled_times.get(attrs.scheduled_event_id)
                     if start_t:
-                        event_states[task_name]["duration_seconds"] = round((event.event_time.ToDatetime() - start_t).total_seconds(), 2)
+                        elapsed = (event.event_time.ToDatetime() - start_t).total_seconds()
+                        event_states[task_name]["duration_seconds"] = round(elapsed, 2)
 
             # External Activity Failed
             elif event.HasField("activity_task_failed_event_attributes"):
@@ -307,7 +299,8 @@ class ExecutionService:
                     event_states[task_name]["error"] = error_msg
                     start_t = scheduled_times.get(attrs.scheduled_event_id)
                     if start_t:
-                        event_states[task_name]["duration_seconds"] = round((event.event_time.ToDatetime() - start_t).total_seconds(), 2)
+                        elapsed = (event.event_time.ToDatetime() - start_t).total_seconds()
+                        event_states[task_name]["duration_seconds"] = round(elapsed, 2)
 
             # Child Workflow Initiated
             elif event.HasField("start_child_workflow_execution_initiated_event_attributes"):
@@ -318,10 +311,8 @@ class ExecutionService:
                     scheduled_times[event.event_id] = event.event_time.ToDatetime()
                     input_data = None
                     if attrs.input.payloads:
-                        try:
+                        with contextlib.suppress(Exception):
                             input_data = json.loads(attrs.input.payloads[0].data.decode("utf-8"))
-                        except Exception:
-                            pass
                     event_states[task_name] = {
                         "status": "running",
                         "input": input_data,
@@ -337,15 +328,14 @@ class ExecutionService:
                 if task_name and task_name in event_states:
                     output_data = None
                     if attrs.result and attrs.result.payloads:
-                        try:
+                        with contextlib.suppress(Exception):
                             output_data = json.loads(attrs.result.payloads[0].data.decode("utf-8"))
-                        except Exception:
-                            pass
                     event_states[task_name]["status"] = "completed"
                     event_states[task_name]["output"] = output_data
                     start_t = scheduled_times.get(attrs.initiated_event_id)
                     if start_t:
-                        event_states[task_name]["duration_seconds"] = round((event.event_time.ToDatetime() - start_t).total_seconds(), 2)
+                        elapsed = (event.event_time.ToDatetime() - start_t).total_seconds()
+                        event_states[task_name]["duration_seconds"] = round(elapsed, 2)
 
             # Child Workflow Failed
             elif event.HasField("child_workflow_execution_failed_event_attributes"):
@@ -359,7 +349,8 @@ class ExecutionService:
                     event_states[task_name]["error"] = error_msg
                     start_t = scheduled_times.get(attrs.initiated_event_id)
                     if start_t:
-                        event_states[task_name]["duration_seconds"] = round((event.event_time.ToDatetime() - start_t).total_seconds(), 2)
+                        elapsed = (event.event_time.ToDatetime() - start_t).total_seconds()
+                        event_states[task_name]["duration_seconds"] = round(elapsed, 2)
 
             # Workflow Completed
             elif event.HasField("workflow_execution_completed_event_attributes"):
@@ -372,8 +363,9 @@ class ExecutionService:
             rf_path = find_by_hash(visual_workflow_id, dsl_hash, ext=".rf")
             if rf_path and rf_path.exists():
                 try:
-                    with open(rf_path, 'r', encoding='utf-8') as f:
-                        rf_json = json.load(f)
+                    rf_json = json.loads(
+                        await asyncio.to_thread(lambda: rf_path.read_text(encoding='utf-8'))
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to load versioned ReactFlow file {rf_path}: {e}")
 
@@ -391,8 +383,9 @@ class ExecutionService:
 
                 if rf_path.exists():
                     try:
-                        with open(rf_path, 'r', encoding='utf-8') as f:
-                            rf_json = json.load(f)
+                        rf_json = json.loads(
+                            await asyncio.to_thread(lambda: rf_path.read_text(encoding='utf-8'))
+                        )
                     except Exception as e:
                         logger.warning(f"Failed to load fallback ReactFlow file {rf_path}: {e}")
 

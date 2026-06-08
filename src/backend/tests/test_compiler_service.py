@@ -1,6 +1,6 @@
-import os
 import json
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from app.services.compiler_service import CompilerService
 
@@ -8,13 +8,13 @@ from app.services.compiler_service import CompilerService
 class TestCompilerService(unittest.TestCase):
     def setUp(self):
         self.service = CompilerService()
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.fixtures_dir = os.path.join(self.base_dir, "fixtures", "valid")
+        self.base_dir = Path(__file__).resolve().parent
+        self.fixtures_dir = self.base_dir / "fixtures" / "valid"
 
     def test_compile_valid_workflow(self):
         # Load single action valid fixture (contains actual tasks)
-        fixture_path = os.path.join(self.fixtures_dir, "03_single_action.json")
-        with open(fixture_path, "r") as f:
+        fixture_path = self.fixtures_dir / "03_single_action.json"
+        with fixture_path.open("r") as f:
             workflow = json.load(f)
 
         # It should compile and validate successfully
@@ -29,8 +29,8 @@ class TestCompilerService(unittest.TestCase):
 
     def test_compile_validation_failure(self):
         # Load single action valid fixture
-        fixture_path = os.path.join(self.fixtures_dir, "03_single_action.json")
-        with open(fixture_path, "r") as f:
+        fixture_path = self.fixtures_dir / "03_single_action.json"
+        with fixture_path.open("r") as f:
             workflow = json.load(f)
 
         # Mock compile_workflow_to_dsl to return an invalid schema structure
@@ -46,7 +46,7 @@ class TestCompilerService(unittest.TestCase):
                     workflow_type="invalid-test",
                     task_queue="default"
                 )
-            
+
             self.assertIn("Zigflow validation failed", str(ctx.exception))
 
 

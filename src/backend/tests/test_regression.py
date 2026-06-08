@@ -1,21 +1,21 @@
 """
 Regression tests verifying compiler stability and regression prevention.
 """
-import os
 import json
 import unittest
+from pathlib import Path
 from app.compiler.workflow_compiler import compile_workflow_to_dsl
 from app.compiler.exceptions import GraphValidationError, MissingBranchError
 
 
 class TestRegressions(unittest.TestCase):
     def setUp(self):
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.regressions_dir = os.path.join(self.base_dir, "regressions")
+        self.base_dir = Path(__file__).resolve().parent
+        self.regressions_dir = self.base_dir / "regressions"
 
     def load_fixture(self, filename: str) -> dict:
-        path = os.path.join(self.regressions_dir, filename)
-        with open(path, "r") as f:
+        path = self.regressions_dir / filename
+        with path.open("r") as f:
             return json.load(f)
 
     def test_bug_001_ctx_prefix(self):

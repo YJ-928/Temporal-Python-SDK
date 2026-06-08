@@ -5,7 +5,7 @@ Handles saving and loading compiled DSL files with date-based organization.
 """
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from ..config import settings, get_logger
 
@@ -43,7 +43,7 @@ def save_dsl(
     Returns:
         Path to saved file
     """
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     # Calculate deterministic SHA-256 content hash of DSL
     dsl_hash = calculate_dsl_hash(dsl)
@@ -69,7 +69,7 @@ def save_dsl(
     file_path = day_dir / filename
 
     # Write DSL to file
-    with open(file_path, 'w', encoding='utf-8') as f:
+    with file_path.open('w', encoding='utf-8') as f:
         json.dump(dsl, f, indent=2, ensure_ascii=False)
 
     logger.info(f"DSL saved to: {file_path} (hash: {dsl_hash})")
@@ -83,7 +83,7 @@ def save_dsl(
         else:
             active_filename = f"{workflow_id or 'wf'}.json"
         active_path = active_dir / active_filename
-        with open(active_path, 'w', encoding='utf-8') as f:
+        with active_path.open('w', encoding='utf-8') as f:
             json.dump(dsl, f, indent=2, ensure_ascii=False)
         logger.info(f"Active DSL saved to: {active_path}")
     except Exception as e:
@@ -93,7 +93,7 @@ def save_dsl(
     if rf_json:
         rf_filename = filename.replace(".json", ".rf")
         rf_path = day_dir / rf_filename
-        with open(rf_path, 'w', encoding='utf-8') as f:
+        with rf_path.open('w', encoding='utf-8') as f:
             json.dump(rf_json, f, indent=2, ensure_ascii=False)
         logger.info(f"ReactFlow schema saved to: {rf_path}")
 
@@ -147,7 +147,7 @@ def load_dsl(file_path: str | Path) -> dict:
         logger.error(f"DSL file not found: {path}")
         raise FileNotFoundError(f"DSL file not found: {path}")
 
-    with open(path, 'r', encoding='utf-8') as f:
+    with path.open('r', encoding='utf-8') as f:
         dsl = json.load(f)
 
     logger.info(f"DSL loaded from: {path}")
@@ -172,7 +172,7 @@ def list_compiled_workflows(
         >>> workflows = list_compiled_workflows(datetime(2026, 6, 1))  # Specific date
     """
     if date is None:
-        date = datetime.now()
+        date = datetime.now(timezone.utc)
 
     day_dir = (
         settings.COMPILED_DIR
@@ -208,7 +208,7 @@ def get_latest_workflow(workflow_id: Optional[str] = None) -> Optional[Path]:
     from datetime import timedelta
     # Search in reverse chronological order (last 30 days)
     for days_ago in range(30):
-        date = datetime.now() - timedelta(days=days_ago)
+        date = datetime.now(timezone.utc) - timedelta(days=days_ago)
 
         workflows = list_compiled_workflows(date)
 

@@ -103,24 +103,23 @@ def resolve_task_name(node: dict) -> str:
 
     if node_type == "INPUT":
         return f"{node_id}_capture"
-    elif node_type == "OUTPUT":
+    if node_type == "OUTPUT":
         return f"{node_id}_expose"
-    elif node_type == "ACTION":
+    if node_type == "ACTION":
         operation = node["data"]["operation"]
         return f"{node_id}_{operation}"
-    elif node_type == "AGENT":
+    if node_type == "AGENT":
         return f"{node_id}_agent"
-    elif node_type == "IF":
+    if node_type == "IF":
         return f"{node_id}_if"
-    elif node_type in ("START", "END"):
+    if node_type in ("START", "END"):
         raise ValueError(
             f"START and END nodes produce no DSL task. "
             f"resolve_task_name() must not be called for {node_type} nodes."
         )
-    else:
-        raise ValueError(
-            f"No task naming rule for node type {node_type!r} (node id: {node_id!r})"
-        )
+    raise ValueError(
+        f"No task naming rule for node type {node_type!r} (node id: {node_id!r})"
+    )
 
 
 def resolve_successor_task(
@@ -152,10 +151,9 @@ def resolve_successor_task(
     target_type = target_node["type"]
     if target_type == "END":
         return "end"
-    elif target_type == "START":
+    if target_type == "START":
         return None
-    else:
-        return resolve_task_name(target_node)
+    return resolve_task_name(target_node)
 
 
 def traverse_graph(
@@ -211,10 +209,7 @@ def traverse_graph(
             for target_id, control in neighbors:
                 if control and control.get("branch") in ("true", "false"):
                     tgt_node = node_map[target_id]
-                    if tgt_node["type"] == "END":
-                        task_name = "end"
-                    else:
-                        task_name = resolve_task_name(tgt_node)
+                    task_name = "end" if tgt_node["type"] == "END" else resolve_task_name(tgt_node)
                     branch_map[control["branch"]] = {
                         "node_id": target_id,
                         "task_name": task_name,
@@ -316,7 +311,7 @@ def validate_graph(
             branch = edge.get("control", {}).get("branch")
         if not branch:
             branch = edge.get("data", {}).get("condition")
-        
+
         sig = (source, target, branch)
         if sig in seen_connections:
             raise GraphValidationError(f"Duplicate edge detected from '{source}' to '{target}' (branch={branch})")
@@ -362,9 +357,8 @@ def validate_graph(
 
     # 8. END nodes cannot have outgoing edges
     for node_id, node in node_map.items():
-        if node["type"] == "END":
-            if len(adjacency.get(node_id, [])) > 0:
-                raise GraphValidationError(f"END node '{node_id}' cannot have outgoing edges")
+        if node["type"] == "END" and len(adjacency.get(node_id, [])) > 0:
+            raise GraphValidationError(f"END node '{node_id}' cannot have outgoing edges")
 
     # 9. Non-IF and non-END nodes can have at most one outgoing edge
     for node_id, node in node_map.items():
@@ -372,16 +366,16 @@ def validate_graph(
             outgoing_neighbors = adjacency.get(node_id, [])
             if len(outgoing_neighbors) > 1:
                 raise GraphValidationError(
-                    f"Node '{node_id}' of type '{node['type']}' cannot have multiple outgoing edges (found {len(outgoing_neighbors)})"
+                    f"Node '{node_id}' of type '{node['type']}' cannot have multiple outgoing edges"
+                    f" (found {len(outgoing_neighbors)})"
                 )
 
     # 10. All non-END nodes must have at least one outgoing edge (no dead ends)
     for node_id, node in node_map.items():
-        if node["type"] != "END":
-            if len(adjacency.get(node_id, [])) == 0:
-                raise GraphValidationError(
-                    f"Node '{node_id}' of type '{node['type']}' must have at least one outgoing edge (dead end)"
-                )
+        if node["type"] != "END" and len(adjacency.get(node_id, [])) == 0:
+            raise GraphValidationError(
+                f"Node '{node_id}' of type '{node['type']}' must have at least one outgoing edge (dead end)"
+            )
 
     # 11. Every IF node has exactly one true branch and exactly one false branch
     for node_id, node in node_map.items():

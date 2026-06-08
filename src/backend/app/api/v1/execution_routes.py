@@ -21,9 +21,9 @@ def _check_field(field: str, rules: dict, value) -> str | None:
     required = rules.get("required", False)
     if required and (value is None or value == ""):
         return f"'{field}' is required."
-    if value is not None and rules.get("type") == "email":
-        if not isinstance(value, str) or not _EMAIL_RE.match(value.strip()):
-            return f"'{field}' must be a valid email address (got: {value!r})."
+    is_invalid_email = not isinstance(value, str) or not _EMAIL_RE.match(value.strip())
+    if value is not None and rules.get("type") == "email" and is_invalid_email:
+        return f"'{field}' must be a valid email address (got: {value!r})."
     return None
 
 
@@ -64,7 +64,9 @@ def _validate_contract(workflow_id: str, dsl_hash: str, input_data: dict) -> Non
     response_model=ExecuteWorkflowResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Trigger workflow execution",
-    description="Starts a new workflow run on Temporal using the versioned compiled DSL matching the provided content hash."
+    description=(
+        "Starts a new workflow run on Temporal using the versioned compiled DSL matching the provided content hash."
+    )
 )
 async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
     # 1. Check if hash is registered and validated
@@ -83,16 +85,20 @@ async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
         )
 
     # 3. Check if runtime is healthy
+    import asyncio
     import urllib.request
     import json
-    runtime_healthy = False
-    try:
-        req = urllib.request.Request("http://localhost:3005/health")
-        with urllib.request.urlopen(req, timeout=1) as r:
-            res = json.loads(r.read())
-            runtime_healthy = res.get("healthy", False)
-    except Exception:
-        pass
+
+    def _check_runtime() -> bool:
+        try:
+            with urllib.request.urlopen(
+                urllib.request.Request("http://localhost:3005/health"), timeout=1
+            ) as r:
+                return json.loads(r.read()).get("healthy", False)
+        except Exception:
+            return False
+
+    runtime_healthy = await asyncio.to_thread(_check_runtime)
 
     if not runtime_healthy:
         raise HTTPException(
@@ -115,19 +121,19 @@ async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Compiled workflow not found."
-        )
+        ) from e
     except ValueError as e:
         logger.warning(f"Invalid DSL configuration: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid workflow configuration."
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Failed to execute workflow {workflow_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to start workflow execution."
-        )
+        ) from e
 
 
 @router.get(
@@ -145,7 +151,7 @@ async def list_executions(workflow_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch execution history."
-        )
+        ) from e
 
 
 @router.get(
@@ -163,18 +169,18 @@ async def get_execution_trace(workflow_id: str, run_id: str):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Workflow execution not found."
-            )
+            ) from e
         logger.error(f"Temporal RPC error fetching trace for {workflow_id}/{run_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch execution trace."
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Failed to retrieve trace for workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch execution trace."
-        )
+        ) from e
 
 
 @router.post(
@@ -192,7 +198,7 @@ async def cancel_workflow(workflow_id: str, run_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to cancel workflow."
-        )
+        ) from e
 
 
 @router.post(
@@ -210,4 +216,4 @@ async def terminate_workflow(workflow_id: str, run_id: str, reason: str = "Termi
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to terminate workflow."
-        )
+        ) from e

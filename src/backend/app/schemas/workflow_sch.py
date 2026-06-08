@@ -34,12 +34,10 @@ class NodeData(BaseModel):
 
 class StartNodeData(NodeData):
     """Configuration data for START node."""
-    pass
 
 
 class EndNodeData(NodeData):
     """Configuration data for END node."""
-    pass
 
 
 class InputNodeData(NodeData):

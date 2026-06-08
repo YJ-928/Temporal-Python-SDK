@@ -24,9 +24,15 @@ class CompileWorkflowRequest(BaseModel):
             "example": {
                 "nodes": [
                     {"id": "N1", "type": "START"},
-                    {"id": "N2", "type": "INPUT", "data": {"inputs": [{"id": "1", "field": "name", "store_as": "user_name", "type": "string"}]}},
-                    {"id": "N3", "type": "ACTION", "data": {"operation": "greet", "inputs": {"name": "user_name"}, "output": "message"}},
-                    {"id": "N4", "type": "OUTPUT", "data": {"outputs": [{"id": "1", "field": "message", "type": "string"}]}},
+                    {"id": "N2", "type": "INPUT", "data": {
+                        "inputs": [{"id": "1", "field": "name", "store_as": "user_name", "type": "string"}],
+                    }},
+                    {"id": "N3", "type": "ACTION", "data": {
+                        "operation": "greet", "inputs": {"name": "user_name"}, "output": "message",
+                    }},
+                    {"id": "N4", "type": "OUTPUT", "data": {
+                        "outputs": [{"id": "1", "field": "message", "type": "string"}],
+                    }},
                     {"id": "N5", "type": "END"},
                 ],
                 "edges": [

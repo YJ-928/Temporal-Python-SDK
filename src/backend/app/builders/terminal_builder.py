@@ -16,4 +16,3 @@ def build_terminal(node: dict, *, traversal_entry: dict | None = None) -> None:
     Returns:
         None (master builder skips None returns)
     """
-    return None

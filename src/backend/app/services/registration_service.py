@@ -5,7 +5,7 @@ import json
 import asyncio
 import subprocess
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 from ..config import settings, get_logger
 from .storage_service import calculate_dsl_hash, load_dsl
@@ -32,7 +32,7 @@ class RegistrationService:
         try:
             REGISTRATIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
             if not REGISTRATIONS_FILE.exists():
-                with open(REGISTRATIONS_FILE, "w", encoding="utf-8") as f:
+                with REGISTRATIONS_FILE.open("w", encoding="utf-8") as f:
                     json.dump({}, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to create registrations file: {e}")
@@ -41,7 +41,7 @@ class RegistrationService:
         """Retrieve all workflow registrations."""
         self._ensure_registrations_file()
         try:
-            with open(REGISTRATIONS_FILE, "r", encoding="utf-8") as f:
+            with REGISTRATIONS_FILE.open("r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Failed to read registrations file: {e}")
@@ -51,7 +51,7 @@ class RegistrationService:
         """Save registrations map back to registrations.json."""
         self._ensure_registrations_file()
         try:
-            with open(REGISTRATIONS_FILE, "w", encoding="utf-8") as f:
+            with REGISTRATIONS_FILE.open("w", encoding="utf-8") as f:
                 json.dump(regs, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save registrations file: {e}")
@@ -92,7 +92,7 @@ class RegistrationService:
         if entry and entry.get("registered") and entry.get("validated"):
             # Already validated and registered, just check if loaded
             if not entry.get("runtime_loaded"):
-                asyncio.create_task(self.trigger_reload())
+                _task = asyncio.create_task(self.trigger_reload())  # noqa: F841
             return entry
 
         # Run zigflow validation as a safety check
@@ -102,9 +102,9 @@ class RegistrationService:
             "workflow_id": workflow_id,
             "workflow_type": workflow_type,
             "validated": validated,
-            "registered": True if validated else False,
+            "registered": bool(validated),
             "runtime_loaded": False,
-            "registered_at": datetime.utcnow().isoformat() + "Z"
+            "registered_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         }
 
         regs[dsl_hash] = new_entry
@@ -112,15 +112,15 @@ class RegistrationService:
 
         # Trigger background non-blocking daemon reload only if valid
         if validated:
-            asyncio.create_task(self.trigger_reload())
+            _task = asyncio.create_task(self.trigger_reload())  # noqa: F841
 
         return new_entry
 
     def _validate_dsl_file(self, file_path: Path) -> bool:
         """Run zigflow validate command against the generated file."""
         try:
-            result = subprocess.run(
-                ["zigflow", "validate", str(file_path)],
+            result = subprocess.run(  # noqa: S603
+                ["zigflow", "validate", str(file_path)],  # noqa: S607
                 capture_output=True,
                 text=True
             )
@@ -146,7 +146,7 @@ class RegistrationService:
         try:
             while True:
                 logger.info("Hot-reloading Zigflow Runtime Daemon...")
-                
+
                 # Stop runtime daemon
                 stop_script = WORKSPACE_ROOT / "scripts" / "stop_runtime.sh"
                 proc_stop = await asyncio.create_subprocess_exec(
@@ -171,9 +171,8 @@ class RegistrationService:
                         self.reload_pending = False
                         # Loop again to perform another reload batch
                         continue
-                    else:
-                        self.reload_in_progress = False
-                        break
+                self.reload_in_progress = False
+                break
         except Exception as e:
             logger.error(f"Failed reloading Zigflow daemon in background: {e}")
             async with self.lock:
@@ -196,17 +195,17 @@ class RegistrationService:
         for path in compiled_dir.glob("**/*.json"):
             if "active" in path.parts:
                 continue
-            if path.name.endswith(".rf.json") or path.name.endswith("registrations.json"):
+            if path.name.endswith((".rf.json", "registrations.json")):
                 continue
-            
+
             try:
                 dsl = load_dsl(path)
                 doc = dsl.get("document", {})
                 workflow_type = doc.get("workflowType")
-                
+
                 parts = path.stem.split("-")
                 workflow_id = "-".join(parts[:-1]) if len(parts) > 1 else path.stem
-                
+
                 if not workflow_type:
                     continue
 
@@ -218,9 +217,9 @@ class RegistrationService:
                         "workflow_id": workflow_id,
                         "workflow_type": workflow_type,
                         "validated": validated,
-                        "registered": True if validated else False,
+                        "registered": bool(validated),
                         "runtime_loaded": False,
-                        "registered_at": datetime.utcnow().isoformat() + "Z"
+                        "registered_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
                     }
                     has_new = True
                     logger.info(f"Synced workflow version {workflow_type} (hash: {dsl_hash})")

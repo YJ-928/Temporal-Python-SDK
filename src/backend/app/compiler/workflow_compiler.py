@@ -45,7 +45,7 @@ def validate_workflow_structure(workflow: dict) -> None:
             loc = " -> ".join(str(x) for x in error["loc"])
             msg = error["msg"]
             errors.append(f"{loc}: {msg}")
-        raise WorkflowValidationError(f"Schema validation failed: {'; '.join(errors)}")
+        raise WorkflowValidationError(f"Schema validation failed: {'; '.join(errors)}") from e
 
     # 2. Graph topology validation
     node_map = generate_node_map(workflow["nodes"])
@@ -86,7 +86,7 @@ def compile_workflow_to_dsl(
     traversal = compilation_result["traversal"]
 
     # Phase B: DSL generation
-    dsl = generate_dsl(
+    return generate_dsl(
         traversal,
         dsl_version=dsl_version,
         version=version,
@@ -94,8 +94,6 @@ def compile_workflow_to_dsl(
         task_queue=task_queue,
         description=description,
     )
-
-    return dsl
 
 
 __all__ = [

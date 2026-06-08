@@ -71,10 +71,10 @@ def generate_dsl(
                 task_name = list(fragment.keys())[0]
                 task_body = fragment[task_name]
                 inner_name = f"{task_name}_inner"
-                
+
                 # Propagate transition to the outer wrapper level
                 then_target = task_body.pop("then", None)
-                
+
                 fragment = {
                     task_name: {
                         "do": [
@@ -109,5 +109,5 @@ def save_dsl(dsl: dict, output_path: str) -> None:
         output_path: File path to write
     """
     import json
-    with open(output_path, "w") as f:
+    with output_path.open("w") as f:
         json.dump(dsl, f, indent=2)

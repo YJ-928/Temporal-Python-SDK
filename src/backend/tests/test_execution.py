@@ -1,6 +1,6 @@
-import os
 import json
 import unittest
+from datetime import timezone
 from unittest.mock import patch, MagicMock, AsyncMock
 from app.services.execution_service import ExecutionService
 from app.services.storage_service import save_dsl
@@ -34,7 +34,7 @@ class MockAsyncIterator:
 
 
 class TestExecutionServiceHelper:
-    def setUpHelper(self):
+    def set_up_helper(self):
         self.service = ExecutionService()
         self.workflow_id = "test-flow"
         self.dsl = {
@@ -62,19 +62,19 @@ class TestExecutionServiceHelper:
             }
         )
 
-    def tearDownHelper(self):
-        if os.path.exists(self.saved_path):
-            os.unlink(self.saved_path)
+    def tear_down_helper(self):
+        if self.saved_path.exists():
+            self.saved_path.unlink()
         rf_path = self.saved_path.with_name(self.saved_path.name.replace(".json", ".rf"))
-        if os.path.exists(rf_path):
-            os.unlink(rf_path)
+        if rf_path.exists():
+            rf_path.unlink()
 
     async def run_execute_workflow(self, mock_connect):
         mock_client = MagicMock()
         mock_handle = MagicMock()
         mock_handle.run_id = None
         mock_handle.first_execution_run_id = "run-12345"
-        
+
         # start_workflow is a coroutine method
         mock_client.start_workflow = AsyncMock(return_value=mock_handle)
         mock_connect.return_value = mock_client
@@ -93,11 +93,13 @@ class TestExecutionServiceHelper:
 
     async def run_list_executions(self, mock_connect):
         from datetime import datetime
-        
+
         mock_client = MagicMock()
-        mock_run_1 = MockWorkflow("rf-test-flow-123", "run-1", "test-flow-type", "COMPLETED", datetime(2026, 6, 4, 10, 0, 0))
-        mock_run_2 = MockWorkflow("rf-test-flow-456", "run-2", "test-flow-type", "RUNNING", datetime(2026, 6, 4, 11, 0, 0))
-        
+        t1 = datetime(2026, 6, 4, 10, 0, 0, tzinfo=timezone.utc)
+        t2 = datetime(2026, 6, 4, 11, 0, 0, tzinfo=timezone.utc)
+        mock_run_1 = MockWorkflow("rf-test-flow-123", "run-1", "test-flow-type", "COMPLETED", t1)
+        mock_run_2 = MockWorkflow("rf-test-flow-456", "run-2", "test-flow-type", "RUNNING", t2)
+
         # list_workflows is a sync method returning an async iterator
         mock_client.list_workflows = MagicMock(return_value=MockAsyncIterator([mock_run_1, mock_run_2]))
         mock_connect.return_value = mock_client
@@ -116,15 +118,15 @@ class TestExecutionServiceHelper:
 
         # Construct mock history events
         mock_handle = MagicMock()
-        
+
         # 1. Activity Scheduled event
         mock_event_1 = MagicMock()
         mock_event_1.event_id = 5
         mock_event_1.HasField.side_effect = lambda field: field == "activity_task_scheduled_event_attributes"
-        
+
         mock_payload_input = MagicMock()
         mock_payload_input.data = json.dumps({"test_input": "val"}).encode("utf-8")
-        
+
         mock_payload_metadata = MagicMock()
         mock_payload_metadata.data = json.dumps({
             "context": None,
@@ -134,7 +136,7 @@ class TestExecutionServiceHelper:
                 }
             }
         }).encode("utf-8")
-        
+
         mock_attrs_1 = MagicMock()
         mock_attrs_1.input.payloads = [mock_payload_input, None, mock_payload_metadata]
         mock_event_1.activity_task_scheduled_event_attributes = mock_attrs_1
@@ -143,7 +145,7 @@ class TestExecutionServiceHelper:
         mock_event_2 = MagicMock()
         mock_event_2.event_id = 6
         mock_event_2.HasField.side_effect = lambda field: field == "activity_task_completed_event_attributes"
-        
+
         mock_attrs_2 = MagicMock()
         mock_attrs_2.scheduled_event_id = 5
         mock_payload_output = MagicMock()
@@ -174,11 +176,11 @@ class TestExecutionServiceHelper:
             ]
         }
         # Re-save the DSL and RF json for this run
-        if os.path.exists(self.saved_path):
-            os.unlink(self.saved_path)
+        if self.saved_path.exists():
+            self.saved_path.unlink()
         rf_old_path = self.saved_path.with_name(self.saved_path.name.replace(".json", ".rf"))
-        if os.path.exists(rf_old_path):
-            os.unlink(rf_old_path)
+        if rf_old_path.exists():
+            rf_old_path.unlink()
 
         self.saved_path = save_dsl(
             self.dsl,
@@ -242,10 +244,10 @@ class TestExecutionServiceHelper:
 class TestExecutionService(unittest.TestCase):
     def setUp(self):
         self.helper = TestExecutionServiceHelper()
-        self.helper.setUpHelper()
+        self.helper.set_up_helper()
 
     def tearDown(self):
-        self.helper.tearDownHelper()
+        self.helper.tear_down_helper()
 
     @patch("app.services.execution_service.Client.connect")
     def test_execute_workflow(self, mock_connect):
@@ -300,7 +302,7 @@ class TestExecutionService(unittest.TestCase):
 
     def test_replay_engine_dag_parallel_join(self):
         from app.services.replay_engine import propagate_dag_states
-        
+
         # Create a DAG with parallel execution, branch skip, and a join node:
         #           START
         #             │
@@ -332,15 +334,15 @@ class TestExecutionService(unittest.TestCase):
                 {"source": "JOIN", "target": "END"}
             ]
         }
-        
+
         # IF_NODE is completed. A completes. B never runs (skipped).
         event_states = {
             "IF_NODE": {"status": "completed"},
             "A": {"status": "completed", "output": "A_done"}
         }
-        
+
         results = propagate_dag_states(rf_json, event_states, workflow_completed=True)
-        
+
         # Assert A is completed
         assert results["A"]["status"] == "completed"
         # Assert B is marked skipped (because IF_NODE was completed, A executed, so False branch was skipped)

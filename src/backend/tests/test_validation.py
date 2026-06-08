@@ -1,9 +1,9 @@
 """
 Unit tests for schema and graph validation failures.
 """
-import os
 import json
 import unittest
+from pathlib import Path
 from app.compiler import compile_workflow_to_dsl
 from app.compiler.exceptions import (
     WorkflowValidationError,
@@ -231,10 +231,9 @@ class TestCompilerValidation(unittest.TestCase):
         """
         Dynamically run tests against all 7 invalid golden workflow fixtures.
         """
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        invalid_dir = os.path.join(base_dir, "fixtures", "invalid")
-        
-        self.assertTrue(os.path.isdir(invalid_dir), f"Invalid fixtures dir missing: {invalid_dir}")
+        invalid_dir = Path(__file__).resolve().parent / "fixtures" / "invalid"
+
+        self.assertTrue(invalid_dir.is_dir(), f"Invalid fixtures dir missing: {invalid_dir}")
 
         expected_exceptions = {
             "13_multi_start.json": (GraphValidationError, "exactly one START node"),
@@ -243,18 +242,20 @@ class TestCompilerValidation(unittest.TestCase):
             "16_missing_fields.json": (WorkflowValidationError, "Field required"),
             "17_unknown_type.json": (WorkflowValidationError, "does not match any of the expected tags"),
             "18_floating_node.json": (GraphValidationError, "Unreachable nodes found"),
-            "19_single_branch_if.json": (MissingBranchError, "exactly one 'true' branch and exactly one 'false' branch"),
+            "19_single_branch_if.json": (
+                MissingBranchError, "exactly one 'true' branch and exactly one 'false' branch",
+            ),
         }
 
         for filename, (exc_class, exc_msg) in expected_exceptions.items():
-            file_path = os.path.join(invalid_dir, filename)
-            self.assertTrue(os.path.exists(file_path), f"Required invalid fixture {filename} missing")
-            with open(file_path, "r") as f:
+            file_path = invalid_dir / filename
+            self.assertTrue(file_path.exists(), f"Required invalid fixture {filename} missing")
+            with file_path.open("r") as f:
                 workflow = json.load(f)
 
             with self.assertRaises(exc_class, msg=f"Fixture {filename} failed to raise {exc_class.__name__}") as ctx:
                 compile_workflow_to_dsl(workflow)
-            
+
             self.assertIn(
                 exc_msg,
                 str(ctx.exception),

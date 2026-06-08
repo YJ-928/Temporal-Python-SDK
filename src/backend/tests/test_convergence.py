@@ -37,15 +37,15 @@ class TestCompilerConvergence(unittest.TestCase):
         }
 
         dsl = compile_workflow_to_dsl(workflow)
-        
+
         # Locate tasks
         tasks = {list(t.keys())[0]: list(t.values())[0] for t in dsl["do"]}
-        
+
         # Verify transition links
         self.assertIn("A_op_a", tasks)
         self.assertIn("B_op_b", tasks)
         self.assertIn("C_op_c", tasks)
-        
+
         # In branch wrapping, tasks might have 'inner' blocks, let's verify outer transitions
         self.assertEqual(tasks["A_op_a"].get("then"), "C_op_c", "A must transition explicitly to C")
         self.assertEqual(tasks["B_op_b"].get("then"), "C_op_c", "B must transition explicitly to C")
@@ -85,7 +85,7 @@ class TestCompilerConvergence(unittest.TestCase):
 
         dsl = compile_workflow_to_dsl(workflow)
         tasks = {list(t.keys())[0]: list(t.values())[0] for t in dsl["do"]}
-        
+
         self.assertEqual(tasks["A_op_a"].get("then"), "C_op_c")
         self.assertEqual(tasks["B_op_b"].get("then"), "C_op_c")
         self.assertEqual(tasks["C_op_c"].get("then"), "D_op_d")
@@ -131,7 +131,7 @@ class TestCompilerConvergence(unittest.TestCase):
 
         dsl = compile_workflow_to_dsl(workflow)
         tasks = {list(t.keys())[0]: list(t.values())[0] for t in dsl["do"]}
-        
+
         self.assertEqual(tasks["X_op_x"].get("then"), "Z_op_z")
         self.assertEqual(tasks["Y_op_y"].get("then"), "Z_op_z")
         self.assertEqual(tasks["B_op_b"].get("then"), "Z_op_z")
@@ -170,7 +170,7 @@ class TestCompilerConvergence(unittest.TestCase):
 
         dsl = compile_workflow_to_dsl(workflow)
         tasks = {list(t.keys())[0]: list(t.values())[0] for t in dsl["do"]}
-        
+
         self.assertEqual(tasks["APPROVE_approve"].get("then"), "OUT_expose")
         self.assertEqual(tasks["REJECT_reject"].get("then"), "OUT_expose")
         self.assertEqual(tasks["OUT_expose"].get("then"), "end")
@@ -187,10 +187,16 @@ class TestCompilerConvergence(unittest.TestCase):
             "task_queue": "default",
             "nodes": [
                 {"id": "START", "type": "START", "data": {}},
-                {"id": "INP", "type": "INPUT", "data": {"inputs": [{"field": "city", "store_as": "city", "type": "string"}]}},
+                {"id": "INP", "type": "INPUT", "data": {
+                    "inputs": [{"field": "city", "store_as": "city", "type": "string"}],
+                }},
                 {"id": "IF", "type": "IF", "data": {"left": "city", "operator": "==", "right": "London"}},
-                {"id": "W_AGENT", "type": "AGENT", "data": {"agent": "weather-agent", "inputs": {"city": "city"}, "output": "res"}},
-                {"id": "E_AGENT", "type": "AGENT", "data": {"agent": "email-validator-agent", "inputs": {"email": "city"}, "output": "res"}},
+                {"id": "W_AGENT", "type": "AGENT", "data": {
+                    "agent": "weather-agent", "inputs": {"city": "city"}, "output": "res",
+                }},
+                {"id": "E_AGENT", "type": "AGENT", "data": {
+                    "agent": "email-validator-agent", "inputs": {"email": "city"}, "output": "res",
+                }},
                 {"id": "OUT", "type": "OUTPUT", "data": {"outputs": [{"field": "res", "type": "string"}]}},
                 {"id": "END", "type": "END", "data": {}}
             ],
@@ -207,7 +213,7 @@ class TestCompilerConvergence(unittest.TestCase):
 
         dsl = compile_workflow_to_dsl(workflow)
         tasks = {list(t.keys())[0]: list(t.values())[0] for t in dsl["do"]}
-        
+
         self.assertEqual(tasks["W_AGENT_agent"].get("then"), "OUT_expose")
         self.assertEqual(tasks["E_AGENT_agent"].get("then"), "OUT_expose")
         self.assertEqual(tasks["OUT_expose"].get("then"), "end")

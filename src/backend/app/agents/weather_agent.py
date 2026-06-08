@@ -41,7 +41,7 @@ def load_weather_data():
     """Load weather data from data/agent_data/weather_data.json"""
     data_path = Path(__file__).parent.parent / "data" / "agent_data" / "weather_data.json"
     try:
-        with open(data_path, "r") as f:
+        with data_path.open("r") as f:
             return json.load(f)
     except FileNotFoundError:
         logger.error(f"Weather data file not found: {data_path}")
@@ -147,7 +147,7 @@ async def execute(request: WeatherRequest) -> WeatherResponse:
 @app.get("/cities")
 async def list_cities():
     """List all available cities in the weather database."""
-    cities = [city.capitalize() for city in WEATHER_DATA.keys()]
+    cities = [city.capitalize() for city in WEATHER_DATA]
     return {
         "available_cities": cities,
         "count": len(cities)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     logger.info("Starting Weather Agent Service on port 11000...")
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        host="0.0.0.0",  # noqa: S104
         port=11000,
         log_level="info"
     )

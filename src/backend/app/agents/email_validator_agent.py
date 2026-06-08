@@ -113,21 +113,19 @@ async def execute(request: EmailValidationRequest) -> EmailValidationResponse:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Invalid email format")
 
-    response = EmailValidationResponse(
+    return EmailValidationResponse(
         success=True,
         is_valid=is_valid,
         domain=domain,
         message="Email validated successfully"
     )
 
-    return response
-
 
 if __name__ == "__main__":
     logger.info("Starting Email Validator Agent Service on port 11001...")
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        host="0.0.0.0",  # noqa: S104
         port=11001,
         log_level="info"
     )

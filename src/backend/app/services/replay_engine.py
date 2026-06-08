@@ -45,7 +45,8 @@ def propagate_dag_states(
         }
 
     # Overlay explicit event states from history (activities/child workflows)
-    # Map event_states keys (task names like N2_capture, N5_send_rain_alert_inner) back to ReactFlow node IDs (like N2, N5_send_rain_alert)
+    # Map event_states keys (task names like N2_capture, N5_send_rain_alert_inner)
+    # back to ReactFlow node IDs (like N2, N5_send_rain_alert)
     for task_name, state in event_states.items():
         matched_node_id = None
         if task_name in final_states:
@@ -80,7 +81,7 @@ def propagate_dag_states(
             condition = edge.get("control", {}).get("branch")
         if not condition:
             condition = edge.get("data", {}).get("condition")
-            
+
         if source in outgoing and target in incoming:
             outgoing[source].append((target, condition))
             incoming[target].append(source)
@@ -123,7 +124,7 @@ def propagate_dag_states(
         """Recursively mark a visual branch path as skipped."""
         if final_states[nid]["status"] in ["completed", "running", "failed"]:
             return  # Do not skip already executed nodes
-            
+
         final_states[nid] = {
             "status": "skipped",
             "input": None,
@@ -153,7 +154,7 @@ def propagate_dag_states(
         # These nodes don't produce activity completion events, so their status is inferred from parents.
         if node_type in ["input", "output", "if", "end", "start"]:
             current_status = final_states[node_id]["status"]
-            
+
             # We only propagate status if it is not already resolved by an execution event
             if current_status not in ["completed", "running", "failed"]:
                 parents = incoming[node_id]
@@ -168,29 +169,27 @@ def propagate_dag_states(
                             final_states[node_id]["status"] = "completed"
 
         # 2. Overlay condition-based exclusions (IF nodes)
-        if node_type == "if":
-            # If the IF node is completed, evaluate which branch was taken
-            if final_states[node_id]["status"] == "completed":
-                true_active = False
-                false_active = False
-                
-                for target, cond in outgoing[node_id]:
-                    target_status = final_states[target]["status"]
-                    is_active = target_status in ["running", "completed", "failed"]
-                    if cond == "true" and is_active:
-                        true_active = True
-                    elif cond == "false" and is_active:
-                        false_active = True
+        if node_type == "if" and final_states[node_id]["status"] == "completed":
+            true_active = False
+            false_active = False
 
-                # Exclude the branch that was not taken
-                if true_active and not false_active:
-                    for target, cond in outgoing[node_id]:
-                        if cond == "false":
-                            _mark_branch_skipped(target)
-                elif false_active and not true_active:
-                    for target, cond in outgoing[node_id]:
-                        if cond == "true":
-                            _mark_branch_skipped(target)
+            for target, cond in outgoing[node_id]:
+                target_status = final_states[target]["status"]
+                is_active = target_status in ["running", "completed", "failed"]
+                if cond == "true" and is_active:
+                    true_active = True
+                elif cond == "false" and is_active:
+                    false_active = True
+
+            # Exclude the branch that was not taken
+            if true_active and not false_active:
+                for target, cond in outgoing[node_id]:
+                    if cond == "false":
+                        _mark_branch_skipped(target)
+            elif false_active and not true_active:
+                for target, cond in outgoing[node_id]:
+                    if cond == "true":
+                        _mark_branch_skipped(target)
 
     # Final cleanup on workflow completion
     if workflow_completed:
@@ -198,7 +197,7 @@ def propagate_dag_states(
         end_node = next((n for n in nodes if str(n.get("type", "")).lower() == "end"), None)
         if end_node:
             final_states[end_node["id"]]["status"] = "completed"
-        
+
         # Propagate completion to any remaining unexecuted nodes on the active path
         for node_id in topo_order:
             if final_states[node_id]["status"] == "not_started":

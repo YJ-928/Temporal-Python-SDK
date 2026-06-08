@@ -47,7 +47,7 @@ def load_sent_emails() -> list:
     """Load sent emails from JSON file."""
     try:
         if SENT_EMAILS_PATH.exists():
-            with open(SENT_EMAILS_PATH, "r") as f:
+            with SENT_EMAILS_PATH.open("r") as f:
                 return json.load(f)
         return []
     except json.JSONDecodeError:
@@ -60,7 +60,7 @@ def save_sent_email(email_data: dict) -> None:
     try:
         emails = load_sent_emails()
         emails.append(email_data)
-        with open(SENT_EMAILS_PATH, "w") as f:
+        with SENT_EMAILS_PATH.open("w") as f:
             json.dump(emails, f, indent=2)
         logger.info(f"Email saved to {SENT_EMAILS_PATH}")
     except Exception as e:
@@ -167,14 +167,14 @@ async def execute(request: EmailSendRequest) -> EmailSendResponse:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to send email: {str(e)}"
-        )
+        ) from e
 
 
 if __name__ == "__main__":
     logger.info("Starting Email Sender Agent Service on port 11002...")
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        host="0.0.0.0",  # noqa: S104
         port=11002,
         log_level="info"
     )

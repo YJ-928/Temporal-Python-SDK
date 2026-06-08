@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { Node, Edge } from 'reactflow';
 import { Save, FolderOpen, Trash2 } from 'lucide-react';
 import type { RFNodeData, RFEdgeData } from '../types';
@@ -28,17 +28,13 @@ export const WorkflowStorageModal: React.FC<WorkflowStorageModalProps> = ({
   onLoad,
 }) => {
   const [workflowName, setWorkflowName] = useState('');
-  const [savedList, setSavedList] = useState<StoredWorkflowSummary[]>([]);
+  const [savedList, setSavedList] = useState<StoredWorkflowSummary[]>(() => listSavedWorkflows());
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null
   );
   const [overwriteId, setOverwriteId] = useState<string | null>(null);
 
   const refreshList = () => setSavedList(listSavedWorkflows());
-
-  useEffect(() => {
-    refreshList();
-  }, []);
 
   const formatDate = (iso: string) => {
     try {

@@ -4,10 +4,10 @@ Compiler service layer.
 High-level service wrapping the workflow compiler.
 Handles workflow JSON → DSL compilation without direct API concerns.
 """
-import os
 import json
 import tempfile
 import subprocess
+from pathlib import Path
 from typing import Optional
 from ..compiler.workflow_compiler import compile_workflow_to_dsl, initialize_builders
 from ..config import settings, get_logger
@@ -88,11 +88,11 @@ class CompilerService:
             # Validate generated DSL using zigflow validate
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
                 json.dump(dsl, tmp)
-                tmp_path = tmp.name
+                tmp_path = Path(tmp.name)
 
             try:
-                result = subprocess.run(
-                    ["zigflow", "validate", tmp_path],
+                result = subprocess.run(  # noqa: S603
+                    ["zigflow", "validate", str(tmp_path)],  # noqa: S607
                     capture_output=True,
                     text=True
                 )
@@ -101,8 +101,8 @@ class CompilerService:
                     logger.error(f"Zigflow validation failed for {workflow_type}: {error_msg}")
                     raise ValueError(f"Zigflow validation failed: {error_msg}")
             finally:
-                if os.path.exists(tmp_path):
-                    os.unlink(tmp_path)
+                if tmp_path.exists():
+                    tmp_path.unlink()
 
             logger.info(
                 f"Compilation successful: {workflow_type} "
