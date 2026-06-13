@@ -141,6 +141,7 @@ class TestRegistrationLifecycle(unittest.TestCase):
                 await asyncio.sleep(0.01)
 
             mock_process.wait = mock_wait
+            mock_process.returncode = 0  # Simulate successful stop/start
             mock_exec.return_value = mock_process
 
             # Call reload multiple times concurrently

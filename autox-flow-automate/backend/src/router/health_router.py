@@ -29,15 +29,32 @@ def _http_check_ok(url: str, timeout: int) -> bool:
         return False
 
 
+async def _check_temporal_connection() -> bool:
+    """Open a probe connection to Temporal and close it immediately — no leak."""
+    client = None
+    try:
+        client = await asyncio.wait_for(
+            Client.connect(settings.TEMPORAL_ADDRESS), timeout=3.0
+        )
+        return True
+    except Exception as exc:
+        logger.warning(f"Temporal health check failed: {exc}")
+        return False
+    finally:
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass
+
+
 @router.get("/temporal")
 async def check_temporal_health():
     """Check health of the Temporal server."""
-    try:
-        await Client.connect(settings.TEMPORAL_ADDRESS)
+    healthy = await _check_temporal_connection()
+    if healthy:
         return {"healthy": True}
-    except Exception as e:
-        logger.warning(f"Temporal health check failed: {e}")
-        return {"healthy": False, "detail": str(e)}
+    return {"healthy": False, "detail": "Cannot reach Temporal server"}
 
 
 @router.get("/runtime")
@@ -62,34 +79,31 @@ async def check_runtime_health():
 @router.get("/system")
 async def check_system_health():
     """Aggregate health status of all systems."""
-    # Check Temporal
-    temporal_ok = False
-    try:
-        await Client.connect(settings.TEMPORAL_ADDRESS)
-        temporal_ok = True
-    except Exception:  # noqa: S110
-        pass
+    temporal_ok, res, agent_results = await asyncio.gather(
+        _check_temporal_connection(),
+        asyncio.to_thread(_http_get_json, "http://localhost:3005/health", 1),
+        _check_all_agents(),
+    )
 
-    # Check Runtime
-    res = await asyncio.to_thread(_http_get_json, "http://localhost:3005/health", 1)
     runtime_ok = res.get("healthy", False) if res else False
-
-    # Check Agents individually
-    agent_health = {}
-    ports = {
-        "weather_agent": 11000,
-        "email_validator": 11001,
-        "email_sender": 11002,
-    }
-    for name, port in ports.items():
-        ok = await asyncio.to_thread(_http_check_ok, f"http://localhost:{port}/docs", 1)
-        agent_health[name] = ok
 
     return {
         "temporal": temporal_ok,
         "backend": True,
         "runtime": runtime_ok,
-        "weather_agent": agent_health["weather_agent"],
-        "email_validator": agent_health["email_validator"],
-        "email_sender": agent_health["email_sender"],
+        **agent_results,
     }
+
+
+async def _check_all_agents() -> dict:
+    """Check all mock agent endpoints concurrently."""
+    ports = {
+        "weather_agent": 11000,
+        "email_validator": 11001,
+        "email_sender": 11002,
+    }
+    results = await asyncio.gather(*(
+        asyncio.to_thread(_http_check_ok, f"http://localhost:{port}/docs", 1)
+        for port in ports.values()
+    ))
+    return dict(zip(ports.keys(), results))

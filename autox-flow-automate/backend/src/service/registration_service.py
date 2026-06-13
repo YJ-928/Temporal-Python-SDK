@@ -214,6 +214,11 @@ class RegistrationService:
                     "bash", str(stop_script)
                 )
                 await proc_stop.wait()
+                if proc_stop.returncode != 0:
+                    logger.warning(
+                        f"stop_runtime.sh exited with code {proc_stop.returncode} — "
+                        "attempting start anyway"
+                    )
 
                 # Start runtime daemon
                 start_script = WORKSPACE_ROOT / "scripts" / "start_runtime.sh"
@@ -221,6 +226,10 @@ class RegistrationService:
                     "bash", str(start_script)
                 )
                 await proc_start.wait()
+                if proc_start.returncode != 0:
+                    raise RuntimeError(
+                        f"start_runtime.sh failed with exit code {proc_start.returncode}"
+                    )
 
                 logger.info("Zigflow Runtime Daemon reloaded successfully.")
 

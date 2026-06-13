@@ -230,6 +230,8 @@ def register_events(app: FastAPI) -> None:
     @app.on_event("shutdown")
     async def shutdown_event():
         logger.info(f"Shutting down {settings.APP_NAME}")
+        from ..service.execution_service import execution_service
+        await execution_service.shutdown()
 
     logger.info("Events registered")
 

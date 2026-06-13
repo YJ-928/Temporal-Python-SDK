@@ -14,6 +14,22 @@ from ..config import settings, get_logger
 logger = get_logger(__name__)
 
 
+_JSON_EXT = ".json"
+
+
+def _build_dsl_filename(custom_filename: Optional[str], workflow_id: Optional[str], dsl_hash: str) -> str:
+    if custom_filename:
+        base = custom_filename[:-5] if custom_filename.endswith(_JSON_EXT) else custom_filename
+        return f"{base}-{dsl_hash}{_JSON_EXT}"
+    return f"{workflow_id or 'wf'}-{dsl_hash}{_JSON_EXT}"
+
+
+def _build_active_filename(custom_filename: Optional[str], workflow_id: Optional[str]) -> str:
+    if custom_filename:
+        return custom_filename if custom_filename.endswith(_JSON_EXT) else f"{custom_filename}{_JSON_EXT}"
+    return f"{workflow_id or 'wf'}{_JSON_EXT}"
+
+
 def calculate_dsl_hash(dsl: dict) -> str:
     """
     Calculate a deterministic 16-character SHA-256 content hash of the compiled DSL.
@@ -55,48 +71,43 @@ def save_dsl(
     day_dir = month_dir / f"{now.day:02d}"
 
     # Ensure directories exist
-    day_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        day_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise OSError(f"Cannot create DSL storage directory {day_dir}: {exc}") from exc
 
-    # Generate filename with hash suffix to guarantee version safety
-    if custom_filename:
-        # Strip extension if provided
-        base_name = custom_filename[:-5] if custom_filename.endswith('.json') else custom_filename
-        filename = f"{base_name}-{dsl_hash}.json"
-    else:
-        prefix = workflow_id if workflow_id else "wf"
-        filename = f"{prefix}-{dsl_hash}.json"
-
-    # Full file path
+    filename = _build_dsl_filename(custom_filename, workflow_id, dsl_hash)
     file_path = day_dir / filename
 
-    # Write DSL to file
-    with file_path.open('w', encoding='utf-8') as f:
-        json.dump(dsl, f, indent=2, ensure_ascii=False)
+    # Write primary DSL file
+    try:
+        with file_path.open('w', encoding='utf-8') as f:
+            json.dump(dsl, f, indent=2, ensure_ascii=False)
+        logger.info(f"DSL saved to: {file_path} (hash: {dsl_hash})")
+    except OSError as exc:
+        raise OSError(f"Failed to write DSL to {file_path}: {exc}") from exc
 
-    logger.info(f"DSL saved to: {file_path} (hash: {dsl_hash})")
-
-    # Save active/latest version to flat 'active' directory
+    # Save active/latest version to flat 'active' directory (non-fatal if it fails)
     try:
         active_dir = settings.COMPILED_DIR / "active"
         active_dir.mkdir(parents=True, exist_ok=True)
-        if custom_filename:
-            active_filename = custom_filename if custom_filename.endswith('.json') else f"{custom_filename}.json"
-        else:
-            active_filename = f"{workflow_id or 'wf'}.json"
-        active_path = active_dir / active_filename
+        active_path = active_dir / _build_active_filename(custom_filename, workflow_id)
         with active_path.open('w', encoding='utf-8') as f:
             json.dump(dsl, f, indent=2, ensure_ascii=False)
         logger.info(f"Active DSL saved to: {active_path}")
     except Exception as e:
         logger.error(f"Failed to save copy to active directory: {e}")
 
-    # If original ReactFlow JSON is provided, save it under same hash name
+    # Save ReactFlow JSON alongside DSL (non-fatal if it fails)
     if rf_json:
-        rf_filename = filename.replace(".json", ".rf")
-        rf_path = day_dir / rf_filename
-        with rf_path.open('w', encoding='utf-8') as f:
-            json.dump(rf_json, f, indent=2, ensure_ascii=False)
-        logger.info(f"ReactFlow schema saved to: {rf_path}")
+        try:
+            rf_filename = filename.replace(_JSON_EXT, ".rf")
+            rf_path = day_dir / rf_filename
+            with rf_path.open('w', encoding='utf-8') as f:
+                json.dump(rf_json, f, indent=2, ensure_ascii=False)
+            logger.info(f"ReactFlow schema saved to: {rf_path}")
+        except Exception as exc:
+            logger.error(f"Failed to write ReactFlow schema to {day_dir}: {exc}")
 
     return file_path
 
