@@ -43,7 +43,7 @@ class CompileWorkflowRequest(BaseModel):
                 ],
                 "workflow_id": "greeting-flow",
                 "workflow_type": "greeting-workflow",
-                "task_queue": "workflow-builder",
+                "task_queue": "flowautomate",
                 "version": "1.0.0",
                 "description": "Greeting user workflow example",
             }
@@ -68,7 +68,7 @@ class CompileWorkflowResponse(BaseModel):
                 "dsl": {
                     "document": {
                         "dsl": "1.0.0",
-                        "taskQueue": "workflow-builder",
+                        "taskQueue": "flowautomate",
                         "workflowType": "greeting-workflow",
                         "name": "greeting-flow"
                     }
@@ -96,7 +96,7 @@ class GetWorkflowResponse(BaseModel):
                 "dsl": {
                     "document": {
                         "dsl": "1.0.0",
-                        "taskQueue": "workflow-builder",
+                        "taskQueue": "flowautomate",
                         "workflowType": "greeting-workflow",
                         "version": "1.0.0",
                     },

@@ -14,7 +14,7 @@ def main():
     """Run the FastAPI application with uvicorn."""
     from app.config import settings
 
-    parser = argparse.ArgumentParser(description="Workflow Compiler Service")
+    parser = argparse.ArgumentParser(description="FlowAutomate — AutoX workflow automation service")
     parser.add_argument(
         "--host",
         type=str,

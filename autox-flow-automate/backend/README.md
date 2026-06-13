@@ -1,12 +1,12 @@
-# AutoX Workflow Backend
+# FlowAutomate Backend — by AutoX
 
-Visual Workflow → Zigflow DSL Compiler and Runtime Bootstrap
+Visual Workflow → Zigflow DSL Compiler, Runtime Bootstrap, and Execution Engine
 
 ---
 
 ## Overview
 
-AutoX Backend is responsible for transforming visual workflow definitions into executable Zigflow DSL and preparing those workflows for execution on Temporal.
+FlowAutomate Backend is the AutoX workflow automation service responsible for transforming visual workflow definitions into executable Zigflow DSL and orchestrating their execution on Temporal.
 
 The project does **not** implement its own workflow runtime.
 

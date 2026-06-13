@@ -34,8 +34,8 @@ class TestContracts(unittest.TestCase):
             try:
                 compile_workflow_to_dsl(
                     payload["workflow"],
-                    workflow_type=payload.get("workflow_type", "workflow-builder"),
-                    task_queue=payload.get("task_queue", "workflow-builder")
+                    workflow_type=payload.get("workflow_type", "flowautomate"),
+                    task_queue=payload.get("task_queue", "flowautomate")
                 )
             except Exception as e:
                 self.fail(f"Contract payload {file_path.name} failed compilation: {e}")

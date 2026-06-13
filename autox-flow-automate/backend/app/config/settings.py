@@ -11,8 +11,8 @@ from typing import List
 class Settings(BaseSettings):
     """Application configuration."""
 
-    APP_NAME: str = "Workflow Builder Service"
-    APP_DESCRIPTION: str = "Workflow Builder Compilation and Validation Service"
+    APP_NAME: str = "FlowAutomate"
+    APP_DESCRIPTION: str = "FlowAutomate — AutoX workflow automation service"
     VERSION: str = "1.0.0"
     DEBUG: bool = False
 
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     LOGS_DIR: Path = RUNTIME_DIR / "logs"
 
     DEFAULT_DSL_VERSION: str = "1.0.0"
-    DEFAULT_TASK_QUEUE: str = "workflow-builder"
+    DEFAULT_TASK_QUEUE: str = "flowautomate"
     TEMPORAL_ADDRESS: str = "localhost:7233"
 
     CORS_ORIGINS: List[str] = ["*"]

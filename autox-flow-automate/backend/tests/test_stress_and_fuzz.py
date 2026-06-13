@@ -1,5 +1,5 @@
 """
-Stress and Fuzz Testing Suite for Workflow Builder Compiler and Validator.
+Stress and Fuzz Testing Suite for FlowAutomate Compiler and Validator.
 """
 import json
 import time
