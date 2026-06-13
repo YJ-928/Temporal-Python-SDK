@@ -1,6 +1,6 @@
 # DSL Compiler — Implementation Reference
 
-> **Source of truth:** `src/backend/` — all sections derived from production code only.
+> **Source of truth:** `autox-flow-automate/backend/` — all sections derived from production code only.
 
 ---
 
@@ -27,7 +27,7 @@ The compiler is deterministic and reproducible: the same workflow JSON always pr
 ## 2. System Architecture
 
 ```
-src/backend/app/
+autox-flow-automate/backend/app/
 ├── compiler/
 │   ├── workflow_compiler.py   ← main entry point (compile_workflow_to_dsl)
 │   ├── graph.py               ← Phase A: graph analysis and traversal
@@ -59,7 +59,7 @@ src/backend/app/
 ## 3. Project Structure
 
 ```
-src/backend/
+autox-flow-automate/backend/
 ├── app/
 │   ├── compiler/       ← compilation pipeline
 │   ├── builders/       ← node-specific DSL builders
@@ -75,7 +75,7 @@ src/backend/
 
 ## 4. Workflow Schema Layer
 
-Defined in `src/backend/app/schemas/workflow_sch.py` (Pydantic v2).
+Defined in `autox-flow-automate/backend/app/schemas/workflow_sch.py` (Pydantic v2).
 
 ### WorkflowDefinition
 
@@ -153,7 +153,7 @@ Both `branch` and `control.branch` are supported. The adjacency builder normaliz
 
 ## 5. Graph Validation Layer
 
-Defined in `src/backend/app/compiler/graph.py` — `validate_graph()`.
+Defined in `autox-flow-automate/backend/app/compiler/graph.py` — `validate_graph()`.
 
 Validation runs before graph compilation, after Pydantic schema validation.
 
@@ -186,7 +186,7 @@ WorkflowValidationError(ValueError)       # Pydantic schema failures
 
 ## 6. Traversal Generation
 
-Defined in `src/backend/app/compiler/graph.py` — `traverse_graph()`.
+Defined in `autox-flow-automate/backend/app/compiler/graph.py` — `traverse_graph()`.
 
 ### TraversalEntry Structure
 
@@ -232,13 +232,13 @@ DFS preorder from START. Each node is visited exactly once (visited set prevents
 
 ## 7. Builder Architecture
 
-Defined in `src/backend/app/builders/`.
+Defined in `autox-flow-automate/backend/app/builders/`.
 
 Builders are pure functions: `(node: dict, *, traversal_entry: dict | None) -> dict | None`.
 
 ### Builder Registry
 
-`src/backend/app/builders/__init__.py` defines the `BUILDERS` dict:
+`autox-flow-automate/backend/app/builders/__init__.py` defines the `BUILDERS` dict:
 
 ```python
 BUILDERS = {
@@ -277,7 +277,7 @@ BUILDERS = {
 
 ## 8. DSL Generation
 
-Defined in `src/backend/app/compiler/dsl_generator.py` — `generate_dsl()`.
+Defined in `autox-flow-automate/backend/app/compiler/dsl_generator.py` — `generate_dsl()`.
 
 ### generate_dsl()
 
@@ -491,7 +491,7 @@ Condition is read from `node["data"]` (left, operator, right) and formatted by `
 
 ## 10. Agent Integration
 
-Defined in `src/backend/app/agents/registry.py`.
+Defined in `autox-flow-automate/backend/app/agents/registry.py`.
 
 ### AgentRegistry
 
@@ -549,7 +549,7 @@ The `AgentNodeData` Pydantic validator calls `AgentRegistry.has_agent()` during 
 
 ## 11. Registration and Runtime
 
-Defined in `src/backend/app/services/registration_service.py`.
+Defined in `autox-flow-automate/backend/app/services/registration_service.py`.
 
 ### RegistrationService
 
@@ -655,7 +655,7 @@ execution_service.get_execution_trace(workflow_id, run_id)
 
 ## 13. Testing
 
-Test suites in `src/backend/tests/`.
+Test suites in `autox-flow-automate/backend/tests/`.
 
 ### test_builders.py
 
@@ -762,7 +762,7 @@ Based on the pattern established by existing builders:
 1. **Define the node data contract** — add a new `XxxNodeData` Pydantic model in `workflow_sch.py`
 2. **Define the node model** — add `XxxNode(BaseModel)` with `type: Literal["NEWTYPE"]`
 3. **Add to the discriminated union** — update the `Node` union in `workflow_sch.py`
-4. **Create a builder file** — `src/backend/app/builders/new_builder.py`
+4. **Create a builder file** — `autox-flow-automate/backend/app/builders/new_builder.py`
 
 ```python
 def build_new(node: dict, *, traversal_entry: dict | None = None) -> dict | None:
@@ -780,7 +780,7 @@ def build_new(node: dict, *, traversal_entry: dict | None = None) -> dict | None
     return {task_name: task_body}
 ```
 
-5. **Register in BUILDERS** — add `"NEWTYPE": build_new` to `src/backend/app/builders/__init__.py`
+5. **Register in BUILDERS** — add `"NEWTYPE": build_new` to `autox-flow-automate/backend/app/builders/__init__.py`
 6. **Add task naming rule** — update `resolve_task_name()` in `graph.py` with a branch for the new type
 7. **Write tests** — add unit tests to `test_builders.py`; add valid and invalid fixtures; add snapshot
 
@@ -806,38 +806,38 @@ The following constraints are visible in the current implementation:
 ### Deleted Files
 
 - `poc-dsl-compiler/docs/*` (already deleted, confirmed absent)
-- `src/backend/docs/*` (already deleted, confirmed absent)
+- `autox-flow-automate/backend/docs/*` (already deleted, confirmed absent)
 
 ### Sources Used
 
 ```
-src/backend/app/compiler/graph.py
-src/backend/app/compiler/dsl_generator.py
-src/backend/app/compiler/workflow_compiler.py
-src/backend/app/compiler/exceptions.py
-src/backend/app/builders/__init__.py
-src/backend/app/builders/terminal_builder.py
-src/backend/app/builders/input_builder.py
-src/backend/app/builders/output_builder.py
-src/backend/app/builders/action_builder.py
-src/backend/app/builders/agent_builder.py
-src/backend/app/builders/if_builder.py
-src/backend/app/builders/condition_builder.py
-src/backend/app/schemas/workflow_sch.py
-src/backend/app/schemas/compiler_sch.py
-src/backend/app/services/compiler_service.py
-src/backend/app/services/registration_service.py
-src/backend/app/services/execution_service.py
-src/backend/app/agents/registry.py
-src/backend/app/api/v1/workflow_routes.py
-src/backend/app/config/compiler_settings.py
-src/backend/tests/test_builders.py
-src/backend/tests/test_compiler.py
-src/backend/tests/test_validation.py
-src/backend/tests/test_convergence.py
-src/backend/tests/test_regression.py
-src/backend/tests/test_compiler_service.py
-src/backend/tests/test_stress_and_fuzz.py
+autox-flow-automate/backend/app/compiler/graph.py
+autox-flow-automate/backend/app/compiler/dsl_generator.py
+autox-flow-automate/backend/app/compiler/workflow_compiler.py
+autox-flow-automate/backend/app/compiler/exceptions.py
+autox-flow-automate/backend/app/builders/__init__.py
+autox-flow-automate/backend/app/builders/terminal_builder.py
+autox-flow-automate/backend/app/builders/input_builder.py
+autox-flow-automate/backend/app/builders/output_builder.py
+autox-flow-automate/backend/app/builders/action_builder.py
+autox-flow-automate/backend/app/builders/agent_builder.py
+autox-flow-automate/backend/app/builders/if_builder.py
+autox-flow-automate/backend/app/builders/condition_builder.py
+autox-flow-automate/backend/app/schemas/workflow_sch.py
+autox-flow-automate/backend/app/schemas/compiler_sch.py
+autox-flow-automate/backend/app/services/compiler_service.py
+autox-flow-automate/backend/app/services/registration_service.py
+autox-flow-automate/backend/app/services/execution_service.py
+autox-flow-automate/backend/app/agents/registry.py
+autox-flow-automate/backend/app/api/v1/workflow_routes.py
+autox-flow-automate/backend/app/config/compiler_settings.py
+autox-flow-automate/backend/tests/test_builders.py
+autox-flow-automate/backend/tests/test_compiler.py
+autox-flow-automate/backend/tests/test_validation.py
+autox-flow-automate/backend/tests/test_convergence.py
+autox-flow-automate/backend/tests/test_regression.py
+autox-flow-automate/backend/tests/test_compiler_service.py
+autox-flow-automate/backend/tests/test_stress_and_fuzz.py
 ```
 
 ### Traceability Mapping

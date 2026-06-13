@@ -10,7 +10,7 @@ For any task in this repository, **read the corresponding feature document first
 
 | Domain | Document | When to Read |
 |---|---|---|
-| DSL Compiler / Visual Workflow Builder | [`.github/features/compiler.md`](.github/features/compiler.md) | Any work on `src/backend/` — compiler, builders, schemas, services, API, registration, execution |
+| DSL Compiler / Visual Workflow Builder | [`.github/features/compiler.md`](.github/features/compiler.md) | Any work on `autox-flow-automate/backend/` — compiler, builders, schemas, services, API, registration, execution |
 | Temporal Python SDK | [`.github/features/temporal.md`](.github/features/temporal.md) | Any work on Temporal workflows, activities, workers, signals, queries, updates |
 | Zigflow YAML Workflows | [`.github/features/zigflow.md`](.github/features/zigflow.md) | Any work on Zigflow YAML files, DSL task types, runtime expressions, Zigflow CLI |
 
@@ -165,7 +165,7 @@ For any task in this repository, follow these steps in order:
 
 **Step 2 — Read the corresponding feature document.**
 
-**Step 3 — Inspect the actual implementation** in `src/backend/` (compiler), `demo/temporal-poc-demo/`, `temporal-python-tutorial/`, or `zigflow/Yaml/` as relevant.
+**Step 3 — Inspect the actual implementation** in `autox-flow-automate/backend/` (compiler), `demo/temporal-poc-demo/`, `temporal-python-tutorial/`, or `zigflow/Yaml/` as relevant.
 
 **Step 4 — Make changes.** Source code is the source of truth. If documentation and code disagree, code wins.
 
@@ -181,12 +181,12 @@ For any task in this repository, follow these steps in order:
 | Add an activity | `demo/temporal-poc-demo/activities.py` — use `@activity.defn`, heartbeats for long tasks |
 | Add a signal/query/update | `demo/temporal-poc-demo/workflows.py` — all three patterns in one class |
 | Write a Temporal test | `temporal-python-learning/exercises/exercise_06_testing_workflow.py` |
-| Work on the compiler | `src/backend/app/compiler/` — read `.github/features/compiler.md` first |
+| Work on the compiler | `autox-flow-automate/backend/app/compiler/` — read `.github/features/compiler.md` first |
 | Add a new compiler node type | See Section 15 of `.github/features/compiler.md` for the complete checklist |
-| Write a compiler test | `src/backend/tests/` — snapshot tests in `test_compiler.py` |
+| Write a compiler test | `autox-flow-automate/backend/tests/` — snapshot tests in `test_compiler.py` |
 | Write a Zigflow workflow | Copy from `zigflow/Yaml/` — read `.github/features/zigflow.md` for DSL reference |
 | Debug a Zigflow workflow | `zigflow validate workflow.yaml`, then `zigflow run -f workflow.yaml --log-level debug` |
-| Start everything locally | `./start-temporal-dev.sh`, then `cd src/backend && uvicorn app.main:app --reload` |
+| Start everything locally | `./start-temporal-dev.sh`, then `cd autox-flow-automate/backend && uvicorn app.main:app --reload` |
 | Understand parallel activities | `temporal-python-tutorial/parallel-file-processing-signals/` |
 | Understand child workflows | `demo/temporal-poc-demo/child_workflows.py` |
 
@@ -236,7 +236,7 @@ Available in `zigflow/Yaml/`: `hello_world.yaml`, `http_call.yaml`, `signal_driv
 ### Backend Compiler API
 
 ```bash
-cd src/backend
+cd autox-flow-automate/backend
 uvicorn app.main:app --reload    # Runs at http://localhost:8000
 ```
 
@@ -245,8 +245,8 @@ uvicorn app.main:app --reload    # Runs at http://localhost:8000
 ## 6. Rules for Agents
 
 1. **Read the feature document for the task domain before making any changes.** Do not rely on memory or inference for compiler, Temporal, or Zigflow behavior.
-2. **Source code wins over documentation.** If `.github/features/compiler.md` and `src/backend/` disagree, trust the code.
-3. **`poc-dsl-compiler/` is historical.** The authoritative compiler is `src/backend/`. Never use `poc-dsl-compiler/` as the basis for backend compiler changes.
+2. **Source code wins over documentation.** If `.github/features/compiler.md` and `autox-flow-automate/backend/` disagree, trust the code.
+3. **`poc-dsl-compiler/` is historical.** The authoritative compiler is `autox-flow-automate/backend/`. Never use `poc-dsl-compiler/` as the basis for backend compiler changes.
 4. **Do not modify files in `documents/`.** These are reference material.
 5. **Do not invent compiler node types.** The backend supports exactly 7: `START`, `END`, `INPUT`, `OUTPUT`, `ACTION`, `AGENT`, `IF`. Full contracts in `.github/features/compiler.md` Section 9.
 6. **Update documentation when you change implementation.** Feature docs must remain in sync with code.
