@@ -155,7 +155,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
     if (wfId === 'weather-assistant') {
       setInputJson('{\n  "city": "kolkata"\n}');
     } else if (wfId === 'email-validation-sender') {
-      setInputJson('{\n  "email": "test@domain.com",\n  "subject": "Greetings",\n  "message": "Hello from Workflow Builder!"\n}');
+      setInputJson('{\n  "email": "test@domain.com",\n  "subject": "Greetings",\n  "message": "Hello from FlowAutomate!"\n}');
     } else if (wfId === 'account-routing') {
       setInputJson('{\n  "account_id": "ACC-789"\n}');
     } else if (wfId === 'single-email-validator') {

@@ -26,8 +26,8 @@ import { getFriendlyMessage } from './utils/errorHandler';
 
 const BLANK_METADATA: WorkflowMetadata = {
   workflow_id: 'workflow-design',
-  workflow_type: 'workflow-builder',
-  task_queue: 'workflow-builder',
+  workflow_type: 'flowautomate',
+  task_queue: 'flowautomate',
   version: '1.0.0',
   description: '',
 };

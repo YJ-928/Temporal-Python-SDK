@@ -50,10 +50,13 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="header">
       <div className="header-logo">
-        <GitMerge size={26} />
+        <div className="brand-logo-slot">
+          {/* PLACEHOLDER: AutoX logo asset goes here */}
+          <GitMerge size={26} />
+        </div>
         <div>
-          <h1 className="header-title" style={{ margin: 0, lineHeight: 1.1 }}>Workflow Builder</h1>
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '2px', fontWeight: '500', letterSpacing: '0.5px' }}>Visual DSL Compiler</span>
+          <h1 className="header-title" style={{ margin: 0, lineHeight: 1.1 }}>FlowAutomate</h1>
+          <span className="header-subtitle">by AutoX · Visual Workflow Automation</span>
         </div>
       </div>
 

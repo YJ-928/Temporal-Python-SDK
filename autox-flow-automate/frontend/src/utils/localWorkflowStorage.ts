@@ -1,7 +1,8 @@
 import type { Node, Edge } from 'reactflow';
 import type { RFNodeData, RFEdgeData } from '../types';
 
-const STORAGE_KEY = 'workflow-builder-saved-workflows';
+const STORAGE_KEY = 'flowautomate-saved-workflows';
+const LEGACY_STORAGE_KEY = 'workflow-builder-saved-workflows';
 
 export interface StoredWorkflow {
   id: string;
@@ -21,7 +22,15 @@ export interface StoredWorkflowSummary {
 
 function readAll(): StoredWorkflow[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      // One-time migration from old key — copy forward, leave old key as backup
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy) {
+        localStorage.setItem(STORAGE_KEY, legacy);
+        raw = legacy;
+      }
+    }
     if (!raw) return [];
     const parsed = JSON.parse(raw) as StoredWorkflow[];
     return Array.isArray(parsed) ? parsed : [];
