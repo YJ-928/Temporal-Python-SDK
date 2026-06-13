@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "FlowAutomate — AutoX workflow automation service"
     VERSION: str = "1.0.0"
     DEBUG: bool = False
+    DB_ECHO: bool = False  # Set True in .env to log all SQL queries
 
     LOG_LEVEL: str = "INFO"
     LOG_CONFIG_PATH: str = "resources/logger.conf"

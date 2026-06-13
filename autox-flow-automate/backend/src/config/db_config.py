@@ -21,6 +21,7 @@ def _build_dsn(s) -> str:
 @lru_cache
 def get_engine() -> AsyncEngine:
     from .settings import settings
+    # Set DB_ECHO=True in .env to log all SQL queries to stdout (useful for debugging)
     return create_async_engine(
         _build_dsn(settings),
         poolclass=AsyncAdaptedQueuePool,
@@ -28,7 +29,7 @@ def get_engine() -> AsyncEngine:
         max_overflow=20,
         pool_timeout=30,
         pool_recycle=1800,
-        echo=settings.DEBUG,
+        echo=settings.DB_ECHO,
         future=True,
     )
 
