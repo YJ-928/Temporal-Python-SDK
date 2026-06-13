@@ -2,8 +2,8 @@ import json
 import unittest
 from datetime import timezone
 from unittest.mock import patch, MagicMock, AsyncMock
-from app.services.execution_service import ExecutionService
-from app.services.storage_service import save_dsl
+from src.service.execution_service import ExecutionService
+from src.service.storage_service import save_dsl
 
 
 class MockWorkflow:
@@ -249,27 +249,27 @@ class TestExecutionService(unittest.TestCase):
     def tearDown(self):
         self.helper.tear_down_helper()
 
-    @patch("app.services.execution_service.Client.connect")
+    @patch("src.service.execution_service.Client.connect")
     def test_execute_workflow(self, mock_connect):
         import asyncio
         asyncio.run(self.helper.run_execute_workflow(mock_connect))
 
-    @patch("app.services.execution_service.Client.connect")
+    @patch("src.service.execution_service.Client.connect")
     def test_list_executions(self, mock_connect):
         import asyncio
         asyncio.run(self.helper.run_list_executions(mock_connect))
 
-    @patch("app.services.execution_service.Client.connect")
+    @patch("src.service.execution_service.Client.connect")
     def test_get_execution_trace(self, mock_connect):
         import asyncio
         asyncio.run(self.helper.run_get_execution_trace(mock_connect))
 
-    @patch("app.services.execution_service.Client.connect")
+    @patch("src.service.execution_service.Client.connect")
     def test_cancel_workflow(self, mock_connect):
         import asyncio
         asyncio.run(self.helper.run_cancel_workflow(mock_connect))
 
-    @patch("app.services.execution_service.Client.connect")
+    @patch("src.service.execution_service.Client.connect")
     def test_terminate_workflow(self, mock_connect):
         import asyncio
         asyncio.run(self.helper.run_terminate_workflow(mock_connect))
@@ -277,7 +277,7 @@ class TestExecutionService(unittest.TestCase):
     def test_get_memo_value(self):
         import asyncio
         from unittest.mock import AsyncMock
-        from app.services.execution_service import get_memo_value
+        from src.service.execution_service import get_memo_value
 
         async def run_tests():
             # Test None input
@@ -301,7 +301,7 @@ class TestExecutionService(unittest.TestCase):
         asyncio.run(run_tests())
 
     def test_replay_engine_dag_parallel_join(self):
-        from app.services.replay_engine import propagate_dag_states
+        from src.service.replay_engine import propagate_dag_states
 
         # Create a DAG with parallel execution, branch skip, and a join node:
         #           START

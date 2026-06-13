@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 
-from app.services.execution_service import unwrap_temporal_failure
-from app.services.registration_service import RegistrationService, REGISTRATIONS_FILE
+from src.service.execution_service import unwrap_temporal_failure
+from src.service.registration_service import RegistrationService, REGISTRATIONS_FILE
 
 
 class MockFailureInfo:
@@ -71,7 +71,7 @@ class TestRuntimeFailures(unittest.TestCase):
 class TestRegistrationLifecycle(unittest.TestCase):
     def setUp(self):
         self.temp_reg_file = Path(str(REGISTRATIONS_FILE) + ".test")
-        self.patcher = patch("app.services.registration_service.REGISTRATIONS_FILE", self.temp_reg_file)
+        self.patcher = patch("src.service.registration_service.REGISTRATIONS_FILE", self.temp_reg_file)
         self.patcher.start()
         # Clean up any residual test file
         if self.temp_reg_file.exists():

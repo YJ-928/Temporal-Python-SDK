@@ -3,7 +3,7 @@ AGENT node builder.
 
 Converts AGENT node into a Zigflow `call: http` task using AgentRegistry.
 """
-from ..agents.registry import AgentRegistry
+from ..agent.registry import AgentRegistry
 
 
 def build_agent(node: dict, *, traversal_entry: dict | None = None) -> dict:

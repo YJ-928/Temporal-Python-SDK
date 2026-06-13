@@ -12,8 +12,8 @@ from .graph import (
     validate_graph,
 )
 from .dsl_generator import generate_dsl, register_builder
-from ..builders import BUILDERS
-from ..schemas.workflow_sch import WorkflowDefinition
+from ..builder import BUILDERS
+from ..schema.workflow.workflow_sch import WorkflowDefinition
 from ..config import compiler_settings
 
 

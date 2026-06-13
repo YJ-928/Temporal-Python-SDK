@@ -2,13 +2,13 @@
 Unit tests for isolated DSL builders.
 """
 import unittest
-from app.builders.input_builder import build_input
-from app.builders.output_builder import build_output
-from app.builders.action_builder import build_action
-from app.builders.agent_builder import build_agent
-from app.builders.if_builder import build_if
-from app.builders.terminal_builder import build_terminal
-from app.builders.condition_builder import build_condition_expression
+from src.builder.input_builder import build_input
+from src.builder.output_builder import build_output
+from src.builder.action_builder import build_action
+from src.builder.agent_builder import build_agent
+from src.builder.if_builder import build_if
+from src.builder.terminal_builder import build_terminal
+from src.builder.condition_builder import build_condition_expression
 
 
 class TestBuilders(unittest.TestCase):

@@ -2,7 +2,7 @@ import json
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from app.services.compiler_service import CompilerService
+from src.service.compiler_service import CompilerService
 
 
 class TestCompilerService(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestCompilerService(unittest.TestCase):
 
         # Mock compile_workflow_to_dsl to return an invalid schema structure
         # (e.g. missing required "document" property)
-        with patch("app.services.compiler_service.compile_workflow_to_dsl") as mock_compile:
+        with patch("src.service.compiler_service.compile_workflow_to_dsl") as mock_compile:
             mock_compile.return_value = {
                 "invalid_dsl": True
             }

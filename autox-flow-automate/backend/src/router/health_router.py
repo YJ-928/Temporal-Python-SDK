@@ -6,8 +6,8 @@ import urllib.request
 import json
 from fastapi import APIRouter
 from temporalio.client import Client
-from ...config import settings, get_logger
-from ...services.registration_service import registration_service
+from ..config import settings, get_logger
+from ..service.registration_service import registration_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/health", tags=["Health"])

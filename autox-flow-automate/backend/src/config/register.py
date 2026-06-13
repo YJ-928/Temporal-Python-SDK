@@ -94,16 +94,10 @@ def register_routers(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
-    from ..api.v1.workflow_routes import router as workflow_router
-    from ..api.v1.execution_routes import router as execution_router
-    from ..api.v1.health_routes import router as health_router
-    from ..api.v1.catalog_routes import router as catalog_router
-
     _v1 = settings.API_V1_PREFIX
-    app.include_router(workflow_router, prefix=_v1)
-    app.include_router(execution_router, prefix=_v1)
-    app.include_router(health_router, prefix=_v1)
-    app.include_router(catalog_router, prefix=_v1)
+
+    from ..router import add_router
+    add_router(app, prefix=_v1)
 
     @app.get(
         f"{_v1}/actions",
@@ -116,7 +110,7 @@ def register_routers(app: FastAPI) -> None:
         ),
     )
     async def list_actions():
-        from ..api.v1.catalog_routes import MOCK_OPERATIONS
+        from ..router.catalog_router import MOCK_OPERATIONS
         return MOCK_OPERATIONS
 
     @app.post(f"{_v1}/actions/{{operation}}", tags=["Actions"])
@@ -171,7 +165,7 @@ def register_routers(app: FastAPI) -> None:
         ),
     )
     async def list_agents():
-        from ..agents.registry import AgentRegistry
+        from ..agent.registry import AgentRegistry
 
         def _display_name(agent_id: str) -> str:
             return agent_id.replace("-", " ").title()
@@ -226,7 +220,7 @@ def register_events(app: FastAPI) -> None:
             logger.warning(f"Unable to determine zigflow version: {e}")
 
         # Sync pre-existing compiled workflows
-        from ..services.registration_service import registration_service
+        from ..service.registration_service import registration_service
         try:
             await registration_service.sync_pre_existing()
             logger.info("✓ Sync of pre-existing compiled workflows complete")

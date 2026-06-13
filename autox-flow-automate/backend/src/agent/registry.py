@@ -11,7 +11,7 @@ CRITICAL: This is METADATA ONLY.
 - Pure lookup: agent_id → metadata dict
 
 Usage:
-    from app.agents.registry import AgentRegistry
+    from src.agent.registry import AgentRegistry
 
     # Get agent metadata
     agent = AgentRegistry.get_agent("weather-agent")

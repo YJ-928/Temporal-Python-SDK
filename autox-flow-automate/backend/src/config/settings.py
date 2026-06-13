@@ -21,9 +21,10 @@ class Settings(BaseSettings):
 
     BACKEND_ROOT: Path = Path(__file__).parent.parent.parent
     RESOURCES_DIR: Path = BACKEND_ROOT / "resources"
+    LOGS_DIR: Path = RESOURCES_DIR / "logs"
+    # Zigflow file watcher still reads compiled DSL files from disk
     RUNTIME_DIR: Path = BACKEND_ROOT / "runtime"
     COMPILED_DIR: Path = RUNTIME_DIR / "compiled"
-    LOGS_DIR: Path = RUNTIME_DIR / "logs"
 
     DEFAULT_DSL_VERSION: str = "1.0.0"
     DEFAULT_TASK_QUEUE: str = "flowautomate"
@@ -33,6 +34,13 @@ class Settings(BaseSettings):
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: List[str] = ["*"]
     CORS_HEADERS: List[str] = ["*"]
+
+    # PostgreSQL connection
+    DATABASE_HOST: str = "localhost"
+    DATABASE_PORT: int = 5432
+    DATABASE_NAME: str = "autox-flow-automate"
+    DATABASE_USERNAME: str = "postgres"
+    DATABASE_PASSWORD: str = "admin123"
 
     API_HOST: str = "0.0.0.0"  # noqa: S104
     API_PORT: int = 8000

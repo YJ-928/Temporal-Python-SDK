@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 mkdir -p "$WORKSPACE_DIR/runtime/pids"
-mkdir -p "$WORKSPACE_DIR/runtime/logs"
+mkdir -p "$WORKSPACE_DIR/resources/logs"
 
 # Check if backend is already running
 if curl -s http://localhost:8000/health &>/dev/null; then
@@ -19,9 +19,9 @@ fi
 
 echo "Starting FastAPI backend..."
 cd "$WORKSPACE_DIR"
-PYTHONPATH=. "$WORKSPACE_DIR/../../.venv/bin/python" -m uvicorn app.main:app \
+PYTHONPATH=. "$WORKSPACE_DIR/../../.venv/bin/python" -m uvicorn src.app:app \
     --host 0.0.0.0 \
-    --port 8000 > "$WORKSPACE_DIR/runtime/logs/backend.log" 2>&1 &
+    --port 8000 > "$WORKSPACE_DIR/resources/logs/backend.log" 2>&1 &
 
 BACKEND_PID=$!
 echo $BACKEND_PID > "$WORKSPACE_DIR/runtime/pids/backend.pid"
@@ -35,5 +35,5 @@ for i in {1..10}; do
     sleep 1
 done
 
-echo "Failed to start FastAPI backend. Check $WORKSPACE_DIR/runtime/logs/backend.log"
+echo "Failed to start FastAPI backend. Check $WORKSPACE_DIR/resources/logs/backend.log"
 exit 1

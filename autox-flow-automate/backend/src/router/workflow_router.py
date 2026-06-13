@@ -2,9 +2,9 @@
 Workflow compilation API routes.
 """
 from fastapi import APIRouter, HTTPException, status
-from ...config import get_logger, compiler_settings
-from ...services import compiler_service, load_dsl, get_latest_workflow
-from ...schemas.compiler_sch import (
+from ..config import get_logger, compiler_settings
+from ..service import compiler_service, load_dsl, get_latest_workflow
+from ..schema.workflow.workflow_compile_sch import (
     CompileWorkflowRequest,
     CompileWorkflowResponse,
     GetWorkflowResponse,
@@ -58,8 +58,20 @@ async def compile_workflow(request: CompileWorkflowRequest):
 
         logger.info(f"Compiled workflow: {result['workflow_id']} (hash: {result['content_hash']})")
 
+        # Dual-write DSL to PostgreSQL (fire-and-forget)
+        import asyncio
+        from ..service.storage_service import save_dsl_to_db
+        _dsl_task = asyncio.create_task(save_dsl_to_db(  # noqa: F841
+            dsl=result["dsl"],
+            workflow_id=result["workflow_id"],
+            workflow_type=resolved_workflow_type,
+            task_queue=resolved_task_queue,
+            file_path=str(result["file_path"]),
+            rf_json=workflow,
+        ))
+
         # Register the compiled workflow version (hot-reloads runtime in background)
-        from ...services.registration_service import registration_service
+        from ..service.registration_service import registration_service
         registration_service.register_workflow(
             dsl_hash=result["content_hash"],
             workflow_id=result["workflow_id"],

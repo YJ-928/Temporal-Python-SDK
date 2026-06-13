@@ -8,7 +8,7 @@
 #   ./scripts/logs.sh --service agents    — all three agents
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/runtime/logs"
+LOG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/resources/logs"
 
 LINES=20
 SERVICE="all"

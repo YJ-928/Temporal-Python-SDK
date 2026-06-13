@@ -12,7 +12,7 @@ import uvicorn
 
 def main():
     """Run the FastAPI application with uvicorn."""
-    from app.config import settings
+    from src.config import settings
 
     parser = argparse.ArgumentParser(description="FlowAutomate — AutoX workflow automation service")
     parser.add_argument(
@@ -43,7 +43,7 @@ def main():
     args = parser.parse_args()
 
     uvicorn.run(
-        "app.main:app",
+        "src.app:app",
         host=args.host,
         port=args.port,
         reload=args.reload,

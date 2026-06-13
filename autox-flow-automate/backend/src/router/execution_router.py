@@ -1,14 +1,14 @@
 import re
 from fastapi import APIRouter, HTTPException, status
 from temporalio.service import RPCError, RPCStatusCode
-from ...config import get_logger
-from ...schemas.execution_sch import (
+from ..config import get_logger
+from ..schema.execution.execution_run_sch import (
     ExecuteWorkflowRequest,
     ExecuteWorkflowResponse,
     ExecutionListResponse,
     ExecutionTraceResponse,
 )
-from ...services.execution_service import execution_service
+from ..service.execution_service import execution_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/executions", tags=["Executions"])
@@ -32,7 +32,7 @@ def _validate_contract(workflow_id: str, dsl_hash: str, input_data: dict) -> Non
     Load the compiled DSL for this workflow version and validate input_data against
     the metadata.contract block if one is present. Raises HTTP 422 on violations.
     """
-    from ...services.storage_service import find_by_hash, load_dsl
+    from ..service.storage_service import find_by_hash, load_dsl
     path = find_by_hash(workflow_id, dsl_hash)
     if path is None:
         return
@@ -70,7 +70,7 @@ def _validate_contract(workflow_id: str, dsl_hash: str, input_data: dict) -> Non
 )
 async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
     # 1. Check if hash is registered and validated
-    from ...services.registration_service import registration_service
+    from ..service.registration_service import registration_service
     if not registration_service.is_registered(request.dsl_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

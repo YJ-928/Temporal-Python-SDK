@@ -8,7 +8,7 @@ import os
 import json
 import unittest
 from pathlib import Path
-from app.compiler.workflow_compiler import compile_workflow_to_dsl
+from src.compiler.workflow_compiler import compile_workflow_to_dsl
 
 
 class TestCompilerSnapshots(unittest.TestCase):

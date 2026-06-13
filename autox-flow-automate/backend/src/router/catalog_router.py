@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ...agents.registry import AgentRegistry
+from ..agent.registry import AgentRegistry
 
 router = APIRouter(prefix="/catalog", tags=["Catalog"])
 

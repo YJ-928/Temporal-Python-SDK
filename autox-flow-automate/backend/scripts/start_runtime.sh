@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 mkdir -p "$WORKSPACE_DIR/runtime/pids"
-mkdir -p "$WORKSPACE_DIR/runtime/logs"
+mkdir -p "$WORKSPACE_DIR/resources/logs"
 mkdir -p "$WORKSPACE_DIR/runtime/compiled/active"
 
 # Count existing JSON workflows
@@ -52,7 +52,7 @@ zigflow run \
     --glob "*.json" \
     --watch \
     --metrics-listen-address 127.0.0.1:9095 \
-    --health-listen-address 127.0.0.1:3005 > "$WORKSPACE_DIR/runtime/logs/zigflow.log" 2>&1 &
+    --health-listen-address 127.0.0.1:3005 > "$WORKSPACE_DIR/resources/logs/zigflow.log" 2>&1 &
 
 ZIGFLOW_PID=$!
 echo $ZIGFLOW_PID > "$WORKSPACE_DIR/runtime/pids/zigflow.pid"
@@ -66,5 +66,5 @@ for i in {1..10}; do
     sleep 1
 done
 
-echo "Failed to start Zigflow Runtime Daemon. Check $WORKSPACE_DIR/runtime/logs/zigflow.log"
+echo "Failed to start Zigflow Runtime Daemon. Check $WORKSPACE_DIR/resources/logs/zigflow.log"
 exit 1

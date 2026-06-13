@@ -1,5 +1,8 @@
 """
 Registration service for tracking and reloading Zigflow workflows.
+
+Primary store: registrations.json (file-based, Zigflow-compatible).
+Secondary store: PostgreSQL via WorkflowRegistrationRepo (dual-write for reporting/querying).
 """
 import json
 import asyncio
@@ -14,6 +17,50 @@ logger = get_logger(__name__)
 
 WORKSPACE_ROOT = settings.BACKEND_ROOT
 REGISTRATIONS_FILE = WORKSPACE_ROOT / "runtime" / "registrations.json"
+
+
+async def _upsert_registration_to_db(
+    dsl_hash: str,
+    workflow_id: str,
+    workflow_type: str,
+    file_path: str,
+    validated: bool,
+    registered: bool,
+) -> None:
+    """Fire-and-forget: write or update registration record in PostgreSQL."""
+    try:
+        from ..config.db_config import get_session_factory
+        from ..repo.workflow_repo import WorkflowRepo
+        from ..repo.workflow_registration_repo import WorkflowRegistrationRepo
+        from ..model.workflow_registration import WorkflowRegistration
+
+        wf_repo = WorkflowRepo()
+        reg_repo = WorkflowRegistrationRepo()
+        async with get_session_factory()() as session:
+            workflow = await wf_repo.get_or_create(
+                workflow_id=workflow_id,
+                name=workflow_id.replace("-", " ").title(),
+                db=session,
+            )
+            existing = await reg_repo.get_by_hash(dsl_hash, session)
+            if existing is None:
+                record = WorkflowRegistration(
+                    content_hash=dsl_hash,
+                    workflow_id=workflow.id,
+                    workflow_type=workflow_type,
+                    file_path=file_path,
+                    validated=validated,
+                    registered=registered,
+                    runtime_loaded=False,
+                )
+                await reg_repo.save(record, session)
+            else:
+                existing.validated = validated
+                existing.registered = registered
+                await session.flush()
+            await session.commit()
+    except Exception as exc:
+        logger.warning(f"DB dual-write for registration {dsl_hash} failed (non-fatal): {exc}")
 
 
 class RegistrationService:
@@ -109,6 +156,20 @@ class RegistrationService:
 
         regs[dsl_hash] = new_entry
         self._save_registrations(regs)
+
+        # Dual-write to PostgreSQL (fire-and-forget; skipped when no event loop, e.g. unit tests)
+        try:
+            _loop = asyncio.get_running_loop()
+            _db_task = _loop.create_task(_upsert_registration_to_db(  # noqa: F841
+                dsl_hash=dsl_hash,
+                workflow_id=workflow_id,
+                workflow_type=workflow_type,
+                file_path=str(file_path),
+                validated=validated,
+                registered=bool(validated),
+            ))
+        except RuntimeError:
+            pass
 
         # Trigger background non-blocking daemon reload only if valid
         if validated:

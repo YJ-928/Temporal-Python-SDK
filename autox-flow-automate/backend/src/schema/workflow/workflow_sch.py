@@ -83,7 +83,7 @@ class AgentNodeData(NodeData):
 
     @model_validator(mode="after")
     def validate_agent(self) -> "AgentNodeData":
-        from app.agents.registry import AgentRegistry
+        from src.agent.registry import AgentRegistry
         if not AgentRegistry.has_agent(self.agent):
             raise ValueError(f"Agent '{self.agent}' is not registered in the system")
         return self

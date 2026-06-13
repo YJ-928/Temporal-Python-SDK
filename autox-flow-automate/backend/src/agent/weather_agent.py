@@ -24,7 +24,7 @@ from typing import Optional
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from app.config import get_logger
+from src.config import get_logger
 
 
 logger = get_logger(__name__)

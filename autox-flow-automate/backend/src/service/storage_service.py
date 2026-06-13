@@ -1,7 +1,8 @@
 """
 Storage service for DSL file persistence.
 
-Handles saving and loading compiled DSL files with date-based organization.
+Primary store: filesystem under runtime/compiled/ (Zigflow file watcher reads from here).
+Secondary store: PostgreSQL via WorkflowVersionRepo + WorkflowRepo (dual-write).
 """
 import json
 from pathlib import Path
@@ -221,3 +222,51 @@ def get_latest_workflow(workflow_id: Optional[str] = None) -> Optional[Path]:
 
     logger.warning("No workflows found in the last 30 days")
     return None
+
+
+async def save_dsl_to_db(
+    dsl: dict,
+    workflow_id: str,
+    workflow_type: str,
+    task_queue: str,
+    file_path: str,
+    rf_json: Optional[dict] = None,
+) -> None:
+    """
+    Dual-write: persist a compiled DSL as Workflow + WorkflowVersion in PostgreSQL.
+    Called as a fire-and-forget background task after save_dsl() succeeds.
+    """
+    try:
+        from ..config.db_config import get_session_factory
+        from ..repo.workflow_repo import WorkflowRepo
+        from ..repo.workflow_version_repo import WorkflowVersionRepo
+        from ..model.workflow_version import WorkflowVersion
+
+        content_hash = calculate_dsl_hash(dsl)
+        workflow_repo = WorkflowRepo()
+        version_repo = WorkflowVersionRepo()
+
+        async with get_session_factory()() as session:
+            workflow = await workflow_repo.get_or_create(
+                workflow_id=workflow_id,
+                name=workflow_id.replace("-", " ").title(),
+                db=session,
+            )
+
+            existing = await version_repo.get_by_hash(content_hash, session)
+            if existing is None:
+                version = WorkflowVersion(
+                    workflow_id=workflow.id,
+                    content_hash=content_hash,
+                    dsl_json=dsl,
+                    rf_json=rf_json,
+                    file_path=file_path,
+                    workflow_type=workflow_type,
+                    task_queue=task_queue,
+                )
+                await version_repo.save(version, session)
+
+            await session.commit()
+            logger.debug(f"DSL persisted to DB: workflow_id={workflow_id} hash={content_hash}")
+    except Exception as exc:
+        logger.warning(f"DB dual-write for DSL {workflow_id} failed (non-fatal): {exc}")

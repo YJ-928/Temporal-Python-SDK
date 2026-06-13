@@ -4,14 +4,14 @@ Unit tests for schema and graph validation failures.
 import json
 import unittest
 from pathlib import Path
-from app.compiler import compile_workflow_to_dsl
-from app.compiler.exceptions import (
+from src.compiler import compile_workflow_to_dsl
+from src.compiler.exceptions import (
     WorkflowValidationError,
     GraphValidationError,
     CycleDetectedError,
     MissingBranchError,
 )
-from app.compiler.graph import resolve_task_name
+from src.compiler.graph import resolve_task_name
 
 class TestCompilerValidation(unittest.TestCase):
     def test_missing_start(self):

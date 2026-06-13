@@ -2,7 +2,7 @@
 Dedicated test suite verifying compiler convergence (join node) behaviors.
 """
 import unittest
-from app.compiler.workflow_compiler import compile_workflow_to_dsl
+from src.compiler.workflow_compiler import compile_workflow_to_dsl
 
 
 class TestCompilerConvergence(unittest.TestCase):

@@ -6,8 +6,8 @@ import time
 import random
 import unittest
 from pathlib import Path
-from app.compiler import compile_workflow_to_dsl
-from app.compiler.exceptions import (
+from src.compiler import compile_workflow_to_dsl
+from src.compiler.exceptions import (
     WorkflowValidationError,
     GraphValidationError,
     CycleDetectedError,

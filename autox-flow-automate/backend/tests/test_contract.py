@@ -4,8 +4,8 @@ Contract validation tests comparing frontend exported payloads against backend P
 import json
 import unittest
 from pathlib import Path
-from app.schemas.workflow_sch import CompileRequest
-from app.compiler.workflow_compiler import compile_workflow_to_dsl
+from src.schema.workflow.workflow_sch import CompileRequest
+from src.compiler.workflow_compiler import compile_workflow_to_dsl
 from pydantic import ValidationError
 
 

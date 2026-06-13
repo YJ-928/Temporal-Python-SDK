@@ -1,9 +1,8 @@
 """
 Schema package.
-
-Pydantic models for request/response validation.
+Re-exports all schemas from entity sub-packages.
 """
-from .workflow_sch import (
+from .workflow.workflow_sch import (
     InputField,
     OutputField,
     IfCondition,
@@ -15,13 +14,13 @@ from .workflow_sch import (
     CompileRequest,
     CompileResponse,
 )
-from .compiler_sch import (
+from .workflow.workflow_compile_sch import (
     CompileWorkflowRequest,
     CompileWorkflowResponse,
     GetWorkflowResponse,
     ErrorResponse,
 )
-from .execution_sch import (
+from .execution.execution_run_sch import (
     ExecuteWorkflowRequest,
     ExecuteWorkflowResponse,
     ExecutionListItem,
@@ -31,27 +30,9 @@ from .execution_sch import (
 )
 
 __all__ = [
-    # Workflow schemas
-    "InputField",
-    "OutputField",
-    "IfCondition",
-    "NodeData",
-    "Node",
-    "EdgeControl",
-    "Edge",
-    "WorkflowDefinition",
-    "CompileRequest",
-    "CompileResponse",
-    # Compiler API schemas
-    "CompileWorkflowRequest",
-    "CompileWorkflowResponse",
-    "GetWorkflowResponse",
-    "ErrorResponse",
-    # Execution API schemas
-    "ExecuteWorkflowRequest",
-    "ExecuteWorkflowResponse",
-    "ExecutionListItem",
-    "ExecutionListResponse",
-    "TraceStepResponse",
-    "ExecutionTraceResponse",
+    "InputField", "OutputField", "IfCondition", "NodeData", "Node",
+    "EdgeControl", "Edge", "WorkflowDefinition", "CompileRequest", "CompileResponse",
+    "CompileWorkflowRequest", "CompileWorkflowResponse", "GetWorkflowResponse", "ErrorResponse",
+    "ExecuteWorkflowRequest", "ExecuteWorkflowResponse", "ExecutionListItem",
+    "ExecutionListResponse", "TraceStepResponse", "ExecutionTraceResponse",
 ]
