@@ -257,20 +257,11 @@ body, html, #root {
   height: 32px;
 }
 
-.palette-node-info {
-  display: flex;
-  flex-direction: column;
-}
-
 .palette-node-title {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.palette-node-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  letter-spacing: 0.04em;
 }
 
 /* Colors for specific palette nodes — synced with v4 spec */
@@ -1464,8 +1455,8 @@ body, html, #root {
 /* Logo */
 .splash-logo-wrap {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 76px;
+  height: 76px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1484,7 +1475,7 @@ body, html, #root {
 
 .splash-logo-glow {
   position: absolute;
-  inset: -28px;
+  inset: -22px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(243, 112, 42, 0.35) 0%, transparent 70%);
   animation: splashGlowPulse 2s ease-in-out infinite;
@@ -1531,9 +1522,9 @@ body, html, #root {
 }
 
 .splash-brand-name {
-  font-size: 38px;
+  font-size: 46px;
   font-weight: 800;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   line-height: 1;
   margin-bottom: 10px;
 }

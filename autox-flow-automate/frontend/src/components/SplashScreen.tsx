@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 
+const RAYS = ['ra','rb','rc','rd','re','rf','rg','rh'];
+const PARTICLES = ['pa','pb','pc','pd','pe','pf','pg','ph','pi','pj','pk','pl','pm','pn','po','pp'];
+
 interface SplashScreenProps {
   onDone: () => void;
 }
@@ -17,15 +20,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDone }) => {
     <div className={`splash-overlay ${phase}`}>
       {/* Ambient light rays */}
       <div className="splash-rays">
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="splash-ray" style={{ '--ray-i': i } as React.CSSProperties} />
+        {RAYS.map((id, i) => (
+          <div key={id} className="splash-ray" style={{ '--ray-i': i } as React.CSSProperties} />
         ))}
       </div>
 
       {/* Floating particles */}
       <div className="splash-particles">
-        {[...Array(16)].map((_, i) => (
-          <div key={i} className="splash-particle" style={{ '--p-i': i } as React.CSSProperties} />
+        {PARTICLES.map((id, i) => (
+          <div key={id} className="splash-particle" style={{ '--p-i': i } as React.CSSProperties} />
         ))}
       </div>
 
@@ -35,7 +38,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDone }) => {
         <div className="splash-logo-wrap">
           <div className="splash-logo-glow" />
           <div className="splash-logo-ring" />
-          <img src="/logo-x.svg" width={96} height={96} alt="AutoX" className="splash-logo-img" />
+          <img src="/logo-x.svg" width={76} height={76} alt="AutoX" className="splash-logo-img" />
         </div>
 
         {/* Brand text */}

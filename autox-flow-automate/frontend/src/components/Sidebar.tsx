@@ -17,17 +17,16 @@ interface SidebarProps {
 const PALETTE: {
   type: NodeType;
   title: string;
-  desc: string;
   icon: React.ReactNode;
   className: string;
 }[] = [
-  { type: 'start',  title: 'START',  desc: 'Entry point',          icon: <Play size={20} />,       className: 'palette-node-start' },
-  { type: 'input',  title: 'INPUT',  desc: 'Workflow inputs',       icon: <Database size={20} />,   className: 'palette-node-input' },
-  { type: 'if',     title: 'IF',     desc: 'Branch on condition',   icon: <GitFork size={20} />,    className: 'palette-node-if' },
-  { type: 'action', title: 'ACTION', desc: 'Execute an operation',  icon: <Zap size={20} />,        className: 'palette-node-action' },
-  { type: 'agent',  title: 'AGENT',  desc: 'Run an AI agent',       icon: <Bot size={20} />,        className: 'palette-node-agent' },
-  { type: 'output', title: 'OUTPUT', desc: 'Emit result',           icon: <FileOutput size={20} />, className: 'palette-node-output' },
-  { type: 'end',    title: 'END',    desc: 'Terminal state',        icon: <Square size={20} />,     className: 'palette-node-end' },
+  { type: 'start',  title: 'START',  icon: <Play size={20} />,       className: 'palette-node-start' },
+  { type: 'input',  title: 'INPUT',  icon: <Database size={20} />,   className: 'palette-node-input' },
+  { type: 'if',     title: 'IF',     icon: <GitFork size={20} />,    className: 'palette-node-if' },
+  { type: 'action', title: 'ACTION', icon: <Zap size={20} />,        className: 'palette-node-action' },
+  { type: 'agent',  title: 'AGENT',  icon: <Bot size={20} />,        className: 'palette-node-agent' },
+  { type: 'output', title: 'OUTPUT', icon: <FileOutput size={20} />, className: 'palette-node-output' },
+  { type: 'end',    title: 'END',    icon: <Square size={20} />,     className: 'palette-node-end' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ onAddNode }) => {
@@ -52,10 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onAddNode }) => {
               title="Click or drag to add"
             >
               {item.icon}
-              <div className="palette-node-info">
-                <span className="palette-node-title">{item.title}</span>
-                <span className="palette-node-desc">{item.desc}</span>
-              </div>
+              <span className="palette-node-title">{item.title}</span>
             </button>
           ))}
         </div>
