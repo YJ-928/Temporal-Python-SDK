@@ -106,7 +106,7 @@ class AgentRegistry:
         return agent_id in _build_agents()
 
 
-# ── Backward compat functions ─────────────────────────────────────────────────
+# Backward compat functions
 def get_agent_url(agent_name: str) -> Optional[str]:
     return AgentRegistry.get_url(agent_name)
 
