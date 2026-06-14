@@ -30,6 +30,7 @@ interface HeaderProps {
   onFitView?: () => void;
   isSettingsOpen: boolean;
   onSettingsToggle: () => void;
+  sidebarCollapsed?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -50,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   onFitView,
   isSettingsOpen,
   onSettingsToggle,
+  sidebarCollapsed = false,
 }) => {
   const [exampleOpen, setExampleOpen] = useState(false);
 
@@ -63,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="brand-logo-slot">
           <AutoXLogo />
         </div>
-        <h1 className="header-title">FlowAutomate</h1>
+        {!sidebarCollapsed && <h1 className="header-title">FlowAutomate</h1>}
       </div>
 
       <div className="header-actions" style={{ gap: '12px', alignItems: 'center' }}>
@@ -198,12 +200,12 @@ export const Header: React.FC<HeaderProps> = ({
         <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 4px' }} />
 
         {/* Group 4 — Settings Drawer Toggle */}
-        <button 
-          className={`btn btn-outline btn-icon ${isSettingsOpen ? 'active' : ''}`} 
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
+        <button
+          className={`btn btn-outline ${isSettingsOpen ? 'active' : ''}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
             borderColor: isSettingsOpen ? 'var(--accent)' : 'var(--border-color)',
             background: isSettingsOpen ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
             color: isSettingsOpen ? 'var(--accent)' : 'var(--text-primary)'
@@ -212,6 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Workflow Settings, DSL Actions, Import / Export"
         >
           <Settings size={15} />
+          <span style={{ fontSize: '12px', fontWeight: 600 }}>Settings</span>
         </button>
       </div>
     </header>

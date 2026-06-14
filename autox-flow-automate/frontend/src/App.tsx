@@ -219,6 +219,9 @@ const FlowBuilder: React.FC = () => {
   // Invalid node IDs for pre-compile highlighting
   const [invalidNodeIds, setInvalidNodeIds] = useState<Set<string>>(new Set());
 
+  // Sidebar collapsed state
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+
   // Simulator Tabs and panel visibility state (starts in peek status by default)
   const [isSimulatorOpen, setIsSimulatorOpen] = useState<boolean>(false);
   const [simulatorTab, setSimulatorTab] = useState<TabType>('execution');
@@ -234,14 +237,16 @@ const FlowBuilder: React.FC = () => {
 
   const simulationTimeoutRef = useRef<number | null>(null);
 
-  // Sync selection with Inspector
+  // Sync selection with Inspector — auto-open panel when something is clicked
   const onSelectionChange = useCallback(({ nodes: selNodes, edges: selEdges }: { nodes: Node<RFNodeData>[]; edges: Edge<RFEdgeData>[] }) => {
     if (selNodes.length > 0) {
       setSelectedNodeId(selNodes[0].id);
       setSelectedEdgeId(null);
+      setIsSettingsOpen(true);
     } else if (selEdges.length > 0) {
       setSelectedEdgeId(selEdges[0].id);
       setSelectedNodeId(null);
+      setIsSettingsOpen(true);
     } else {
       setSelectedNodeId(null);
       setSelectedEdgeId(null);
@@ -452,7 +457,7 @@ const FlowBuilder: React.FC = () => {
       
       // Auto fit view after nodes render
       setTimeout(() => {
-        reactFlowInstance?.fitView({ duration: 400 });
+        reactFlowInstance?.fitView({ duration: 400, padding: 0.12 });
       }, 100);
     }
   }, [setNodes, setEdges, handleReset, reactFlowInstance, addLog, pushToUndo]);
@@ -561,6 +566,9 @@ const FlowBuilder: React.FC = () => {
           ? firstMessage
           : `${total} issues found. See Compilation Log for details.`
       );
+      // Auto-open the bottom panel and jump to compilation log so errors are visible
+      setIsSimulatorOpen(true);
+      setSimulatorTab('compilation_log');
       return;
     }
     setInvalidNodeIds(new Set());
@@ -594,6 +602,9 @@ const FlowBuilder: React.FC = () => {
       const error = err as Error & { statusCode?: number };
       addLog(`Compilation failed: ${error.message ?? String(error)}`, 'error');
       notify.error(getFriendlyMessage(error, error.statusCode));
+      // Show bottom panel at compilation log so the user sees the failure
+      setIsSimulatorOpen(true);
+      setSimulatorTab('compilation_log');
     } finally {
       setIsCompiling(false);
     }
@@ -622,7 +633,7 @@ const FlowBuilder: React.FC = () => {
     
     // Auto fit view after nodes render
     setTimeout(() => {
-      reactFlowInstance?.fitView({ duration: 400 });
+      reactFlowInstance?.fitView({ duration: 400, padding: 0.12 });
     }, 100);
   };
 
@@ -889,7 +900,7 @@ const FlowBuilder: React.FC = () => {
   const showLoader = isCompiling || isTriggeringRun;
 
   return (
-    <div className="app-container">
+    <div className={`app-container${sidebarCollapsed ? ' sidebar-is-collapsed' : ''}`}>
       {showLoader && (
         <Loader label={isCompiling ? 'Compiling workflow…' : 'Executing workflow…'} />
       )}
@@ -908,13 +919,16 @@ const FlowBuilder: React.FC = () => {
         isExecuting={isTriggeringRun}
         onZoomIn={() => reactFlowInstance?.zoomIn()}
         onZoomOut={() => reactFlowInstance?.zoomOut()}
-        onFitView={() => reactFlowInstance?.fitView({ duration: 400 })}
+        onFitView={() => reactFlowInstance?.fitView({ duration: 400, padding: 0.12 })}
         isSettingsOpen={isSettingsOpen}
         onSettingsToggle={toggleSettings}
+        sidebarCollapsed={sidebarCollapsed}
       />
       <div className="main-content">
         <Sidebar
           onAddNode={onAddNodeDirectly}
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(c => !c)}
         />
 
         <div className="canvas-container" ref={reactFlowWrapper}>

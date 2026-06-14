@@ -434,6 +434,19 @@ export const Inspector: React.FC<InspectorProps> = ({
       </div>
 
       <div className="inspector-form">
+        <div style={{
+          background: 'rgba(99, 102, 241, 0.07)',
+          border: '1px solid rgba(99, 102, 241, 0.18)',
+          borderRadius: '8px',
+          padding: '10px 12px',
+          fontSize: '11px',
+          color: 'var(--text-secondary)',
+          lineHeight: 1.55,
+        }}>
+          <span style={{ display: 'block', marginBottom: '3px', color: '#a5b4fc', fontWeight: 700, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tip</span>
+          <span>Click any node on the canvas to configure it here. Use the fields below to set workflow-level metadata.</span>
+        </div>
+
         <div className="form-group">
           <label htmlFor="wf-id">Workflow Name / ID</label>
           <input

@@ -9,6 +9,7 @@
   --bg-input: rgba(30, 41, 59, 0.5);
   
   --sidebar-width: 220px;
+  --sidebar-collapsed-width: 56px;
   --inspector-width: 320px;
   
   --border-color: rgba(255, 255, 255, 0.08);
@@ -193,6 +194,11 @@ body, html, #root {
    Sidebar
    -------------------------------------------------------------------------- */
 
+/* Sidebar collapsed — override the CSS variable so simulator-panel.left tracks it */
+.app-container.sidebar-is-collapsed {
+  --sidebar-width: var(--sidebar-collapsed-width);
+}
+
 .sidebar {
   width: var(--sidebar-width);
   background: var(--bg-card);
@@ -205,6 +211,53 @@ body, html, #root {
   gap: 24px;
   z-index: 10;
   overflow-y: auto;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
+}
+
+.sidebar--collapsed {
+  padding: 12px 6px;
+  gap: 8px;
+}
+
+.sidebar-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.sidebar--collapsed .sidebar-header-row {
+  justify-content: center;
+}
+
+.sidebar-toggle-btn {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.sidebar--collapsed .node-palette {
+  gap: 6px;
+}
+
+.sidebar--collapsed .palette-node {
+  justify-content: center;
+  padding: 10px 0;
 }
 
 .sidebar-section-title {
