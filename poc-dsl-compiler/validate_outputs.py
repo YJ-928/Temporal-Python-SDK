@@ -30,7 +30,7 @@ def main() -> None:
 
     for filename in files:
         filepath = os.path.join(OUTPUT_DIR, filename)
-        print(f"── {filename}")
+        print(f"- {filename}")
 
         result = subprocess.run(
             ["zigflow", "validate", filepath],

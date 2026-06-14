@@ -29,7 +29,7 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional
 
-# ── Logging (stderr only — stdout is reserved for the JSON result line) ────────
+# Logging (stderr only — stdout is reserved for the JSON result line)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -38,7 +38,7 @@ logging.basicConfig(
 logger = logging.getLogger("runner")
 
 
-# ── CLI ────────────────────────────────────────────────────────────────────────
+# CLI
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Zigflow Workflow Runner")
@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-# ── Validation ─────────────────────────────────────────────────────────────────
+# Validation
 
 def validate_workflow(workflow_path: str) -> Dict[str, Any]:
     """Load and structurally validate the Zigflow workflow JSON.
@@ -81,7 +81,7 @@ def validate_workflow(workflow_path: str) -> Dict[str, Any]:
     return definition
 
 
-# ── Zigflow worker ─────────────────────────────────────────────────────────────
+# Zigflow worker
 
 def start_zigflow_worker(workflow_path: str) -> subprocess.Popen:  # type: ignore[type-arg]
     """Launch ``zigflow run -f <workflow>`` as a background subprocess."""
@@ -95,7 +95,7 @@ def start_zigflow_worker(workflow_path: str) -> subprocess.Popen:  # type: ignor
     return proc
 
 
-# ── Temporal CLI helpers ───────────────────────────────────────────────────────
+# Temporal CLI helpers
 
 def _run_temporal(
     args: List[str],
@@ -241,7 +241,7 @@ def fetch_result(
     return None
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
+# Main
 
 def main() -> int:
     args = parse_args()

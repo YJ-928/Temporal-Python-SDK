@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _to_response(record) -> ExecutionResponse:
     return ExecutionResponse(
@@ -30,7 +30,7 @@ def _to_response(record) -> ExecutionResponse:
     )
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# Routes
 
 @router.post(
     "/execute",

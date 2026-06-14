@@ -9,7 +9,7 @@ Usage:
     python Demo/clients.py <workflow_id> <action> [options]
 
 Actions & options
-─
+-
 Signals:
     start           --pin PIN          kick off showcase with target PIN
     pause                              pause the workflow

@@ -30,7 +30,7 @@ class DockerService:
     def __init__(self) -> None:
         self._client = docker.from_env()
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    # Public API
 
     async def run_workflow_container(
         self,
@@ -135,7 +135,7 @@ class DockerService:
         except DockerException:
             return False
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
+    # Helpers
 
     @staticmethod
     def _build_command(

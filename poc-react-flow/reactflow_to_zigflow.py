@@ -21,7 +21,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Literal, Optional
 
-# ─── Input types (ReactFlow) ──────────────────────────────────────────────────
+# Input types (ReactFlow)
 
 NodeType = Literal["agent", "condition", "tool", "input", "output"]
 
@@ -117,7 +117,7 @@ class RFEdge:
         )
 
 
-# ─── Output types (Zigflow DSL) ───────────────────────────────────────────────
+# Output types (Zigflow DSL)
 
 @dataclass
 class ZigflowTransition:
@@ -239,7 +239,7 @@ class ZigflowWorkflow:
         }
 
 
-# ─── Converter ────────────────────────────────────────────────────────────────
+# Converter
 
 class ReactFlowToZigflow:
     def __init__(
@@ -255,7 +255,7 @@ class ReactFlowToZigflow:
         for edge in self.rf_edges:
             self._out_edges.setdefault(edge.source, []).append(edge)
 
-    # ── Public ────────────────────────────────────────────────────────────────
+    # Public
 
     def convert(self, workflow_name: str = "generated_workflow") -> ZigflowWorkflow:
         self._validate()
@@ -284,7 +284,7 @@ class ReactFlowToZigflow:
             steps=steps,
         )
 
-    # ── Node converters ───────────────────────────────────────────────────────
+    # Node converters
 
     def _convert_node(self, node: RFNode) -> ZigflowStep:
         dispatch = {
@@ -356,7 +356,7 @@ class ReactFlowToZigflow:
             output_schema=node.data.output_schema,
         )
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
+    # Helpers
 
     def _find_entry_points(self) -> list[str]:
         """Input nodes, or any node with no incoming edges."""
@@ -367,7 +367,7 @@ class ReactFlowToZigflow:
             if n.type == "input" or n.id not in has_incoming
         ]
 
-    # ── Validation ────────────────────────────────────────────────────────────
+    # Validation
 
     def _validate(self) -> None:
         errors: list[str] = []
@@ -412,7 +412,7 @@ class ReactFlowToZigflow:
             raise ValueError(f"ReactFlow graph validation failed:\n{bullet_list}")
 
 
-# ─── DSL Serializer ───────────────────────────────────────────────────────────
+# DSL Serializer
 
 def serialize_to_zigflow_dsl(wf: ZigflowWorkflow) -> str:
     """Render a ZigflowWorkflow as a YAML-like DSL string."""
@@ -476,7 +476,7 @@ def _append_transitions(lines: list[str], transitions: list[ZigflowTransition]) 
             lines.append(f'        condition: "{t.condition}"')
 
 
-# ─── Convenience wrapper ──────────────────────────────────────────────────────
+# Convenience wrapper
 
 def convert_reactflow_to_zigflow(
     nodes: list[dict[str, Any]],
@@ -500,7 +500,7 @@ def convert_reactflow_to_zigflow(
     return workflow, dsl
 
 
-# ─── Example / smoke test ─────────────────────────────────────────────────────
+# Example / smoke test
 
 if __name__ == "__main__":
     import json

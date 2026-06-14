@@ -24,7 +24,7 @@ from workflow_generator import (
 __all__ = ["DESCRIPTIONS", "generate_workflow", "compile_workflow", "validate_dsl", "run_full_pipeline", "compile_custom"]
 
 
-# ─── helpers ─────────────────────────────────────────────────────────────────
+# helpers
 
 def _strip_mermaid_fence(raw: str) -> str:
     """Remove the ```mermaid ... ``` wrapper so Mermaid.js can render inline."""
@@ -112,7 +112,7 @@ def _build_traversal_display(traversal: list) -> list:
     return result
 
 
-# ─── core functions ───────────────────────────────────────────────────────────
+# core functions
 
 def generate_workflow(level: int) -> dict:
     """Generate a random workflow for the given difficulty level.

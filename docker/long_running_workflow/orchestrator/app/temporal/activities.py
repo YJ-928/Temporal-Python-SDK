@@ -61,7 +61,7 @@ async def execute_workflow_activity(
     timeout_cfg = aiohttp.ClientTimeout(total=60)  # per-request timeout
 
     async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
-        # ── Step 1: submit execution ───────────────────────────────────────
+        # Step 1: submit execution
         payload = {
             "workflow": workflow,
             "workflowPath": workflow_path,

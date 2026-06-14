@@ -35,11 +35,11 @@ from temporalio.exceptions import ApplicationError
 with workflow.unsafe.imports_passed_through():
     from app.temporal.activities import execute_workflow_activity
 
-# ── Constants ──────────────────────────────────────────────────────────────────
+# Constants
 MAX_EXECUTIONS_BEFORE_CAN = 50  # call continue_as_new every N executions
 
 
-# ── Data models ────────────────────────────────────────────────────────────────
+# Data models
 
 @dataclass
 class ExecutionResultSummary:
@@ -58,7 +58,7 @@ class OrchestratorState:
     results: List[ExecutionResultSummary] = field(default_factory=list)
 
 
-# ── Workflow definition ────────────────────────────────────────────────────────
+# Workflow definition
 
 @workflow.defn
 class ParentOrchestratorWorkflow:
@@ -74,7 +74,7 @@ class ParentOrchestratorWorkflow:
         self._execution_count: int = 0
         self._stop: bool = False
 
-    # ── Signals ───────────────────────────────────────────────────────────────
+    # Signals
 
     @workflow.signal
     def execute_workflow(self, payload: Dict[str, Any]) -> None:
@@ -96,7 +96,7 @@ class ParentOrchestratorWorkflow:
         self._stop = True
         workflow.logger.info("Stop signal received — draining pending executions")
 
-    # ── Queries ───────────────────────────────────────────────────────────────
+    # Queries
 
     @workflow.query
     def get_status(self) -> Dict[str, Any]:
@@ -115,7 +115,7 @@ class ParentOrchestratorWorkflow:
     def get_last_result(self) -> Optional[ExecutionResultSummary]:
         return self._results[-1] if self._results else None
 
-    # ── Entry point ────────────────────────────────────────────────────────────
+    # Entry point
 
     @workflow.run
     async def run(self, state: Optional[OrchestratorState] = None) -> None:
@@ -162,7 +162,7 @@ class ParentOrchestratorWorkflow:
                     workflow.continue_as_new(carry)
                     return  # unreachable; satisfies type checker
 
-    # ── Internal helpers ───────────────────────────────────────────────────────
+    # Internal helpers
 
     async def _dispatch(self, payload: Dict[str, Any]) -> None:
         """Dispatch one execution to the External Execution Orchestrator API."""

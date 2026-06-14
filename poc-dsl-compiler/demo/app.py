@@ -27,7 +27,7 @@ from demo.pipeline import (
     run_full_pipeline,
 )
 
-# ─── app setup ────────────────────────────────────────────────────────────────
+# app setup
 
 BASE_DIR = Path(__file__).parent
 
@@ -42,7 +42,7 @@ app.mount(
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
-# ─── request/response models ──────────────────────────────────────────────────
+# request/response models
 
 class PipelineRequest(BaseModel):
     level: int = Field(..., ge=1, le=14, description="Difficulty level 1–14")
@@ -52,7 +52,7 @@ class CompileRequest(BaseModel):
     workflow: dict = Field(..., description="Raw workflow JSON {nodes, edges}")
 
 
-# ─── routes ───────────────────────────────────────────────────────────────────
+# routes
 
 @app.get("/")
 async def index(request: Request):

@@ -43,9 +43,9 @@ OUTPUT_DIR = BASE / "output"
 
 # Helpers
 def _section(title: str) -> None:
-    print(f"\n{'─' * 60}")
+    print(f"\n"-" * 60")
     print(f"  {title}")
-    print(f"{'─' * 60}\n")
+    print(f""-" * 60\n")
 
 def _clean_dir(directory: Path, extensions: tuple[str, ...]) -> int:
     """Delete all files with the given extensions in directory. Returns count removed."""

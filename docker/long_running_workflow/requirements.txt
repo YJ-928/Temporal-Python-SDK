@@ -1,4 +1,4 @@
-# ── Python runtime ─────────────────────────────────────────────────────────────
+# Python runtime
 # Temporal Python SDK
 temporalio>=1.7.0
 

@@ -15,7 +15,7 @@ from app.utils.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# ── Module-level singletons ────────────────────────────────────────────────────
+# Module-level singletons
 # These are created once at import time and shared across all requests.
 _execution_store = ExecutionStore()
 _docker_service = DockerService()
@@ -29,7 +29,7 @@ def get_docker_service() -> DockerService:
     return _docker_service
 
 
-# ── Core orchestration ────────────────────────────────────────────────────────
+# Core orchestration
 
 async def execute_workflow(
     workflow: str,

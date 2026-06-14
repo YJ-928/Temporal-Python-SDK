@@ -4,17 +4,16 @@ Demo POC - Main Orchestrator Workflow
 TemporalShowcaseWorkflow is a single long-running workflow that exercises every
 major Temporal feature consolidated from all Tutorial sub-projects:
 
-  Signals  ── start, pause, resume, stop, advance_phase, stop_counter,
+  Signals  - start, pause, resume, stop, advance_phase, stop_counter,
                queue_file, override_pin
-  Queries  ── get_status, get_phase_progress, get_results
-  Updates  ── run_calculator  (execute an activity inline + return result)
+  Queries  - get_status, get_phase_progress, get_results
+  Updates  - run_calculator  (execute an activity inline + return result)
                test_pin_match  (execute an activity inline + return result)
-  Child WF ── FileProcessingChildWorkflow, VideoProcessingChildWorkflow (Phase 5)
-  Retries  ── each phase uses its own RetryPolicy
-  Heartbeat── every activity sends heartbeats (see activities.py)
+  Child WF - FileProcessingChildWorkflow, VideoProcessingChildWorkflow (Phase 5)
+  Retries  - each phase uses its own RetryPolicy
+  Heartbeat- every activity sends heartbeats (see activities.py)
 
 Phase sequence
-──────────────
   1  counter          - increments until stop_counter signal
   2  password_cracker - brute-forces a 3-digit PIN; supports override_pin signal
   3  file_processor   - processes files queued via queue_file signal in parallel

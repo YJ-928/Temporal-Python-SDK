@@ -138,7 +138,7 @@ async def process_video_media() -> str:
     return result
 
 
-# Phase 6: Resilience Test ─
+# Phase 6: Resilience Test
 
 @activity.defn
 async def random_fail_task() -> str:
