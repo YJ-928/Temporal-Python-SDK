@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
 import { Undo, Redo, GitMerge, RotateCcw, ZoomIn, ZoomOut, Maximize, Settings, Play } from 'lucide-react';
+
+const AutoXLogo: React.FC<{ size?: number }> = ({ size = 34 }) => (
+  <img
+    src="/logo-x.svg"
+    width={size}
+    height={size}
+    alt="AutoX"
+    style={{ borderRadius: '8px', display: 'block' }}
+  />
+);
 import { EXAMPLES } from '../constants/examples';
 
 interface HeaderProps {
@@ -51,8 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="header">
       <div className="header-logo">
         <div className="brand-logo-slot">
-          {/* PLACEHOLDER: AutoX logo asset goes here */}
-          <GitMerge size={26} />
+          <AutoXLogo size={36} />
         </div>
         <div>
           <h1 className="header-title" style={{ margin: 0, lineHeight: 1.1 }}>FlowAutomate</h1>

@@ -2,64 +2,52 @@ import React from 'react';
 import { Handle, Position } from 'reactflow';
 import {
   Play,
+  Square,
   Bot,
   GitFork,
   Zap,
-  LogOut,
-  CirclePlay,
-  CircleStop,
+  FileOutput,
+  Database,
 } from 'lucide-react';
 import type { RFNodeData } from '../types';
 import { getAgentById } from '../constants/agents';
 
 interface NodeProps {
-  id: string;
   data: RFNodeData;
   selected?: boolean;
 }
 
-const nodeClass = (base: string, selected?: boolean) =>
-  `custom-node ${base} ${selected ? 'selected-node' : ''}`;
-
+// START node — filled green circle (spec: Filled circle · Green, 0 in · 1 out)
 export const StartNode: React.FC<NodeProps> = ({ data, selected }) => (
-  <div className={nodeClass('start-node', selected)}>
-    <div className="custom-node-header">
-      <CirclePlay size={18} />
-      <div className="custom-node-header-info">
-        <span className="custom-node-type">START</span>
-        <span className="custom-node-title">{data.label || 'Start'}</span>
-      </div>
+  <div className={`start-node-circle${selected ? ' start-node-selected' : ''}`}>
+    <div className="circle-node-icon">
+      <Play size={28} fill="white" color="white" />
     </div>
-    <div className="custom-node-body">
-      <span className="custom-node-muted">Workflow entry — no configuration</span>
-    </div>
+    <span className="circle-node-label">{data.label || 'Start'}</span>
     <Handle type="source" position={Position.Bottom} id="source" />
   </div>
 );
 
+// END node — filled red circle (spec: Filled circle · Red, 1 in · 0 out)
 export const EndNode: React.FC<NodeProps> = ({ data, selected }) => (
-  <div className={nodeClass('end-node', selected)}>
+  <div className={`end-node-circle${selected ? ' end-node-selected' : ''}`}>
     <Handle type="target" position={Position.Top} id="target" />
-    <div className="custom-node-header">
-      <CircleStop size={18} />
-      <div className="custom-node-header-info">
-        <span className="custom-node-type">END</span>
-        <span className="custom-node-title">{data.label || 'End'}</span>
-      </div>
+    <div className="circle-node-icon">
+      <Square size={22} fill="white" color="white" />
     </div>
-    <div className="custom-node-body">
-      <span className="custom-node-muted">Workflow exit — no configuration</span>
-    </div>
+    <span className="circle-node-label">{data.label || 'End'}</span>
   </div>
 );
 
+// INPUT node — rect + thick top bar · Gray (spec: Default inputs · Rect + thick top bar · Gray)
 export const InputNode: React.FC<NodeProps> = ({ data, selected }) => {
   const fields = data.inputFields ?? [];
   return (
-    <div className={nodeClass('input-node', selected)}>
+    <div className={`custom-node input-node${selected ? ' selected-node' : ''}`}>
+      <div className="node-top-bar input-top-bar" />
       <Handle type="target" position={Position.Top} id="target" />
       <div className="custom-node-header">
-        <Play size={18} />
+        <Database size={18} />
         <div className="custom-node-header-info">
           <span className="custom-node-type">INPUT</span>
           <span className="custom-node-title">{data.label || 'Input'}</span>
@@ -87,46 +75,52 @@ export const InputNode: React.FC<NodeProps> = ({ data, selected }) => {
   );
 };
 
+// IF / CONDITIONAL node — diamond · Blue (spec: Diamond · Blue, 1 in · True + False out)
 export const IfNode: React.FC<NodeProps> = ({ data, selected }) => {
   const cond = data.ifCondition;
   const expr = cond
     ? `${cond.left || '?'} ${cond.operator || '=='} ${cond.right || '?'}`
-    : 'Not configured';
+    : 'condition?';
 
   return (
-    <div className={nodeClass('if-node', selected)}>
+    <div className={`if-node-wrapper${selected ? ' if-node-selected' : ''}`}>
       <Handle type="target" position={Position.Top} id="target" />
-      <div className="custom-node-header">
-        <GitFork size={18} />
-        <div className="custom-node-header-info">
-          <span className="custom-node-type">IF</span>
-          <span className="custom-node-title">{data.label || 'If'}</span>
+
+      <div className="if-diamond-shape">
+        <div className="if-diamond-content">
+          <GitFork size={12} color="rgba(255,255,255,0.7)" />
+          <span className="if-type-label">IF</span>
+          <span className="if-expr" title={expr}>{expr}</span>
         </div>
       </div>
-      <div className="custom-node-body">
-        <div className="custom-node-field">
-          <span className="custom-node-field-label">Condition</span>
-          <span className="custom-node-field-value" title={expr}>
-            {expr}
-          </span>
-        </div>
-      </div>
-      <div className="if-node-branches">
-        <div className="if-branch">
-          <Handle type="source" position={Position.Bottom} id="branch1" style={{ left: '25%' }} />
-          <span className="handle-label">true</span>
-        </div>
-        <div className="if-branch">
-          <Handle type="source" position={Position.Bottom} id="branch2" style={{ left: '75%' }} />
-          <span className="handle-label">false</span>
-        </div>
+
+      {/* True branch — left side */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="branch1"
+        style={{ left: '28%', bottom: '-1px' }}
+      />
+      {/* False branch — right side */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="branch2"
+        style={{ left: '72%', bottom: '-1px' }}
+      />
+
+      <div className="if-branch-labels">
+        <span className="if-label-true">true</span>
+        <span className="if-label-false">false</span>
       </div>
     </div>
   );
 };
 
+// ACTION node — rect + thick left bar · Teal (spec: Connector/API call · Rect + thick left bar · Teal)
 export const ActionNode: React.FC<NodeProps> = ({ data, selected }) => (
-  <div className={nodeClass('action-node', selected)}>
+  <div className={`custom-node action-node${selected ? ' selected-node' : ''}`}>
+    <div className="node-left-bar action-left-bar" />
     <Handle type="target" position={Position.Top} id="target" />
     <div className="custom-node-header">
       <Zap size={18} />
@@ -149,13 +143,14 @@ export const ActionNode: React.FC<NodeProps> = ({ data, selected }) => (
   </div>
 );
 
+// OUTPUT node — rect · Pink (no exact doc match — kept as result emitter)
 export const OutputNode: React.FC<NodeProps> = ({ data, selected }) => {
   const fields = data.outputFields ?? [];
   return (
-    <div className={nodeClass('output-node', selected)}>
+    <div className={`custom-node output-node${selected ? ' selected-node' : ''}`}>
       <Handle type="target" position={Position.Top} id="target" />
       <div className="custom-node-header">
-        <LogOut size={18} />
+        <FileOutput size={18} />
         <div className="custom-node-header-info">
           <span className="custom-node-type">OUTPUT</span>
           <span className="custom-node-title">{data.label || 'Output'}</span>
@@ -181,10 +176,11 @@ export const OutputNode: React.FC<NodeProps> = ({ data, selected }) => {
   );
 };
 
+// AGENT node — dashed rounded rect · Purple (spec: Agent block · Dashed rounded rect · Purple)
 export const AgentNode: React.FC<NodeProps> = ({ data, selected }) => {
   const agent = getAgentById(data.selectedAgentId);
   return (
-    <div className={nodeClass('agent-node', selected)}>
+    <div className={`custom-node agent-node${selected ? ' selected-node' : ''}`}>
       <Handle type="target" position={Position.Top} id="target" />
       <div className="custom-node-header">
         <Bot size={18} />
@@ -200,9 +196,14 @@ export const AgentNode: React.FC<NodeProps> = ({ data, selected }) => {
             {agent ? agent.id : 'Not selected'}
           </span>
         </div>
+        {data.agentOutput && (
+          <div className="custom-node-field">
+            <span className="custom-node-field-label">Output key</span>
+            <span className="custom-node-field-value">{data.agentOutput}</span>
+          </div>
+        )}
       </div>
       <Handle type="source" position={Position.Bottom} id="source" />
     </div>
   );
 };
-

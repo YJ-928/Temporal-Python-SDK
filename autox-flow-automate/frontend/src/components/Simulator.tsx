@@ -34,7 +34,7 @@ export interface LogEntry {
   message: string;
 }
 
-export type TabType = 'execution' | 'trace' | 'compilation_log' | 'dsl' | 'metrics';
+export type TabType = 'execution' | 'output' | 'trace' | 'compilation_log' | 'dsl' | 'metrics';
 
 interface SimulatorProps {
   logs: LogEntry[];
@@ -381,6 +381,13 @@ export const Simulator: React.FC<SimulatorProps> = ({
                 Execution
               </button>
               <button
+                className={`modal-tab-btn ${activeTab === 'output' ? 'active' : ''}`}
+                style={{ padding: '12px 16px', fontSize: '12px' }}
+                onClick={() => setActiveTab('output')}
+              >
+                Output
+              </button>
+              <button
                 className={`modal-tab-btn ${activeTab === 'trace' ? 'active' : ''}`}
                 style={{ padding: '12px 16px', fontSize: '12px' }}
                 onClick={() => setActiveTab('trace')}
@@ -463,7 +470,149 @@ export const Simulator: React.FC<SimulatorProps> = ({
                 </div>
               )}
 
-              {/* TAB 2: TRACE */}
+              {/* TAB 2: OUTPUT */}
+              {activeTab === 'output' && (() => {
+                if (!activeRunId) {
+                  return (
+                    <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px', fontSize: '12px' }}>
+                      No execution selected. Execute a workflow to see its output here.
+                    </div>
+                  );
+                }
+
+                const statusStyle = getStatusStyle(currentStatus);
+                const isFailed = currentStatus === 'FAILED';
+                const isCompleted = currentStatus === 'COMPLETED';
+
+                // Find result: prefer the output node, fall back to last completed node
+                const traceEntries = Object.entries(nodeTraceStates);
+                const outputNodeEntry = traceEntries.find(([id]) => id.toLowerCase().includes('output'));
+                const lastCompletedEntry = [...traceEntries].reverse().find(([, s]) => s.status === 'completed');
+                const failedEntry = traceEntries.find(([, s]) => s.status === 'failed');
+                const resultEntry = outputNodeEntry ?? lastCompletedEntry;
+                const resultOutput = resultEntry?.[1]?.output ?? null;
+                const resultJson = resultOutput ? JSON.stringify(resultOutput, null, 2) : null;
+                const errorText = failedEntry?.[1]?.error ?? null;
+
+                const copyResult = () => {
+                  const text = isFailed ? (errorText ?? '') : (resultJson ?? '{}');
+                  navigator.clipboard.writeText(text)
+                    .then(() => notify.success('Output copied to clipboard.'))
+                    .catch(() => notify.error('Failed to copy output.'));
+                };
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Status banner */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      background: `${statusStyle.color}12`,
+                      border: `1px solid ${statusStyle.color}40`,
+                      borderRadius: '8px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          width: '8px', height: '8px', borderRadius: '50%',
+                          background: statusStyle.color, display: 'inline-block',
+                          boxShadow: `0 0 6px ${statusStyle.color}`
+                        }} />
+                        <span style={{ fontSize: '12px', fontWeight: '700', color: statusStyle.color, letterSpacing: '0.05em' }}>
+                          {statusStyle.label.toUpperCase()}
+                        </span>
+                        {runDuration && (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>· {runDuration}</span>
+                        )}
+                      </div>
+                      <button
+                        className="btn btn-outline"
+                        style={{ padding: '4px 10px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={copyResult}
+                      >
+                        <Copy size={10} />
+                        Copy
+                      </button>
+                    </div>
+
+                    {/* Run metadata */}
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', gap: '16px' }}>
+                      <span>Run: <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{activeRunId}</span></span>
+                      {activeRun?.start_time && (
+                        <span>Started: <span style={{ color: 'var(--text-secondary)' }}>{new Date(activeRun.start_time).toLocaleString()}</span></span>
+                      )}
+                    </div>
+
+                    {/* Result output / error */}
+                    {(isCompleted || (!isFailed && resultJson)) && (
+                      <div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: '600' }}>
+                          Result Output
+                          {resultEntry && (
+                            <span style={{ marginLeft: '8px', color: 'var(--text-secondary)', fontWeight: '400' }}>
+                              (from node: {resultEntry[0]})
+                            </span>
+                          )}
+                        </div>
+                        <pre style={{
+                          margin: 0,
+                          padding: '12px',
+                          background: '#020617',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          borderRadius: '6px',
+                          color: '#86efac',
+                          fontSize: '11px',
+                          overflowX: 'auto',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word'
+                        }}>
+                          {resultJson ?? '{}'}
+                        </pre>
+                      </div>
+                    )}
+
+                    {isFailed && errorText && (
+                      <div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: '600' }}>
+                          Error Details
+                          {failedEntry && (
+                            <span style={{ marginLeft: '8px', color: 'var(--text-secondary)', fontWeight: '400' }}>
+                              (at node: {failedEntry[0]})
+                            </span>
+                          )}
+                        </div>
+                        <div style={{
+                          padding: '12px',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: '6px',
+                          color: '#fca5a5',
+                          fontSize: '11px',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word'
+                        }}>
+                          {errorText}
+                        </div>
+                      </div>
+                    )}
+
+                    {!isCompleted && !isFailed && (
+                      <div style={{ padding: '16px', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '6px', fontSize: '11px', color: '#93c5fd' }}>
+                        Workflow is still running. Output will appear here once execution completes.
+                      </div>
+                    )}
+
+                    {(isCompleted && !resultJson) && (
+                      <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Workflow completed successfully but no output payload was captured.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* TAB 3: TRACE */}
               {activeTab === 'trace' && (
                 <div>
                   {!activeRunId ? (

@@ -13,6 +13,8 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Inspector } from './components/Inspector';
 import { Simulator } from './components/Simulator';
+import { SplashScreen } from './components/SplashScreen';
+import { Loader } from './components/Loader';
 import type { LogEntry, TabType } from './components/Simulator';
 import { nodeTypes } from './constants/nodeTypes';
 import type { NodeType, RFNodeData, RFEdgeData, WorkflowMetadata, ExecutionRun, NodeTraceState } from './types';
@@ -884,8 +886,13 @@ const FlowBuilder: React.FC = () => {
     };
   });
 
+  const showLoader = isCompiling || isTriggeringRun;
+
   return (
     <div className="app-container">
+      {showLoader && (
+        <Loader label={isCompiling ? 'Compiling workflow…' : 'Executing workflow…'} />
+      )}
       <Header
         onReset={handleReset}
         onLoadExample={handleLoadExample}
@@ -1065,10 +1072,15 @@ const FlowBuilder: React.FC = () => {
 };
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
+
   return (
-    <ReactFlowProvider>
-      <FlowBuilder />
-    </ReactFlowProvider>
+    <>
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+      <ReactFlowProvider>
+        <FlowBuilder />
+      </ReactFlowProvider>
+    </>
   );
 }
 
