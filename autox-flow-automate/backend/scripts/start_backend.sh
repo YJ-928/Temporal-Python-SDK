@@ -9,12 +9,13 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Load .env so port variables are available in this shell
+# Read only the two variables the script needs from .env.
+# We avoid "set -a; source .env" because bash strips inner quotes from values like
+# CORS_ORIGINS=["*"], turning them into [*] which is invalid JSON and causes
+# pydantic_settings to crash. Pydantic_settings reads .env itself for all other vars.
 if [ -f "$WORKSPACE_DIR/.env" ]; then
-    set -a
-    # shellcheck disable=SC1091
-    source "$WORKSPACE_DIR/.env"
-    set +a
+    API_HOST=$(grep -E "^API_HOST=" "$WORKSPACE_DIR/.env" | head -1 | cut -d'=' -f2- | tr -d '"')
+    API_PORT=$(grep -E "^API_PORT=" "$WORKSPACE_DIR/.env" | head -1 | cut -d'=' -f2- | tr -d '"')
 fi
 
 # Defaults mirror settings.py so the script works even without .env

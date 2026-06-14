@@ -200,10 +200,14 @@ const FlowBuilder: React.FC = () => {
   const [nodeTraceStates, setNodeTraceStates] = useState<Record<string, NodeTraceState>>({});
   const [isTriggeringRun, setIsTriggeringRun] = useState(false);
 
-  // Ref kept in sync with executionHistory so the polling effect can read the
-  // Temporal workflow ID (rf-xxx-xxxx) without listing executionHistory in its deps.
+  // Refs kept in sync so polling effect can read latest values without them being deps
+  // (adding them as deps would restart the interval on every status/trace update).
   const executionHistoryRef = useRef<ExecutionRun[]>([]);
   useEffect(() => { executionHistoryRef.current = executionHistory; }, [executionHistory]);
+  const activeRunStatusRef = useRef<string>('');
+  useEffect(() => { activeRunStatusRef.current = activeRunStatus; }, [activeRunStatus]);
+  const nodeTraceStatesRef = useRef<Record<string, NodeTraceState>>({});
+  useEffect(() => { nodeTraceStatesRef.current = nodeTraceStates; }, [nodeTraceStates]);
 
   // Compilation state machine cache
   const [isCompiled, setIsCompiled] = useState<boolean>(false);
@@ -795,11 +799,19 @@ const FlowBuilder: React.FC = () => {
     const applyTrace = (trace: TraceResponse) => {
       if (!trace.steps) return;
       if (Object.keys(trace.steps).length > 0) hadAnySteps = true;
-      setNodeTraceStates(trace.steps);
-      if (trace.status && trace.status !== activeRunStatus) {
+
+      // Stable update: only replace state reference when content actually changed.
+      // Without this guard every poll produces a new object reference → Simulator re-renders → visible flicker.
+      const nextStepsJson = JSON.stringify(trace.steps);
+      if (JSON.stringify(nodeTraceStatesRef.current) !== nextStepsJson) {
+        setNodeTraceStates(trace.steps);
+      }
+
+      if (trace.status && trace.status !== activeRunStatusRef.current) {
+        activeRunStatusRef.current = trace.status;
         setActiveRunStatus(trace.status);
-        setExecutionHistory(
-          executionHistoryRef.current.map(r => r.run_id === activeRunId ? { ...r, status: trace.status } : r)
+        setExecutionHistory(prev =>
+          prev.map(r => r.run_id === activeRunId ? { ...r, status: trace.status } : r)
         );
         const normalized = trace.status.toUpperCase();
         if (normalized === 'COMPLETED') notify.success('Workflow completed successfully.');
@@ -858,13 +870,12 @@ const FlowBuilder: React.FC = () => {
       }
 
       await pollTrace();
-      await refreshHistory();
     }, 2000);
 
     return () => {
       if (intervalId !== undefined) clearInterval(intervalId);
     };
-  }, [activeRunId, nodes, refreshHistory, metadata.workflow_id, activeRunStatus, addLog]);
+  }, [activeRunId, nodes, refreshHistory, metadata.workflow_id, addLog]);
 
   // Keyboard shortcuts listener
   useEffect(() => {
