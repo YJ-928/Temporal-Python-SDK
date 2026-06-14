@@ -42,8 +42,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDone }) => {
         {/* Brand text */}
         <div className="splash-brand">
           <div className="splash-brand-name">
-            <span className="splash-brand-autox">AutoX</span>
-            <span className="splash-brand-flow"> Flow</span>
+            <span className="splash-brand-flow">Flow</span>
             <span className="splash-brand-automate">Automate</span>
           </div>
           <p className="splash-tagline">Visual Workflow Automation Platform</p>

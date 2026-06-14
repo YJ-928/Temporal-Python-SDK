@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import { Undo, Redo, GitMerge, RotateCcw, ZoomIn, ZoomOut, Maximize, Settings, Play } from 'lucide-react';
 
-const AutoXLogo: React.FC<{ size?: number }> = ({ size = 32 }) => (
-  <svg
+const AutoXLogo: React.FC<{ size?: number }> = ({ size = 42 }) => (
+  <img
+    src="/logo-x.svg"
     width={size}
     height={size}
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-label="AutoX"
-  >
-    <path d="M28.4 7.04H21.04L3.2 24.96H10.56L28.4 7.04Z" fill="#F3702A" />
-    <path d="M3.2 7.04H10.56L28.4 24.96H21.04L3.2 7.04Z" fill="#F3702A" />
-  </svg>
+    alt="AutoX"
+    style={{ borderRadius: '10px', display: 'block' }}
+  />
 );
 import { EXAMPLES } from '../constants/examples';
 
@@ -65,12 +61,9 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="header">
       <div className="header-logo">
         <div className="brand-logo-slot">
-          <AutoXLogo size={36} />
+          <AutoXLogo />
         </div>
-        <div>
-          <h1 className="header-title" style={{ margin: 0, lineHeight: 1.1 }}>FlowAutomate</h1>
-          <span className="header-subtitle">Visual Workflow Automation Platform</span>
-        </div>
+        <h1 className="header-title">FlowAutomate</h1>
       </div>
 
       <div className="header-actions" style={{ gap: '12px', alignItems: 'center' }}>
