@@ -199,6 +199,11 @@ body, html, #root {
   --sidebar-width: var(--sidebar-collapsed-width);
 }
 
+/* Inspector closed — override the CSS variable so simulator-panel.right tracks it */
+.app-container.inspector-is-closed {
+  --inspector-width: 0px;
+}
+
 .sidebar {
   width: var(--sidebar-width);
   background: var(--bg-card);
@@ -847,11 +852,9 @@ body, html, #root {
 }
 
 .inspector.collapsed {
-  width: 0 !important;
-  padding: 20px 0 !important;
+  padding: 0 !important;
   border-left: none !important;
   opacity: 0 !important;
-  transform: translateX(100%) !important;
   pointer-events: none !important;
   overflow: hidden !important;
 }

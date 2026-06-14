@@ -355,6 +355,23 @@ const FlowBuilder: React.FC = () => {
     invalidateCompilation();
   }, [nodes, setEdges, invalidateCompilation, pushToUndo]);
 
+  // Node addition guard — enforces START/END singletons and orphan protection
+  const checkCanAddNode = useCallback((type: NodeType): string | null => {
+    if (type === 'START' || type === 'END') {
+      const existing = nodes.find((n) => n.type === type);
+      if (existing) {
+        return `A ${type} node already exists. Each workflow must have exactly one ${type} node.`;
+      }
+      return null;
+    }
+    const connectedIds = new Set(edges.flatMap((e) => [e.source, e.target]));
+    const orphan = nodes.find((n) => n.type === type && !connectedIds.has(n.id));
+    if (orphan) {
+      return `An unconnected ${type} node already exists (${orphan.data.label ?? orphan.id}). Connect it to the workflow before adding another.`;
+    }
+    return null;
+  }, [nodes, edges]);
+
   // Drag and drop mechanics
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -363,7 +380,6 @@ const FlowBuilder: React.FC = () => {
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
-      pushToUndo();
       event.preventDefault();
 
       if (!reactFlowWrapper.current || !reactFlowInstance) return;
@@ -373,6 +389,13 @@ const FlowBuilder: React.FC = () => {
 
       if (!type) return;
 
+      const reason = checkCanAddNode(type);
+      if (reason) {
+        notify.error(reason);
+        return;
+      }
+
+      pushToUndo();
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
@@ -388,14 +411,20 @@ const FlowBuilder: React.FC = () => {
       setNodes((nds) => nds.concat(newNode));
       invalidateCompilation();
     },
-    [reactFlowInstance, setNodes, invalidateCompilation, pushToUndo]
+    [reactFlowInstance, setNodes, invalidateCompilation, pushToUndo, checkCanAddNode]
   );
 
   // Click palette to add node directly to viewport center
   const onAddNodeDirectly = useCallback((type: NodeType) => {
-    pushToUndo();
     if (!reactFlowInstance) return;
 
+    const reason = checkCanAddNode(type);
+    if (reason) {
+      notify.error(reason);
+      return;
+    }
+
+    pushToUndo();
     const position = reactFlowInstance.project({
       x: window.innerWidth / 2 - 200,
       y: window.innerHeight / 2 - 200,
@@ -410,7 +439,7 @@ const FlowBuilder: React.FC = () => {
 
     setNodes((nds) => nds.concat(newNode));
     invalidateCompilation();
-  }, [reactFlowInstance, setNodes, invalidateCompilation, pushToUndo]);
+  }, [reactFlowInstance, setNodes, invalidateCompilation, pushToUndo, checkCanAddNode]);
 
   // Reset flow builder
   const handleReset = useCallback(() => {
@@ -929,7 +958,7 @@ const FlowBuilder: React.FC = () => {
   const showLoader = isCompiling || isTriggeringRun;
 
   return (
-    <div className={`app-container${sidebarCollapsed ? ' sidebar-is-collapsed' : ''}`}>
+    <div className={`app-container${sidebarCollapsed ? ' sidebar-is-collapsed' : ''}${isSettingsOpen ? '' : ' inspector-is-closed'}`}>
       {showLoader && (
         <Loader label={isCompiling ? 'Compiling workflow…' : 'Executing workflow…'} />
       )}
