@@ -61,13 +61,18 @@ def generate_dsl(
         fragment = builder(node, traversal_entry=entry)
 
         if fragment is not None:
-            # Wrap conditional branch targets in subflow do blocks
+            # Wrap conditional branch targets in subflow do blocks so Zigflow
+            # can dispatch them as named child workflows via switch/then.
+            # OUTPUT and INPUT nodes use plain `set` operations and must stay
+            # flat — wrapping them in `do` produces an invalid DSL that Zigflow
+            # silently drops, causing the whole workflow type to go unregistered.
             incoming_control = entry.get("incoming_edge_control")
             is_branch_target = (
                 incoming_control is not None
                 and incoming_control.get("branch") in ("true", "false")
             )
-            if is_branch_target:
+            needs_subflow_wrap = is_branch_target and node_type not in ("OUTPUT", "INPUT")
+            if needs_subflow_wrap:
                 task_name = list(fragment.keys())[0]
                 task_body = fragment[task_name]
                 inner_name = f"{task_name}_inner"

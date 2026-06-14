@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="brand-logo-slot">
           <AutoXLogo />
         </div>
-        {!sidebarCollapsed && <h1 className="header-title">FlowAutomate</h1>}
+        <h1 className="header-title">FlowAutomate</h1>
       </div>
 
       <div className="header-actions" style={{ gap: '12px', alignItems: 'center' }}>
