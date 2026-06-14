@@ -4,7 +4,7 @@ Phase B: DSL Generation
 Dispatches to node-specific builders to assemble Zigflow DSL.
 """
 from typing import Callable
-from ..config import get_logger
+from ..config import get_logger, settings
 
 
 logger = get_logger(__name__)
@@ -14,14 +14,48 @@ BUILDER_REGISTRY: dict[str, Callable] = {}
 
 
 def register_builder(node_type: str, builder_fn: Callable) -> None:
-    """
-    Register a builder function for a node type.
-
-    Args:
-        node_type: Node type string (START, INPUT, etc.)
-        builder_fn: Callable that takes (node, traversal_entry) and returns DSL fragment dict or None
-    """
     BUILDER_REGISTRY[node_type] = builder_fn
+
+
+def _set_map_to_export_expr(set_map: dict) -> str:
+    """Build a jq merge expression that re-captures set-map keys from $context."""
+    if not set_map:
+        return "${ $context }"
+    fields = ", ".join(f"{k}: $context.{k}" for k in set_map)
+    return "${ $context + {" + fields + "} }"
+
+
+def _wrap_as_child_workflow(fragment: dict) -> dict:
+    """Wrap a DSL fragment as a Zigflow child workflow do-block.
+
+    Zigflow dispatches switch/then targets as child workflows, so all branch
+    targets must live inside a `do` block. `set`-only inner tasks are not
+    valid in that context; they are converted to a noop HTTP call + export
+    so Zigflow can execute the branch without errors.
+    """
+    task_name = next(iter(fragment))
+    task_body = fragment[task_name]
+    inner_name = f"{task_name}_inner"
+    then_target = task_body.pop("then", None)
+
+    if "set" in task_body and "call" not in task_body:
+        inner_body: dict = {
+            "call": "http",
+            "with": {
+                "method": "post",
+                "endpoint": f"{settings.ACTIONS_BASE_URL}/api/v1/actions/noop",
+                "headers": {"Content-Type": "application/json"},
+                "body": "{}",
+            },
+            "export": {"as": _set_map_to_export_expr(task_body.get("set", {}))},
+        }
+    else:
+        inner_body = task_body
+
+    wrapped: dict = {task_name: {"do": [{inner_name: inner_body}]}}
+    if then_target:
+        wrapped[task_name]["then"] = then_target
+    return wrapped
 
 
 def generate_dsl(
@@ -61,36 +95,13 @@ def generate_dsl(
         fragment = builder(node, traversal_entry=entry)
 
         if fragment is not None:
-            # Wrap conditional branch targets in subflow do blocks so Zigflow
-            # can dispatch them as named child workflows via switch/then.
-            # OUTPUT and INPUT nodes use plain `set` operations and must stay
-            # flat — wrapping them in `do` produces an invalid DSL that Zigflow
-            # silently drops, causing the whole workflow type to go unregistered.
             incoming_control = entry.get("incoming_edge_control")
             is_branch_target = (
                 incoming_control is not None
                 and incoming_control.get("branch") in ("true", "false")
             )
-            needs_subflow_wrap = is_branch_target and node_type not in ("OUTPUT", "INPUT")
-            if needs_subflow_wrap:
-                task_name = list(fragment.keys())[0]
-                task_body = fragment[task_name]
-                inner_name = f"{task_name}_inner"
-
-                # Propagate transition to the outer wrapper level
-                then_target = task_body.pop("then", None)
-
-                fragment = {
-                    task_name: {
-                        "do": [
-                            {
-                                inner_name: task_body
-                            }
-                        ]
-                    }
-                }
-                if then_target:
-                    fragment[task_name]["then"] = then_target
+            if is_branch_target:
+                fragment = _wrap_as_child_workflow(fragment)
             do_list.append(fragment)
 
     return {
