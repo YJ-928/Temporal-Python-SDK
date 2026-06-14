@@ -1389,12 +1389,9 @@ body, html, #root {
   align-items: center;
   justify-content: center;
   background: #020712;
-  opacity: 0;
   transition: opacity 0.6s ease, transform 0.6s ease;
-  transform: scale(1);
   overflow: hidden;
 }
-.splash-overlay.showing { opacity: 1; }
 .splash-overlay.leaving { opacity: 0; transform: scale(1.04); }
 
 /* Rotating light rays */

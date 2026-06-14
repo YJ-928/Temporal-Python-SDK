@@ -5,13 +5,12 @@ interface SplashScreenProps {
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onDone }) => {
-  const [phase, setPhase] = useState<'entering' | 'showing' | 'leaving'>('entering');
+  const [phase, setPhase] = useState<'showing' | 'leaving'>('showing');
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase('showing'), 50);
-    const t2 = setTimeout(() => setPhase('leaving'), 3200);
-    const t3 = setTimeout(() => onDone(), 3800);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    const t1 = setTimeout(() => setPhase('leaving'), 3200);
+    const t2 = setTimeout(() => onDone(), 3800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [onDone]);
 
   return (
