@@ -222,6 +222,9 @@ const FlowBuilder: React.FC = () => {
   // Sidebar collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
+  // Track which example is currently loaded (shown in header button)
+  const [loadedExampleName, setLoadedExampleName] = useState<string | undefined>(undefined);
+
   // Simulator Tabs and panel visibility state (starts in peek status by default)
   const [isSimulatorOpen, setIsSimulatorOpen] = useState<boolean>(false);
   const [simulatorTab, setSimulatorTab] = useState<TabType>('execution');
@@ -425,6 +428,7 @@ const FlowBuilder: React.FC = () => {
     setMetadata({ ...BLANK_METADATA });
     setInputJson('{}');
     setInvalidNodeIds(new Set());
+    setLoadedExampleName(undefined);
     // Clear all run state — prevents stale activeRunId from re-triggering
     // the polling effect when nodes/metadata change during reset or example load
     setActiveRunId(null);
@@ -454,6 +458,7 @@ const FlowBuilder: React.FC = () => {
       setShowBanner(false);
       setLogs([]);
       addLog(`Loaded example workflow: "${example.name}"`, 'info');
+      setLoadedExampleName(example.name);
       
       // Auto fit view after nodes render
       setTimeout(() => {
@@ -923,6 +928,7 @@ const FlowBuilder: React.FC = () => {
         isSettingsOpen={isSettingsOpen}
         onSettingsToggle={toggleSettings}
         sidebarCollapsed={sidebarCollapsed}
+        loadedExampleName={loadedExampleName}
       />
       <div className="main-content">
         <Sidebar

@@ -31,6 +31,7 @@ interface HeaderProps {
   isSettingsOpen: boolean;
   onSettingsToggle: () => void;
   sidebarCollapsed?: boolean;
+  loadedExampleName?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -52,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
   isSettingsOpen,
   onSettingsToggle,
   sidebarCollapsed = false,
+  loadedExampleName,
 }) => {
   const [exampleOpen, setExampleOpen] = useState(false);
 
@@ -72,12 +74,16 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Group 1 — Workflow Loader */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ position: 'relative' }}>
-            <button 
-              className="btn" 
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            <button
+              className="btn"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', maxWidth: '200px' }}
               onClick={toggleExample}
+              title={loadedExampleName ? `Loaded: ${loadedExampleName}` : 'Load an example workflow'}
             >
-              Load Example <ChevronDown size={14} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {loadedExampleName ?? 'Load Example'}
+              </span>
+              <ChevronDown size={14} style={{ flexShrink: 0 }} />
             </button>
             {exampleOpen && (
               <div style={{
