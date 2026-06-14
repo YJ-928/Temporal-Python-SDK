@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     BACKEND_ROOT: Path = Path(__file__).parent.parent.parent
     RESOURCES_DIR: Path = BACKEND_ROOT / "resources"
     LOGS_DIR: Path = RESOURCES_DIR / "logs"
+    DATA_DIR: Path = RESOURCES_DIR / "data"
     # Zigflow file watcher still reads compiled DSL files from disk
     RUNTIME_DIR: Path = BACKEND_ROOT / "runtime"
     COMPILED_DIR: Path = RUNTIME_DIR / "compiled"

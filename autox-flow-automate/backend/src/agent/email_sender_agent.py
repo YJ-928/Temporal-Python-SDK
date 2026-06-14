@@ -39,8 +39,9 @@ app = FastAPI(
 )
 
 
-# Path to sent emails storage
-SENT_EMAILS_PATH = Path(__file__).parent.parent / "data" / "runtime_data" / "sent_emails.json"
+# Path to sent emails storage (runtime write data lives in resources/data, not src/)
+from ..config.settings import settings as _settings
+SENT_EMAILS_PATH = _settings.DATA_DIR / "runtime_data" / "sent_emails.json"
 
 
 def load_sent_emails() -> list:
