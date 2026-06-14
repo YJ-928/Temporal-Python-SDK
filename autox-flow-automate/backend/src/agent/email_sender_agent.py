@@ -40,7 +40,7 @@ app = FastAPI(
 
 
 # Path to sent emails storage (runtime write data lives in resources/data, not src/)
-from ..config.settings import settings as _settings
+from src.config.settings import settings as _settings
 SENT_EMAILS_PATH = _settings.DATA_DIR / "runtime_data" / "sent_emails.json"
 
 

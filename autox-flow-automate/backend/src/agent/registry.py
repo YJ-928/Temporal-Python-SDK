@@ -2,229 +2,119 @@
 Agent Registry
 
 Single source of truth for all agent services in the system.
-This registry defines all available agents, their endpoints, and metadata.
+Agent URLs and ports are loaded from settings so they can be overridden via .env.
 
 CRITICAL: This is METADATA ONLY.
 - NO lifecycle management (start/stop agents)
 - NO health checks
 - NO port management
 - Pure lookup: agent_id → metadata dict
-
-Usage:
-    from src.agent.registry import AgentRegistry
-
-    # Get agent metadata
-    agent = AgentRegistry.get_agent("weather-agent")
-    url = AgentRegistry.get_url("weather-agent")
-
-    # Check existence
-    if AgentRegistry.has_agent("weather-agent"):
-        ...
-
-    # List all agents
-    agents = AgentRegistry.list_agents()
 """
 from typing import Dict, Optional
 
 
-class AgentRegistry:
-    """
-    Static metadata lookup table for agent services.
+def _build_agents() -> Dict[str, Dict]:
+    """Build agent metadata dict from settings — called lazily so settings are ready."""
+    from ..config.settings import settings
+    host = settings.AGENT_HOST
 
-    CRITICAL: This is METADATA ONLY.
-    - NO lifecycle management (start/stop agents)
-    - NO health checks
-    - NO port management
-    - Pure lookup: agent_id → metadata dict
+    def _url(port: int) -> str:
+        return f"http://{host}:{port}/execute"
 
-    IMPORTANT: All methods are class methods.
-    Registry is configuration, not state.
-    No instance creation needed.
-    """
-
-    _agents: Dict[str, Dict[str, any]] = {
+    return {
         "weather-agent": {
-            "url": "http://localhost:11000/execute",
+            "url": _url(settings.AGENT_WEATHER_PORT),
             "method": "POST",
-            "port": 11000,
+            "port": settings.AGENT_WEATHER_PORT,
             "description": "Weather lookup service for cities worldwide",
-            "request_schema": {
-                "city": "string"
-            },
+            "request_schema": {"city": "string"},
             "response_schema": {
                 "success": "boolean",
                 "city": "string",
                 "temperature": "integer",
-                "condition": "string"
-            }
+                "condition": "string",
+            },
         },
         "email-validator-agent": {
-            "url": "http://localhost:11001/execute",
+            "url": _url(settings.AGENT_EMAIL_VALIDATOR_PORT),
             "method": "POST",
-            "port": 11001,
+            "port": settings.AGENT_EMAIL_VALIDATOR_PORT,
             "description": "Email validation service using regex patterns",
-            "request_schema": {
-                "email": "string"
-            },
+            "request_schema": {"email": "string"},
             "response_schema": {
                 "success": "boolean",
                 "is_valid": "boolean",
-                "domain": "string"
-            }
+                "domain": "string",
+            },
         },
         "email-sender-agent": {
-            "url": "http://localhost:11002/execute",
+            "url": _url(settings.AGENT_EMAIL_SENDER_PORT),
             "method": "POST",
-            "port": 11002,
+            "port": settings.AGENT_EMAIL_SENDER_PORT,
             "description": "Mock email sending service with JSON persistence",
-            "request_schema": {
-                "to": "string",
-                "subject": "string",
-                "body": "string"
-            },
-            "response_schema": {
-                "success": "boolean",
-                "message_id": "string"
-            }
+            "request_schema": {"to": "string", "subject": "string", "body": "string"},
+            "response_schema": {"success": "boolean", "message_id": "string"},
         },
         "summarizer-agent": {
-            "url": "http://localhost:11003/execute",
+            "url": _url(settings.AGENT_SUMMARIZER_PORT),
             "method": "POST",
-            "port": 11003,
+            "port": settings.AGENT_SUMMARIZER_PORT,
             "description": "Mock summarizing service",
-            "request_schema": {
-                "text": "string"
-            },
-            "response_schema": {
-                "summary": "string"
-            }
-        }
+            "request_schema": {"text": "string"},
+            "response_schema": {"summary": "string"},
+        },
     }
+
+
+class AgentRegistry:
+    """
+    Metadata lookup table for agent services.
+    URLs and ports are sourced from settings, never hardcoded here.
+    All methods rebuild from settings on each call — fast (no I/O, just dict construction).
+    """
+
+    @classmethod
+    def _agents_dict(cls) -> Dict[str, Dict]:
+        return _build_agents()
+
+    # _agents exposed as a class-level property via __class_getitem__ is not
+    # native Python — callers that need the full dict should use _agents_dict().
+    # register.py iterates via this helper.
+    @classmethod
+    def all_agents(cls) -> Dict[str, Dict]:
+        return _build_agents()
 
     @classmethod
     def get_agent(cls, agent_id: str) -> Optional[Dict]:
-        """
-        Get agent metadata by ID.
-
-        Args:
-            agent_id: Agent identifier (e.g., "weather-agent")
-
-        Returns:
-            Agent metadata dict if found, None otherwise
-        """
-        return cls._agents.get(agent_id)
+        return _build_agents().get(agent_id)
 
     @classmethod
     def get_url(cls, agent_id: str) -> Optional[str]:
-        """
-        Get the execution URL for a specific agent.
-
-        Args:
-            agent_id: Agent identifier
-
-        Returns:
-            Agent URL if found, None otherwise
-        """
-        agent = cls._agents.get(agent_id)
+        agent = _build_agents().get(agent_id)
         return agent["url"] if agent else None
 
     @classmethod
     def register_agent(cls, agent_id: str, metadata: Dict) -> None:
-        """
-        Register new agent metadata.
-
-        Args:
-            agent_id: Agent identifier
-            metadata: Agent metadata dict
-        """
-        cls._agents[agent_id] = metadata
+        _build_agents()[agent_id] = metadata
 
     @classmethod
     def list_agents(cls) -> list[str]:
-        """
-        List all registered agent IDs.
-
-        Returns:
-            List of agent identifiers
-        """
-        return list(cls._agents.keys())
+        return list(_build_agents().keys())
 
     @classmethod
     def has_agent(cls, agent_id: str) -> bool:
-        """
-        Check if agent is registered.
-
-        Args:
-            agent_id: Agent identifier
-
-        Returns:
-            True if agent exists, False otherwise
-        """
-        return agent_id in cls._agents
+        return agent_id in _build_agents()
 
 
-# ============================================================================
-# Backward Compatibility Functions
-# These functions provide backward compatibility with existing code.
-# New code should use AgentRegistry class methods directly.
-# ============================================================================
-
+# ── Backward compat functions ─────────────────────────────────────────────────
 def get_agent_url(agent_name: str) -> Optional[str]:
-    """
-    DEPRECATED: Use AgentRegistry.get_url() instead.
-
-    Get the execution URL for a specific agent.
-
-    Args:
-        agent_name: Name of the agent (e.g., "weather-agent")
-
-    Returns:
-        Agent URL if found, None otherwise
-    """
     return AgentRegistry.get_url(agent_name)
 
-
 def get_agent_info(agent_name: str) -> Optional[Dict]:
-    """
-    DEPRECATED: Use AgentRegistry.get_agent() instead.
-
-    Get full information for a specific agent.
-
-    Args:
-        agent_name: Name of the agent
-
-    Returns:
-        Agent info dict if found, None otherwise
-    """
     return AgentRegistry.get_agent(agent_name)
 
-
 def list_agents() -> list[str]:
-    """
-    DEPRECATED: Use AgentRegistry.list_agents() instead.
-
-    Get list of all registered agent names.
-
-    Returns:
-        List of agent identifiers
-    """
     return AgentRegistry.list_agents()
 
-
 def is_agent_registered(agent_name: str) -> bool:
-    """
-    DEPRECATED: Use AgentRegistry.has_agent() instead.
-
-    Check if an agent is registered.
-
-    Args:
-        agent_name: Agent identifier
-
-    Returns:
-        True if agent exists, False otherwise
-    """
     return AgentRegistry.has_agent(agent_name)
-
-
-# Legacy constant for backward compatibility
-AGENT_REGISTRY = AgentRegistry._agents

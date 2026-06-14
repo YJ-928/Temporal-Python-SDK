@@ -43,7 +43,7 @@ def main():
     args = parser.parse_args()
 
     uvicorn.run(
-        "src.app:app",
+        "src.main:app",
         host=args.host,
         port=args.port,
         reload=args.reload,

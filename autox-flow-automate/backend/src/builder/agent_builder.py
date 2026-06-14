@@ -31,8 +31,8 @@ def build_agent(node: dict, *, traversal_entry: dict | None = None) -> dict:
     # Lookup agent metadata
     agent_meta = AgentRegistry.get_agent(agent_id)
     if not agent_meta:
-        # Fallback local URL if not registered
-        endpoint = "http://localhost:11000/execute"
+        from ..config.settings import settings as _settings
+        endpoint = f"http://{_settings.AGENT_HOST}:{_settings.AGENT_WEATHER_PORT}/execute"
         method = "post"
     else:
         endpoint = agent_meta["url"]

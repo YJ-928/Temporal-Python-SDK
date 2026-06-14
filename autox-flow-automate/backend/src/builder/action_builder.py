@@ -28,6 +28,10 @@ def build_action(node: dict, *, traversal_entry: dict | None = None) -> dict:
 
     task_name = f"{node_id}_{operation}"
 
+    from ..config.settings import settings as _settings
+    _api_prefix = _settings.API_V1_PREFIX
+    _base_url = _settings.ACTIONS_BASE_URL
+
     # Export the HTTP response into $context under the output name
     export_expr = f"${{ $context + {{{output_name}: .}} }}"
 
@@ -36,7 +40,7 @@ def build_action(node: dict, *, traversal_entry: dict | None = None) -> dict:
             "call": "http",
             "with": {
                 "method": "post",
-                "endpoint": f"http://localhost:8000/api/v1/actions/{operation}",
+                "endpoint": f"{_base_url}{_api_prefix}/actions/{operation}",
                 "headers": {
                     "Content-Type": "application/json"
                 },

@@ -329,7 +329,7 @@ class ExecutionService:
                 try:
                     self._client = await asyncio.wait_for(
                         Client.connect(settings.TEMPORAL_ADDRESS),
-                        timeout=10.0,
+                        timeout=settings.TEMPORAL_CONNECT_TIMEOUT,
                     )
                     logger.info(f"Temporal client connected to {settings.TEMPORAL_ADDRESS}")
                 except asyncio.TimeoutError as exc:

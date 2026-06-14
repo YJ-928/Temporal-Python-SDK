@@ -39,7 +39,7 @@ app = FastAPI(
 # Load weather data from JSON file
 def load_weather_data():
     """Load weather data from resources/data/agent_data/weather_data.json"""
-    from ..config.settings import settings
+    from src.config.settings import settings
     data_path = settings.DATA_DIR / "agent_data" / "weather_data.json"
     try:
         with data_path.open("r") as f:

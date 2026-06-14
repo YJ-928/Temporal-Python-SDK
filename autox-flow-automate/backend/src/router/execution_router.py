@@ -4,7 +4,7 @@ import re
 import urllib.request
 from fastapi import APIRouter, HTTPException, status
 from temporalio.service import RPCError, RPCStatusCode
-from ..config import get_logger
+from ..config import get_logger, settings
 from ..schema.execution.execution_run_sch import (
     ExecuteWorkflowRequest,
     ExecuteWorkflowResponse,
@@ -21,10 +21,11 @@ _EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
 
 def _check_runtime_sync() -> bool:
     """Blocking probe of the Zigflow runtime health endpoint (run via asyncio.to_thread)."""
+    url = f"http://{settings.ZIGFLOW_RUNTIME_HOST}:{settings.ZIGFLOW_RUNTIME_PORT}/health"
     try:
         with urllib.request.urlopen(
-            urllib.request.Request("http://localhost:3005/health"), timeout=1
-        ) as r:
+            urllib.request.Request(url), timeout=1
+        ) as r:  # noqa: S310
             return json.loads(r.read()).get("healthy", False)
     except Exception:
         return False
@@ -101,10 +102,11 @@ async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
     # 3. Check if runtime is healthy (bounded to 2s so a hanging daemon doesn't stall the handler)
     try:
         runtime_healthy = await asyncio.wait_for(
-            asyncio.to_thread(_check_runtime_sync), timeout=2.0
+            asyncio.to_thread(_check_runtime_sync),
+            timeout=settings.ZIGFLOW_HEALTH_TIMEOUT,
         )
     except asyncio.TimeoutError:
-        logger.warning("Runtime health check timed out after 2s")
+        logger.warning(f"Runtime health check timed out after {settings.ZIGFLOW_HEALTH_TIMEOUT}s")
         runtime_healthy = False
 
     if not runtime_healthy:

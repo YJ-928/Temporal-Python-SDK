@@ -181,7 +181,7 @@ def register_routers(app: FastAPI) -> None:
                 "request_schema": meta.get("request_schema", {}),
                 "response_schema": meta.get("response_schema", {}),
             }
-            for agent_id, meta in AgentRegistry._agents.items()
+            for agent_id, meta in AgentRegistry.all_agents().items()
         ]
 
     logger.info("Routers registered")
@@ -248,9 +248,9 @@ def register_app() -> FastAPI:
         version=settings.VERSION,
         description=settings.APP_DESCRIPTION,
         debug=settings.DEBUG,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+        docs_url=settings.DOCS_URL,
+        redoc_url=settings.REDOC_URL,
+        openapi_url=settings.OPENAPI_URL,
     )
 
     register_middleware(app)
