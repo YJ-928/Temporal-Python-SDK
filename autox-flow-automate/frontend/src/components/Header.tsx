@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Undo, Redo, GitMerge, RotateCcw, ZoomIn, ZoomOut, Maximize, Settings, Play } from 'lucide-react';
 
-const AutoXLogo: React.FC<{ size?: number }> = ({ size = 42 }) => (
+const AutoXLogo: React.FC<{ size?: number }> = ({ size = 32 }) => (
   <img
     src="/logo-x.svg"
     width={size}
