@@ -76,13 +76,11 @@ export const Header: React.FC<HeaderProps> = ({
           <div style={{ position: 'relative' }}>
             <button
               className="btn"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', maxWidth: '200px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
               onClick={toggleExample}
               title={loadedExampleName ? `Loaded: ${loadedExampleName}` : 'Load an example workflow'}
             >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {loadedExampleName ?? 'Load Example'}
-              </span>
+              {loadedExampleName ?? 'Load Example'}
               <ChevronDown size={14} style={{ flexShrink: 0 }} />
             </button>
             {exampleOpen && (
