@@ -740,6 +740,17 @@ const FlowBuilder: React.FC = () => {
     let intervalId: ReturnType<typeof setInterval> | undefined;
     let warnShown = false;
     let polling = false;
+    let hadAnySteps = false;
+    let noProgressWarnShown = false;
+    const pollStart = Date.now();
+    const MAX_POLL_MS = 5 * 60 * 1000; // stop hammering after 5 minutes
+
+    const stopPolling = () => {
+      if (intervalId !== undefined) {
+        clearInterval(intervalId);
+        intervalId = undefined;
+      }
+    };
 
     const logStepChange = (nodeId: string, step: NodeTraceState) => {
       const prev = loggedStepsRef.current[nodeId];
@@ -754,6 +765,7 @@ const FlowBuilder: React.FC = () => {
 
     const applyTrace = (trace: TraceResponse) => {
       if (!trace.steps) return;
+      if (Object.keys(trace.steps).length > 0) hadAnySteps = true;
       setNodeTraceStates(trace.steps);
       if (trace.status && trace.status !== activeRunStatus) {
         setActiveRunStatus(trace.status);
@@ -764,10 +776,7 @@ const FlowBuilder: React.FC = () => {
         if (normalized === 'COMPLETED') notify.success('Workflow completed successfully.');
         else if (normalized === 'FAILED') notify.error('Workflow execution failed.');
       }
-      if (TERMINAL.has(trace.status) && intervalId !== undefined) {
-        clearInterval(intervalId);
-        intervalId = undefined;
-      }
+      if (TERMINAL.has(trace.status)) stopPolling();
       Object.keys(trace.steps).forEach((nodeId) => logStepChange(nodeId, trace.steps[nodeId]));
     };
 
@@ -789,10 +798,7 @@ const FlowBuilder: React.FC = () => {
         const statusCode = (err as { statusCode?: number }).statusCode;
         // 404 = workflow not found in Temporal — stop polling, no point retrying
         if (statusCode === 404) {
-          if (intervalId !== undefined) {
-            clearInterval(intervalId);
-            intervalId = undefined;
-          }
+          stopPolling();
         } else if (!warnShown) {
           notify.warn('Lost connection to execution trace. Retrying...');
           warnShown = true;
@@ -804,6 +810,24 @@ const FlowBuilder: React.FC = () => {
 
     pollTrace();
     intervalId = setInterval(async () => {
+      const elapsed = Date.now() - pollStart;
+
+      // Hard ceiling: stop after 5 minutes to prevent infinite API hammering
+      if (elapsed > MAX_POLL_MS) {
+        stopPolling();
+        setActiveRunStatus('TIMED_OUT');
+        addLog('Polling stopped after 5 minutes with no terminal state. Use Cancel or check Temporal UI at http://localhost:8233.', 'warning');
+        notify.warn('Execution polling timed out after 5 minutes. Use the Cancel button or check the Temporal Web UI.');
+        return;
+      }
+
+      // No-progress warning: no trace steps after 45 seconds means the worker likely isn't running
+      if (!hadAnySteps && elapsed > 45_000 && !noProgressWarnShown) {
+        noProgressWarnShown = true;
+        addLog('No trace events after 45 s — the Zigflow worker may not be running or the task queue may not match. Try restarting the backend with ./start.sh.', 'warning');
+        notify.warn('No activity after 45 s — verify the backend is running (./start.sh) and the workflow was compiled.');
+      }
+
       await pollTrace();
       await refreshHistory();
     }, 2000);
