@@ -101,6 +101,7 @@ async def _check_all_agents() -> dict:
         "weather_agent": 11000,
         "email_validator": 11001,
         "email_sender": 11002,
+        "summarizer_agent": 11003,
     }
     results = await asyncio.gather(*(
         asyncio.to_thread(_http_check_ok, f"http://localhost:{port}/docs", 1)

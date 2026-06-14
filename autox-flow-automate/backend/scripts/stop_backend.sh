@@ -36,7 +36,7 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 # Fallback to general process killing
-PIDS=$(pgrep -f "app.main:app" || true)
+PIDS=$(pgrep -f "src.app:app" || true)
 if [ ! -z "$PIDS" ]; then
     for pid in $PIDS; do
         echo "Stopping running FastAPI backend (PID: $pid)..."

@@ -200,12 +200,15 @@ async def cancel_workflow(workflow_id: str, run_id: str):
     try:
         await execution_service.cancel_workflow(workflow_id, run_id)
         return {"success": True, "message": "Cancellation requested successfully"}
+    except RuntimeError as e:
+        msg = str(e).lower()
+        if "already completed" in msg or "already cancelled" in msg or "not found" in msg:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        logger.error(f"Failed to cancel workflow {workflow_id} run {run_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to cancel workflow.") from e
     except Exception as e:
         logger.error(f"Failed to cancel workflow {workflow_id} run {run_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to cancel workflow."
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to cancel workflow.") from e
 
 
 @router.post(
@@ -218,9 +221,12 @@ async def terminate_workflow(workflow_id: str, run_id: str, reason: str = "Termi
     try:
         await execution_service.terminate_workflow(workflow_id, run_id, reason)
         return {"success": True, "message": "Workflow terminated successfully"}
+    except RuntimeError as e:
+        msg = str(e).lower()
+        if "already completed" in msg or "already cancelled" in msg or "not found" in msg:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+        logger.error(f"Failed to terminate workflow {workflow_id} run {run_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to terminate workflow.") from e
     except Exception as e:
         logger.error(f"Failed to terminate workflow {workflow_id} run {run_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to terminate workflow."
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to terminate workflow.") from e

@@ -103,21 +103,21 @@ async def execute(request: EmailValidationRequest) -> EmailValidationResponse:
     # Validate email using regex
     is_valid = bool(EMAIL_REGEX.match(email))
 
-    # Extract domain if valid
+    # Extract domain if valid — always return 200 so workflow IF node can branch
     domain = None
     if is_valid:
         domain = email.split("@")[1]
         logger.info(f"Email valid: {email} (domain: {domain})")
+        message = "Email validated successfully"
     else:
         logger.warning(f"Invalid email format: {email}")
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Invalid email format")
+        message = "Invalid email format"
 
     return EmailValidationResponse(
         success=True,
         is_valid=is_valid,
         domain=domain,
-        message="Email validated successfully"
+        message=message
     )
 
 

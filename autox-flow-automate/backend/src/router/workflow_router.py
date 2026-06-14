@@ -42,7 +42,9 @@ async def compile_workflow(request: CompileWorkflowRequest):
             "edges": [edge.model_dump() for edge in request.edges],
         }
 
-        resolved_workflow_type = request.workflow_type or compiler_settings.workflow_type
+        # Derive workflow_type from workflow_id when not explicitly set — ensures uniqueness
+        # across multiple compiled workflows on the same task queue (Zigflow requires unique types)
+        resolved_workflow_type = request.workflow_type or request.workflow_id or compiler_settings.workflow_type
         resolved_task_queue = request.task_queue or compiler_settings.task_queue
         resolved_version = request.version or "1.0.0"
         resolved_description = request.description or ""

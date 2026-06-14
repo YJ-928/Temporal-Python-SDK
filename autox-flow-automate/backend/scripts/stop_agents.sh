@@ -28,9 +28,10 @@ stop_agent() {
 stop_agent "$PIDS_DIR/agent_weather.pid" "Weather Agent"
 stop_agent "$PIDS_DIR/agent_email_validator.pid" "Email Validator Agent"
 stop_agent "$PIDS_DIR/agent_email_sender.pid" "Email Sender Agent"
+stop_agent "$PIDS_DIR/agent_summarizer.pid" "Summarizer Agent"
 
 # Fallback clean up for any remaining python agents on their ports
-for port in 11000 11001 11002; do
+for port in 11000 11001 11002 11003; do
     PID=$(lsof -t -i:$port 2>/dev/null || true)
     if [ ! -z "$PID" ]; then
         echo "Killing remaining agent process on port $port (PID: $PID)..."
