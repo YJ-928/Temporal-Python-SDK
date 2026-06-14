@@ -130,6 +130,7 @@ body, html, #root {
   display: flex;
   align-items: center;
   justify-content: center;
+  filter: drop-shadow(0 0 6px rgba(243, 112, 42, 0.5));
 }
 
 .header-actions {

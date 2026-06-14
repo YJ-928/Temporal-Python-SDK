@@ -1,5 +1,12 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Trash2, ChevronDown, ChevronUp, RefreshCw, Zap, History, Activity, ChevronRight, Gauge, ChevronLeft, Copy, Maximize } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, RefreshCw, Zap, History, ChevronRight, Gauge, ChevronLeft, Copy, Maximize } from 'lucide-react';
+
+const OrangeX: React.FC<{ size?: number }> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M28.4 7.04H21.04L3.2 24.96H10.56L28.4 7.04Z" fill="#F3702A" />
+    <path d="M3.2 7.04H10.56L28.4 24.96H21.04L3.2 7.04Z" fill="#F3702A" />
+  </svg>
+);
 import { notify } from '../utils/notify';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -241,7 +248,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
       <div className="simulator-header" style={{ background: '#0f172a' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div className="simulator-title" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
-            <Activity size={14} style={{ color: 'var(--accent)' }} />
+            <OrangeX size={16} />
             <span>Workflow Runtime</span>
           </div>
         </div>
