@@ -21,13 +21,13 @@ const PALETTE: {
   icon: React.ReactNode;
   className: string;
 }[] = [
-  { type: 'start',  title: 'START',  desc: 'Filled circle · Green',           icon: <Play size={20} />,       className: 'palette-node-start' },
-  { type: 'input',  title: 'INPUT',  desc: 'Rect + thick top bar · Gray',      icon: <Database size={20} />,   className: 'palette-node-input' },
-  { type: 'if',     title: 'IF',     desc: 'Diamond · Blue · condition',       icon: <GitFork size={20} />,    className: 'palette-node-if' },
-  { type: 'action', title: 'ACTION', desc: 'Rect + left bar · Teal · API call', icon: <Zap size={20} />,      className: 'palette-node-action' },
-  { type: 'agent',  title: 'AGENT',  desc: 'Dashed rect · Purple · AI agent',  icon: <Bot size={20} />,       className: 'palette-node-agent' },
-  { type: 'output', title: 'OUTPUT', desc: 'Rect · Pink · result emitter',     icon: <FileOutput size={20} />, className: 'palette-node-output' },
-  { type: 'end',    title: 'END',    desc: 'Filled circle · Red',              icon: <Square size={20} />,    className: 'palette-node-end' },
+  { type: 'start',  title: 'START',  desc: 'Entry point',          icon: <Play size={20} />,       className: 'palette-node-start' },
+  { type: 'input',  title: 'INPUT',  desc: 'Workflow inputs',       icon: <Database size={20} />,   className: 'palette-node-input' },
+  { type: 'if',     title: 'IF',     desc: 'Branch on condition',   icon: <GitFork size={20} />,    className: 'palette-node-if' },
+  { type: 'action', title: 'ACTION', desc: 'Execute an operation',  icon: <Zap size={20} />,        className: 'palette-node-action' },
+  { type: 'agent',  title: 'AGENT',  desc: 'Run an AI agent',       icon: <Bot size={20} />,        className: 'palette-node-agent' },
+  { type: 'output', title: 'OUTPUT', desc: 'Emit result',           icon: <FileOutput size={20} />, className: 'palette-node-output' },
+  { type: 'end',    title: 'END',    desc: 'Terminal state',        icon: <Square size={20} />,     className: 'palette-node-end' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ onAddNode }) => {

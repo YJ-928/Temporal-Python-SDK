@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Undo, Redo, GitMerge, RotateCcw, ZoomIn, ZoomOut, Maximize, Settings, Play } from 'lucide-react';
 
-const AutoXLogo: React.FC<{ size?: number }> = ({ size = 32 }) => (
+const AutoXLogo: React.FC<{ size?: number }> = ({ size = 27 }) => (
   <img
     src="/logo-x.svg"
     width={size}
     height={size}
     alt="AutoX"
-    style={{ borderRadius: '10px', display: 'block' }}
+    style={{ borderRadius: '7px', display: 'block' }}
   />
 );
 import { EXAMPLES } from '../constants/examples';
