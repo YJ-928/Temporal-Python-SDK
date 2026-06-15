@@ -78,6 +78,7 @@ async def compile_workflow(request: CompileWorkflowRequest):
             dsl_hash=result["content_hash"],
             workflow_id=result["workflow_id"],
             workflow_type=resolved_workflow_type,
+            task_queue=resolved_task_queue,
             file_path=result["file_path"],
         )
 

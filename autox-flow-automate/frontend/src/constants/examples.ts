@@ -35,7 +35,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
     metadata: {
       workflow_id: 'weather-assistant',
       workflow_type: 'weather-assistant-type',
-      task_queue: 'default',
+      task_queue: 'flowautomate',
       version: '1.0.0',
       description: 'Checks the weather using a Weather Agent, routes based on rain condition, and sends alerts or summary reports.',
     },
@@ -120,7 +120,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
     metadata: {
       workflow_id: 'email-validation-sender',
       workflow_type: 'email-validation-sender-type',
-      task_queue: 'default',
+      task_queue: 'flowautomate',
       version: '1.0.0',
       description: 'Checks validity of email addresses using Email Validator Agent, then routes valid emails to the sender service or triggers a noop branch.',
     },
@@ -154,7 +154,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
         id: 'N4', type: 'if', position: { x: 330, y: 601 },
         data: {
           label: 'Valid?',
-          ifCondition: { left: 'email_validation.is_valid', operator: '==', right: 'true' },
+          ifCondition: { left: 'email_validation.is_valid', operator: '==', right: true },
         },
       },
       // True branch ACTION (~130px) — y:771
@@ -221,7 +221,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
     metadata: {
       workflow_id: 'account-routing',
       workflow_type: 'account-routing-type',
-      task_queue: 'default',
+      task_queue: 'flowautomate',
       version: '1.0.0',
       description: 'Resolves account details via a database lookup, then splits execution depending on account type parameters.',
     },
@@ -251,7 +251,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
         id: 'N4', type: 'if', position: { x: 330, y: 546 },
         data: {
           label: 'Is Active?',
-          ifCondition: { left: 'account.active', operator: '==', right: 'true' },
+          ifCondition: { left: 'account.active', operator: '==', right: true },
         },
       },
       // True branch ACTION (~130px) — y:716
@@ -307,7 +307,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
     metadata: {
       workflow_id: 'single-email-validator',
       workflow_type: 'single-email-validator-type',
-      task_queue: 'default',
+      task_queue: 'flowautomate',
       version: '1.0.0',
       description: 'Validates an email address using the Email Validator Agent, then branches: valid emails produce a success output, invalid emails produce a rejection output.',
     },
@@ -337,7 +337,7 @@ export const EXAMPLES: Record<string, ExampleWorkflow> = {
         id: 'N4', type: 'if', position: { x: 330, y: 546 },
         data: {
           label: 'Valid?',
-          ifCondition: { left: 'email_validation.is_valid', operator: '==', right: 'true' },
+          ifCondition: { left: 'email_validation.is_valid', operator: '==', right: true },
         },
       },
       // True branch OUTPUT 2 fields (~130px) — y:716

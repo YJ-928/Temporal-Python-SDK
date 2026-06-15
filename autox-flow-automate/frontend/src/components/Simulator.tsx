@@ -58,6 +58,7 @@ interface SimulatorProps {
   onTerminateRun?: (workflowId: string, runId: string, reason: string) => void;
   nodeTraceStates?: Record<string, NodeTraceState>;
   activeRunStatus?: string;
+  workflowResult?: Record<string, unknown> | null;
 
   // Control tabs and visibility
   activeTab: TabType;
@@ -91,6 +92,7 @@ export const Simulator: React.FC<SimulatorProps> = ({
   onTerminateRun,
   nodeTraceStates = {},
   activeRunStatus,
+  workflowResult = null,
   activeTab,
   setActiveTab,
   isOpen,
@@ -484,13 +486,12 @@ export const Simulator: React.FC<SimulatorProps> = ({
                 const isFailed = currentStatus === 'FAILED';
                 const isCompleted = currentStatus === 'COMPLETED';
 
-                // Find result: prefer the output node, fall back to last completed node
+                // Prefer the authoritative Zigflow workflow result (final $context at completion).
+                // Fall back to the last completed activity/child-workflow step's output.
                 const traceEntries = Object.entries(nodeTraceStates);
-                const outputNodeEntry = traceEntries.find(([id]) => id.toLowerCase().includes('output'));
-                const lastCompletedEntry = [...traceEntries].reverse().find(([, s]) => s.status === 'completed');
                 const failedEntry = traceEntries.find(([, s]) => s.status === 'failed');
-                const resultEntry = outputNodeEntry ?? lastCompletedEntry;
-                const resultOutput = resultEntry?.[1]?.output ?? null;
+                const lastCompletedEntry = [...traceEntries].reverse().find(([, s]) => s.status === 'completed' && s.output != null);
+                const resultOutput = workflowResult ?? lastCompletedEntry?.[1]?.output ?? null;
                 const resultJson = resultOutput ? JSON.stringify(resultOutput, null, 2) : null;
                 const errorText = failedEntry?.[1]?.error ?? null;
 
@@ -549,9 +550,9 @@ export const Simulator: React.FC<SimulatorProps> = ({
                       <div>
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: '600' }}>
                           Result Output
-                          {resultEntry && (
+                          {workflowResult == null && lastCompletedEntry && (
                             <span style={{ marginLeft: '8px', color: 'var(--text-secondary)', fontWeight: '400' }}>
-                              (from node: {resultEntry[0]})
+                              (from node: {lastCompletedEntry[0]})
                             </span>
                           )}
                         </div>

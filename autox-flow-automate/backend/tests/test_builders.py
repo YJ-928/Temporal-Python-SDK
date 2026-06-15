@@ -9,6 +9,7 @@ from src.builder.agent_builder import build_agent
 from src.builder.if_builder import build_if
 from src.builder.terminal_builder import build_terminal
 from src.builder.condition_builder import build_condition_expression
+from src.config import settings
 
 
 class TestBuilders(unittest.TestCase):
@@ -94,7 +95,7 @@ class TestBuilders(unittest.TestCase):
         self.assertEqual(res[task_name]["with"]["method"], "post")
         self.assertEqual(
             res[task_name]["with"]["endpoint"],
-            "http://localhost:8000/api/v1/actions/calculate_tax"
+            f"{settings.ACTIONS_BASE_URL}/api/v1/actions/calculate_tax"
         )
         self.assertEqual(
             res[task_name]["with"]["headers"],

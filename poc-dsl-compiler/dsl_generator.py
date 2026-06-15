@@ -1,4 +1,3 @@
-# ─────────────────────────────────────────────────────────────────────────────
 # PHASE B — DSL ASSEMBLY
 #
 # Ownership: builder dispatch and DSL fragment collection.
@@ -6,7 +5,6 @@
 # This module must not read adjacency, node_map, or any other graph internals.
 # All execution semantics (is_terminal, branch routing, incoming_edge_control)
 # arrive pre-computed inside TraversalEntry dicts produced by Phase A (compiler.py).
-# ─────────────────────────────────────────────────────────────────────────────
 
 import json
 import os

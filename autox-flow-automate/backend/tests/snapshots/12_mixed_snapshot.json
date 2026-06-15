@@ -12,7 +12,7 @@
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/fetch_info",
+          "endpoint": "http://localhost:8001/api/v1/actions/fetch_info",
           "headers": {
             "Content-Type": "application/json"
           }

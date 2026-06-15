@@ -56,7 +56,10 @@
               ]
             }
           }
-        ]
+        ],
+        "export": {
+          "as": "${ . }"
+        }
       }
     },
     {
@@ -67,7 +70,7 @@
               "call": "http",
               "with": {
                 "method": "post",
-                "endpoint": "http://localhost:8000/api/v1/actions/adult_member",
+                "endpoint": "http://localhost:8001/api/v1/actions/adult_member",
                 "headers": {
                   "Content-Type": "application/json"
                 }
@@ -78,6 +81,9 @@
             }
           }
         ],
+        "export": {
+          "as": "${ . }"
+        },
         "then": "end"
       }
     },
@@ -89,7 +95,7 @@
               "call": "http",
               "with": {
                 "method": "post",
-                "endpoint": "http://localhost:8000/api/v1/actions/adult_nonmember",
+                "endpoint": "http://localhost:8001/api/v1/actions/adult_nonmember",
                 "headers": {
                   "Content-Type": "application/json"
                 }
@@ -100,6 +106,9 @@
             }
           }
         ],
+        "export": {
+          "as": "${ . }"
+        },
         "then": "end"
       }
     },
@@ -111,7 +120,7 @@
               "call": "http",
               "with": {
                 "method": "post",
-                "endpoint": "http://localhost:8000/api/v1/actions/minor",
+                "endpoint": "http://localhost:8001/api/v1/actions/minor",
                 "headers": {
                   "Content-Type": "application/json"
                 }
@@ -122,6 +131,9 @@
             }
           }
         ],
+        "export": {
+          "as": "${ . }"
+        },
         "then": "end"
       }
     }

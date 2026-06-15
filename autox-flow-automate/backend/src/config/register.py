@@ -146,12 +146,23 @@ def register_routers(app: FastAPI) -> None:
                 "status": "success",
                 "case_id": "case-billing-888"
             }
+        if operation == "noop":
+            return {"status": "success"}
+        if operation == "send_rain_alert":
+            return {
+                "status": "sent",
+                "alert": f"Rain alert dispatched for {body.get('city', 'unknown')}"
+            }
+        if operation == "send_weather_summary":
+            return {
+                "status": "sent",
+                "summary": f"Weather summary dispatched for {body.get('city', 'unknown')}"
+            }
 
         return {
             "status": "success",
             "operation": operation,
-            "city": body.get("city"),
-            "message": f"Action {operation} executed successfully for {body.get('city')}"
+            "message": f"Action {operation} executed successfully"
         }
 
     @app.get(

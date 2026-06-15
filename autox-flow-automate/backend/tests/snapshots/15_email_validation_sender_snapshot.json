@@ -62,7 +62,7 @@
               "call": "http",
               "with": {
                 "method": "post",
-                "endpoint": "http://localhost:8000/api/v1/actions/send_email",
+                "endpoint": "http://localhost:8001/api/v1/actions/send_email",
                 "headers": {
                   "Content-Type": "application/json"
                 },
@@ -74,6 +74,9 @@
             }
           }
         ],
+        "export": {
+          "as": "${ . }"
+        },
         "then": "N6_expose"
       }
     },
@@ -95,7 +98,7 @@
               "call": "http",
               "with": {
                 "method": "post",
-                "endpoint": "http://localhost:8000/api/v1/actions/noop",
+                "endpoint": "http://localhost:8001/api/v1/actions/noop",
                 "headers": {
                   "Content-Type": "application/json"
                 }
@@ -106,6 +109,9 @@
             }
           }
         ],
+        "export": {
+          "as": "${ . }"
+        },
         "then": "N7_expose"
       }
     },

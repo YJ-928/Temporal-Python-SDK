@@ -29,9 +29,11 @@ def _wrap_as_child_workflow(fragment: dict) -> dict:
     """Wrap a DSL fragment as a Zigflow child workflow do-block.
 
     Zigflow dispatches switch/then targets as child workflows, so all branch
-    targets must live inside a `do` block. `set`-only inner tasks are not
-    valid in that context; they are converted to a noop HTTP call + export
-    so Zigflow can execute the branch without errors.
+    targets must live inside a `do` block. `set`-only inner tasks (OUTPUT nodes)
+    are converted to a noop HTTP call + export so Zigflow can execute the branch.
+
+    The outer `export.as: "${ . }"` propagates the child's final $context back
+    into the parent workflow's $context so downstream tasks can read the results.
     """
     task_name = next(iter(fragment))
     task_body = fragment[task_name]
@@ -45,14 +47,13 @@ def _wrap_as_child_workflow(fragment: dict) -> dict:
                 "method": "post",
                 "endpoint": f"{settings.ACTIONS_BASE_URL}/api/v1/actions/noop",
                 "headers": {"Content-Type": "application/json"},
-                "body": "{}",
             },
             "export": {"as": _set_map_to_export_expr(task_body.get("set", {}))},
         }
     else:
         inner_body = task_body
 
-    wrapped: dict = {task_name: {"do": [{inner_name: inner_body}]}}
+    wrapped: dict = {task_name: {"do": [{inner_name: inner_body}], "export": {"as": "${ . }"}}}
     if then_target:
         wrapped[task_name]["then"] = then_target
     return wrapped

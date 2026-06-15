@@ -272,17 +272,22 @@ async def _resolve_visual_id(workflow_id: str, desc) -> str:
     return workflow_id
 
 
-async def _stream_history(handle, workflow_id: str) -> tuple[dict, bool]:
-    """Stream Temporal history events and return (event_states, workflow_completed)."""
+async def _stream_history(handle, workflow_id: str) -> tuple[dict, bool, Any]:
+    """Stream Temporal history events and return (event_states, workflow_completed, workflow_result)."""
     event_states: dict = {}
     scheduled_events: dict = {}
     scheduled_times: dict = {}
     workflow_completed = False
+    workflow_result: Any = None
 
     try:
         async for event in handle.fetch_history_events():
             if event.HasField("workflow_execution_completed_event_attributes"):
                 workflow_completed = True
+                attrs = event.workflow_execution_completed_event_attributes
+                workflow_result = _decode_payload(
+                    attrs.result.payloads if attrs.result else None
+                )
                 continue
             for field, handler in _EVENT_HANDLERS.items():
                 if event.HasField(field):
@@ -295,7 +300,7 @@ async def _stream_history(handle, workflow_id: str) -> tuple[dict, bool]:
         logger.error(f"Unexpected error reading history for '{workflow_id}': {exc}", exc_info=True)
         raise RuntimeError(f"Failed to read workflow history: {exc}") from exc
 
-    return event_states, workflow_completed
+    return event_states, workflow_completed, workflow_result
 
 
 def _run_replay(workflow_id: str, rf_json: dict, event_states: dict, workflow_completed: bool) -> list:
@@ -440,11 +445,16 @@ class ExecutionService:
         dsl_hash = await get_memo_value(desc, "dsl_hash")
         visual_workflow_id = await _resolve_visual_id(workflow_id, desc)
 
-        event_states, workflow_completed = await _stream_history(handle, workflow_id)
+        event_states, workflow_completed, workflow_result = await _stream_history(handle, workflow_id)
         rf_json = await _load_rf_json(visual_workflow_id, dsl_hash)
         final_steps = _run_replay(workflow_id, rf_json, event_states, workflow_completed)
 
-        return {"run_id": run_id, "status": workflow_status, "steps": final_steps}
+        return {
+            "run_id": run_id,
+            "status": workflow_status,
+            "steps": final_steps,
+            "workflow_result": workflow_result,
+        }
 
     async def cancel_workflow(self, workflow_id: str, run_id: str) -> None:
         """Cancel a running workflow execution."""

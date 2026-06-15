@@ -93,3 +93,7 @@ class ExecutionTraceResponse(BaseModel):
         default_factory=dict,
         description="Map of ReactFlow node IDs to their step execution statuses"
     )
+    workflow_result: Optional[Any] = Field(
+        None,
+        description="Final output of the workflow (last $context from Zigflow at completion)"
+    )

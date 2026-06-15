@@ -16,6 +16,19 @@ from ..service.execution_service import execution_service
 logger = get_logger(__name__)
 router = APIRouter(prefix="/executions", tags=["Executions"])
 
+
+def _temporal_unavailable(e: Exception) -> bool:
+    """True when the error is a Temporal connection failure (not a code bug)."""
+    msg = str(e).lower()
+    return "connection refused" in msg or "failed to connect to temporal" in msg or "failed client connect" in msg
+
+
+def _temporal_503() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Temporal server is not reachable. Make sure `temporal server start-dev` is running on port 7233.",
+    )
+
 _EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
 
 
@@ -138,6 +151,8 @@ async def execute_workflow(workflow_id: str, request: ExecuteWorkflowRequest):
             detail="Invalid workflow configuration."
         ) from e
     except Exception as e:
+        if _temporal_unavailable(e):
+            raise _temporal_503() from e
         logger.error(f"Failed to execute workflow {workflow_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -156,6 +171,8 @@ async def list_executions(workflow_id: str):
         executions = await execution_service.list_executions(workflow_id)
         return ExecutionListResponse(executions=executions)
     except Exception as e:
+        if _temporal_unavailable(e):
+            raise _temporal_503() from e
         logger.error(f"Failed to retrieve history for {workflow_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -185,6 +202,8 @@ async def get_execution_trace(workflow_id: str, run_id: str):
             detail="Failed to fetch execution trace."
         ) from e
     except Exception as e:
+        if _temporal_unavailable(e):
+            raise _temporal_503() from e
         logger.error(f"Failed to retrieve trace for workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -203,12 +222,16 @@ async def cancel_workflow(workflow_id: str, run_id: str):
         await execution_service.cancel_workflow(workflow_id, run_id)
         return {"success": True, "message": "Cancellation requested successfully"}
     except RuntimeError as e:
+        if _temporal_unavailable(e):
+            raise _temporal_503() from e
         msg = str(e).lower()
         if "already completed" in msg or "already cancelled" in msg or "not found" in msg:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
         logger.error(f"Failed to cancel workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to cancel workflow.") from e
     except Exception as e:
+        if _temporal_unavailable(e):
+            raise _temporal_503() from e
         logger.error(f"Failed to cancel workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to cancel workflow.") from e
 
@@ -224,11 +247,15 @@ async def terminate_workflow(workflow_id: str, run_id: str, reason: str = "Termi
         await execution_service.terminate_workflow(workflow_id, run_id, reason)
         return {"success": True, "message": "Workflow terminated successfully"}
     except RuntimeError as e:
+        if _temporal_unavailable(e):
+            raise _temporal_503() from e
         msg = str(e).lower()
         if "already completed" in msg or "already cancelled" in msg or "not found" in msg:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
         logger.error(f"Failed to terminate workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to terminate workflow.") from e
     except Exception as e:
+        if _temporal_unavailable(e):
+            raise _temporal_503() from e
         logger.error(f"Failed to terminate workflow {workflow_id} run {run_id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to terminate workflow.") from e

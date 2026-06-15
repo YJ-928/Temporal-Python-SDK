@@ -36,6 +36,7 @@ export interface HistoryResponse {
 export interface TraceResponse {
   steps: Record<string, NodeTraceState>;
   status: string;
+  workflow_result?: Record<string, unknown> | null;
 }
 
 interface PydanticErrorItem {

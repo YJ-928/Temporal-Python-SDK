@@ -69,7 +69,7 @@ async def get_catalog_agents():
             "description": meta.get("description", ""),
             "request_schema": meta.get("request_schema", {}),
         }
-        for agent_id, meta in AgentRegistry._agents.items()
+        for agent_id, meta in AgentRegistry.all_agents().items()
     ]
 
 

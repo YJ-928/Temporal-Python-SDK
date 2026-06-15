@@ -23,7 +23,7 @@
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/check_stock",
+          "endpoint": "http://localhost:8001/api/v1/actions/check_stock",
           "headers": {
             "Content-Type": "application/json"
           },
@@ -40,7 +40,7 @@
         "call": "http",
         "with": {
           "method": "post",
-          "endpoint": "http://localhost:8000/api/v1/actions/reserve_item",
+          "endpoint": "http://localhost:8001/api/v1/actions/reserve_item",
           "headers": {
             "Content-Type": "application/json"
           },

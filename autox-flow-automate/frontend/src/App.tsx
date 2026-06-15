@@ -198,6 +198,7 @@ const FlowBuilder: React.FC = () => {
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeRunStatus, setActiveRunStatus] = useState<string>('');
   const [nodeTraceStates, setNodeTraceStates] = useState<Record<string, NodeTraceState>>({});
+  const [workflowResult, setWorkflowResult] = useState<Record<string, unknown> | null>(null);
   const [isTriggeringRun, setIsTriggeringRun] = useState(false);
 
   // Refs kept in sync so polling effect can read latest values without them being deps
@@ -468,6 +469,7 @@ const FlowBuilder: React.FC = () => {
     setActiveRunStatus('');
     setExecutionHistory([]);
     setNodeTraceStates({});
+    setWorkflowResult(null);
     if (simulationTimeoutRef.current) {
       clearTimeout(simulationTimeoutRef.current);
     }
@@ -721,6 +723,7 @@ const FlowBuilder: React.FC = () => {
       setLogs([]); // eslint-disable-line react-hooks/set-state-in-effect
       loggedStepsRef.current = {};
       setNodeTraceStates({});
+      setWorkflowResult(null);
       const run = executionHistory.find(r => r.run_id === activeRunId);
       setActiveRunStatus(run?.status || 'RUNNING');
     } else {
@@ -805,6 +808,10 @@ const FlowBuilder: React.FC = () => {
       const nextStepsJson = JSON.stringify(trace.steps);
       if (JSON.stringify(nodeTraceStatesRef.current) !== nextStepsJson) {
         setNodeTraceStates(trace.steps);
+      }
+
+      if (trace.workflow_result != null) {
+        setWorkflowResult(trace.workflow_result);
       }
 
       if (trace.status && trace.status !== activeRunStatusRef.current) {
@@ -1140,6 +1147,7 @@ const FlowBuilder: React.FC = () => {
           onTerminateRun={handleTerminateRun}
           nodeTraceStates={nodeTraceStates}
           activeRunStatus={activeRunStatus}
+          workflowResult={workflowResult}
           activeTab={simulatorTab}
           setActiveTab={setSimulatorTab}
           isOpen={isSimulatorOpen}

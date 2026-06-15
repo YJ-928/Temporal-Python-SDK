@@ -41,6 +41,12 @@ def build_condition_expression(left: str, operator: str, right: any) -> str:
             f"Supported operators: {sorted(SUPPORTED_OPERATORS)}"
         )
 
+    # Coerce string "true"/"false" to Python bool so jq gets the boolean literal
+    # rather than the string literal "true". Agents return is_valid: true (bool),
+    # so comparing == "true" (string) always evaluates to false in jq.
+    if isinstance(right, str) and right.lower() in ("true", "false"):
+        right = right.lower() == "true"
+
     # Format right-hand side using json.dumps to ensure valid JSON/JQ syntax
     # (None -> null, bool -> true/false, arrays, objects, strings correctly quoted)
     right_expr = json.dumps(right)

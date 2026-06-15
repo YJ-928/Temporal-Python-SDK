@@ -23,6 +23,7 @@ async def _upsert_registration_to_db(
     dsl_hash: str,
     workflow_id: str,
     workflow_type: str,
+    task_queue: str,
     file_path: str,
     validated: bool,
     registered: bool,
@@ -48,6 +49,7 @@ async def _upsert_registration_to_db(
                     content_hash=dsl_hash,
                     workflow_id=workflow.id,
                     workflow_type=workflow_type,
+                    task_queue=task_queue,
                     file_path=file_path,
                     validated=validated,
                     registered=registered,
@@ -128,7 +130,8 @@ class RegistrationService:
         dsl_hash: str,
         workflow_id: str,
         workflow_type: str,
-        file_path: Path
+        file_path: Path,
+        task_queue: str = "",
     ) -> Dict[str, Any]:
         """
         Register a new workflow and schedule a hot-reload of the runtime.
@@ -137,7 +140,11 @@ class RegistrationService:
         entry = regs.get(dsl_hash)
 
         if entry and entry.get("registered") and entry.get("validated"):
-            # Already validated and registered, just check if loaded
+            # Update task_queue in case the same hash was previously registered with a different queue
+            if task_queue and entry.get("task_queue") != task_queue:
+                entry["task_queue"] = task_queue
+                regs[dsl_hash] = entry
+                self._save_registrations(regs)
             if not entry.get("runtime_loaded"):
                 _task = asyncio.create_task(self.trigger_reload())  # noqa: F841
             return entry
@@ -148,6 +155,7 @@ class RegistrationService:
         new_entry = {
             "workflow_id": workflow_id,
             "workflow_type": workflow_type,
+            "task_queue": task_queue,
             "validated": validated,
             "registered": bool(validated),
             "runtime_loaded": False,
@@ -164,6 +172,7 @@ class RegistrationService:
                 dsl_hash=dsl_hash,
                 workflow_id=workflow_id,
                 workflow_type=workflow_type,
+                task_queue=task_queue,
                 file_path=str(file_path),
                 validated=validated,
                 registered=bool(validated),
@@ -272,6 +281,7 @@ class RegistrationService:
                 dsl = load_dsl(path)
                 doc = dsl.get("document", {})
                 workflow_type = doc.get("workflowType")
+                task_queue = doc.get("taskQueue", "")
 
                 parts = path.stem.split("-")
                 workflow_id = "-".join(parts[:-1]) if len(parts) > 1 else path.stem
@@ -281,11 +291,11 @@ class RegistrationService:
 
                 dsl_hash = calculate_dsl_hash(dsl)
                 if dsl_hash not in regs:
-                    # Validate
                     validated = self._validate_dsl_file(path)
                     regs[dsl_hash] = {
                         "workflow_id": workflow_id,
                         "workflow_type": workflow_type,
+                        "task_queue": task_queue,
                         "validated": validated,
                         "registered": bool(validated),
                         "runtime_loaded": False,
@@ -293,6 +303,10 @@ class RegistrationService:
                     }
                     has_new = True
                     logger.info(f"Synced workflow version {workflow_type} (hash: {dsl_hash})")
+                elif task_queue and not regs[dsl_hash].get("task_queue"):
+                    # Back-fill task_queue on entries that were saved before this field existed
+                    regs[dsl_hash]["task_queue"] = task_queue
+                    has_new = True
             except Exception as e:
                 logger.warning(f"Failed parsing file {path} during sync: {e}")
 
